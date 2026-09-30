@@ -9,7 +9,7 @@ import {
 } from '@shared/grades'
 import type { Assignment, Score, ScoreStatus } from '@shared/models'
 import { parseScoreCell } from '@shared/scoreImport'
-import Sensitive from '@renderer/components/Sensitive'
+import Sensitive, { useMasked } from '@renderer/components/Sensitive'
 import { scoreKey, type GradebookData } from './useGradebook'
 
 interface Cell {
@@ -53,10 +53,16 @@ export default function ScoreGrid({
   const rows = students.length
   const cols = assignments.length
   const wrap = useRef<HTMLDivElement>(null)
+  const masked = useMasked()
   const [pos, setPos] = useState<Cell>({ r: 0, c: 0 })
   const [editing, setEditing] = useState<string | null>(null)
   const [invalid, setInvalid] = useState(false)
   const finishing = useRef(false)
+  // Presenting starts: drop a half-typed score rather than carry it across.
+  if (masked && editing !== null) {
+    setEditing(null)
+    setInvalid(false)
+  }
   const wasEditing = useRef(false)
 
   // Keep the cursor on the grid if rows or columns disappear.
@@ -290,7 +296,7 @@ export default function ScoreGrid({
                       }}
                       onDoubleClick={() => setEditing(cellText(s))}
                     >
-                      {isActive && editing !== null ? (
+                      {isActive && editing !== null && !masked ? (
                         <input
                           className={`cell-input${invalid ? ' cell-invalid' : ''}`}
                           autoFocus
@@ -350,16 +356,18 @@ export default function ScoreGrid({
                 <td
                   className="avg-cell"
                   title={
-                    g.percent === null
-                      ? 'Nothing graded yet'
-                      : cls.gradingMode === 'points'
-                        ? `${formatPoints(g.earned)} of ${formatPoints(g.possible)} points`
-                        : g.categories
-                            .map(
-                              (cat) =>
-                                `${cat.name} (${formatPoints(cat.weight)}%): ${formatPercent(cat.percent)}`
-                            )
-                            .join('\n')
+                    masked
+                      ? undefined
+                      : g.percent === null
+                        ? 'Nothing graded yet'
+                        : cls.gradingMode === 'points'
+                          ? `${formatPoints(g.earned)} of ${formatPoints(g.possible)} points`
+                          : g.categories
+                              .map(
+                                (cat) =>
+                                  `${cat.name} (${formatPoints(cat.weight)}%): ${formatPercent(cat.percent)}`
+                              )
+                              .join('\n')
                   }
                 >
                   <Sensitive>{formatPercent(g.percent)}</Sensitive>

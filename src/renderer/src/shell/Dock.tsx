@@ -3,18 +3,20 @@ import { registry } from './appRegistry'
 import { useShell } from './ShellContext'
 
 export default function Dock(): React.JSX.Element {
-  const { state, focused, openApp } = useShell()
+  const { state, focused, openApp, presenting } = useShell()
   return (
     <nav className="dock" aria-label="Apps">
       {registry.apps.map((app) => {
         const win = state.windows.find((w) => w.appId === app.id)
         const active = !!win && win.id === focused
+        const blocked = presenting && !app.presentationSafe
         return (
           <button
             key={app.id}
-            className={`dock-item${active ? ' dock-active' : ''}`}
+            className={`dock-item${active ? ' dock-active' : ''}${blocked ? ' dock-blocked' : ''}`}
+            disabled={blocked}
             onClick={() => openApp(app.id)}
-            title={app.name}
+            title={blocked ? `${app.name} is hidden while presenting` : app.name}
             aria-label={app.name}
           >
             <span className="dock-icon">

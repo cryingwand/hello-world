@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { API_METHODS, type RendererApi } from '@shared/api'
-import { CHANGE_CHANNEL, type ChangeEvent } from '@shared/events'
+import {
+  CHANGE_CHANNEL,
+  DISPLAY_OFFER_CHANNEL,
+  PRESENTATION_TOGGLE_CHANNEL,
+  type ChangeEvent,
+  type DisplayOffer
+} from '@shared/events'
 
 /** ipcRenderer prefixes remote errors; show the user only the message the main process wrote. */
 const clean = (err: unknown): Error => {
@@ -25,6 +31,16 @@ function buildApi(): RendererApi {
     const handler = (_e: Electron.IpcRendererEvent, event: ChangeEvent): void => listener(event)
     ipcRenderer.on(CHANGE_CHANNEL, handler)
     return () => ipcRenderer.removeListener(CHANGE_CHANNEL, handler)
+  }
+  api['onPresentationToggle'] = (listener: () => void): (() => void) => {
+    const handler = (): void => listener()
+    ipcRenderer.on(PRESENTATION_TOGGLE_CHANNEL, handler)
+    return () => ipcRenderer.removeListener(PRESENTATION_TOGGLE_CHANNEL, handler)
+  }
+  api['onDisplayOffer'] = (listener: (offer: DisplayOffer) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, offer: DisplayOffer): void => listener(offer)
+    ipcRenderer.on(DISPLAY_OFFER_CHANNEL, handler)
+    return () => ipcRenderer.removeListener(DISPLAY_OFFER_CHANNEL, handler)
   }
   return api as unknown as RendererApi
 }

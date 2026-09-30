@@ -1,8 +1,10 @@
 import {
   app,
   BrowserWindow,
+  Menu,
   nativeImage,
   net,
+  Notification,
   protocol,
   screen,
   shell,
@@ -12,6 +14,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { pathToFileURL } from 'node:url'
 import { APP_ID, APP_NAME } from '@shared/app-info'
+import { PRESENTATION_TOGGLE_CHANNEL } from '@shared/events'
 import { FILE_SCHEME } from '@shared/files'
 import { createApi } from './api'
 import { createFilesApi } from './filesApi'
@@ -22,6 +25,9 @@ import { needsDailyBackup, listBackups, runBackup } from './backup'
 import { openDatabase } from './db/connection'
 import { broadcastChange } from './events'
 import { registerIpc } from './ipc'
+import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
+import { createNotifier, type Notifier } from './notifier'
+import { createPresentationService } from './presentation'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
 import {
@@ -93,10 +99,20 @@ function createWindow(): BrowserWindow {
 }
 
 /** Backup on launch, then check hourly so a long-running session still gets a daily backup. */
-function startBackups(database: Db, repos: ReturnType<typeof createRepositories>): void {
+function startBackups(
+  database: Db,
+  repos: ReturnType<typeof createRepositories>,
+  notifier: Notifier
+): void {
   const run = (): void => {
     runBackup(database, { dir: backupDir, extraDir: repos.settings.get().backupFolder }).catch(
-      (err) => console.error('[backup] failed:', err)
+      (err) => {
+        console.error('[backup] failed:', err)
+        notifier.notify({
+          title: 'Teaching OS backup failed',
+          body: 'Your data is safe, but the latest backup could not be written. Open Settings to check the backup folder.'
+        })
+      }
     )
   }
   run()
@@ -143,8 +159,41 @@ void app.whenReady().then(() => {
     pickFile: pickAnyFile
   })
   const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
+
+  // System notifications go through one place so presentation mode can hold them back.
+  const notifier = createNotifier({
+    show: (n) => {
+      if (Notification.isSupported()) new Notification({ title: n.title, body: n.body }).show()
+    }
+  })
+  const presentation = createPresentationService({
+    screen,
+    notifier,
+    offerEnabled: () => repos.settings.get().presentation.offerOnExternalDisplay,
+    send: (channel, payload) => mainWindow?.webContents.send(channel, payload),
+    onActiveChange: (on) => {
+      const item = Menu.getApplicationMenu()?.getMenuItemById(PRESENTATION_MENU_ID)
+      if (item) item.checked = on
+    }
+  })
+  const togglePresentation = (): void => {
+    mainWindow?.webContents.send(PRESENTATION_TOGGLE_CHANNEL)
+  }
+  const applyMenu = (presenting: boolean): void =>
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate(
+        buildMenuTemplate({
+          appName: APP_NAME,
+          isMac: process.platform === 'darwin',
+          isPackaged: app.isPackaged,
+          presenting,
+          onTogglePresentation: togglePresentation
+        })
+      )
+    )
+  applyMenu(false)
   registerIpc(
-    createApi(db, repos, roster, scores, filesApi, {
+    createApi(db, repos, roster, scores, presentation, filesApi, {
       dataDir,
       dbPath,
       backupDir,
@@ -158,7 +207,7 @@ void app.whenReady().then(() => {
       platform: process.platform
     })
   )
-  startBackups(db, repos)
+  startBackups(db, repos, notifier)
 
   createWindow()
   app.on('activate', () => {

@@ -85,8 +85,16 @@ existing PDFs and images). The renderer's CSP blocks `fetch()` to it on purpose.
 
 ## Presentation mode
 
-Apps with `presentationSafe: false` are hidden while presenting. Shared components that show student
-names or grades must render through the masking helpers so they blank out automatically.
+The window owns the on/off state (`presenting` in `ShellContext`) and reports it to main
+(`presentation.setActive`), which ticks the View menu item and holds system notifications. The hotkey
+is the View menu accelerator (Cmd/Ctrl+Shift+P) so it works from any focus, including inside a PDF.
+
+- Apps with `presentationSafe: false` have their windows hidden and their dock icons disabled.
+- Anything that shows a student name, email, tag, note, comment or grade must go through `<Sensitive>`
+  (or a `Modal` with `sensitive`). This includes attributes such as `title`, and input values: a
+  masked value must not exist anywhere in the DOM. `presentation.mjs`-style audits scan for this.
+- Send system notifications through `createNotifier` (`src/main/notifier.ts`), never `new Notification`
+  directly, so they are held while presenting.
 
 ## Commands
 

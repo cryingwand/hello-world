@@ -20,3 +20,12 @@ export interface ChangeEvent {
 }
 
 export const CHANGE_CHANNEL = 'teachingos:change'
+
+/** Main asks the window to flip presentation mode (from the View menu or its hotkey). */
+export const PRESENTATION_TOGGLE_CHANNEL = 'teachingos:presentation-toggle'
+/** Main tells the window an external display appeared, so it can offer presentation mode. */
+export const DISPLAY_OFFER_CHANNEL = 'teachingos:display-offer'
+
+export interface DisplayOffer {
+  reason: 'connected' | 'already-connected'
+}

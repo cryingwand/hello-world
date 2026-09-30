@@ -152,6 +152,12 @@ export interface ApiContract {
     /** Asks where to save, then writes the class roster. Null if cancelled. */
     exportClass(classId: number, format: 'xlsx' | 'csv'): Awaitable<{ path: string } | null>
   }
+  presentation: {
+    /** The window reports whether presentation mode is on; main uses it for the menu and to hold notifications. */
+    setActive(on: boolean): Awaitable<void>
+    /** Whether an external display is connected right now, and whether the offer should be shown. */
+    state(): Awaitable<{ externalDisplays: number; offerEnabled: boolean }>
+  }
   gradebook: {
     /** What importing this file would do, without writing anything. */
     previewScores(request: ScoreImportRequest): Awaitable<ScoreImportPlan>
@@ -229,6 +235,7 @@ export const API_METHODS = {
     'setScores'
   ],
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
+  presentation: ['setActive', 'state'],
   gradebook: ['previewScores', 'commitScores', 'exportClass'],
   files: [
     'search',
@@ -259,5 +266,7 @@ export type Api = {
 
 export interface RendererApi extends Api {
   onChange(listener: (event: import('./events').ChangeEvent) => void): () => void
+  onPresentationToggle(listener: () => void): () => void
+  onDisplayOffer(listener: (offer: import('./events').DisplayOffer) => void): () => void
   platform: string
 }

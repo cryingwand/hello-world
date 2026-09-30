@@ -3,6 +3,7 @@ import { listBackups, runBackup } from './backup'
 import type { Db } from './repos/types'
 import type { Repositories } from './repos'
 import type { RosterService } from './rosterService'
+import type { PresentationService } from './presentation'
 import type { ScoreService } from './scoreService'
 
 export interface ApiEnv {
@@ -21,6 +22,7 @@ export function createApi(
   repos: Repositories,
   roster: RosterService,
   scores: ScoreService,
+  presentation: PresentationService,
   filesApi: ApiContract['files'],
   env: ApiEnv
 ): ApiContract {
@@ -68,6 +70,13 @@ export function createApi(
       preview: (request) => roster.preview(request),
       commit: (request) => roster.commit(request),
       exportClass: (classId, format) => roster.exportClass(classId, format)
+    },
+    presentation: {
+      setActive: (on) => presentation.setActive(!!on),
+      state: () => ({
+        externalDisplays: presentation.externalDisplays(),
+        offerEnabled: presentation.offerEnabled()
+      })
     },
     gradebook: {
       previewScores: (request) => scores.previewScores(request),

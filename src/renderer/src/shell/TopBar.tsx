@@ -99,10 +99,10 @@ export default function TopBar(): React.JSX.Element {
           className={`pill${presenting ? ' pill-on' : ''}`}
           aria-pressed={presenting}
           onClick={() => setPresenting(!presenting)}
-          title="Presentation mode"
+          title={`Presentation mode (${window.api.platform === 'darwin' ? '⌘' : 'Ctrl+'}⇧P)`}
         >
           <Icon name="screen" size={14} />
-          <span>Present</span>
+          <span>{presenting ? 'Presenting' : 'Present'}</span>
         </button>
         <Clock />
       </div>

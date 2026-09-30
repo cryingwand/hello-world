@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode
 } from 'react'
+import type { DisplayOffer } from '@shared/events'
 import type { Intent } from '@shared/intents'
 import { registry } from './appRegistry'
 import { loadLayout, saveLayout } from './layoutStorage'
@@ -30,6 +31,9 @@ interface ShellApi {
   dispatchIntent: (intent: Intent) => boolean
   presenting: boolean
   setPresenting: (on: boolean) => void
+  /** Set when an external display is (or just became) connected and presentation mode is off. */
+  displayOffer: DisplayOffer | null
+  dismissDisplayOffer: () => void
   /** The class most apps default to; chosen in the top bar or by opening a class. */
   currentClassId: number | null
   setCurrentClassId: (id: number | null) => void
@@ -62,6 +66,9 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
   })
   const [presenting, setPresenting] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [offer, setOffer] = useState<DisplayOffer | null>(null)
+  // Once presentation mode is on, any pending offer is moot; clear it so it cannot resurface when it ends.
+  if (presenting && offer) setOffer(null)
   const [currentClassId, setCurrentClassIdState] = useState<number | null>(loadCurrentClass)
 
   const setCurrentClassId = useCallback((id: number | null) => {
@@ -80,6 +87,26 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
     // The window may have resized between the first render and this effect; sync once.
     onResize()
     return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  // The View menu item and its hotkey ask the window to flip presentation mode.
+  useEffect(() => window.api.onPresentationToggle(() => setPresenting((on) => !on)), [])
+
+  // Main needs to know the state to tick the menu item and to hold system notifications back.
+  useEffect(() => {
+    window.api.presentation.setActive(presenting).catch(() => undefined)
+  }, [presenting])
+
+  // Offer presentation mode when an external display connects, or is already connected at launch.
+  useEffect(() => {
+    const off = window.api.onDisplayOffer((o) => setOffer(o))
+    window.api.presentation
+      .state()
+      .then((st) => {
+        if (st.externalDisplays > 0 && st.offerEnabled) setOffer({ reason: 'already-connected' })
+      })
+      .catch(() => undefined)
+    return off
   }, [])
 
   // Persist the layout; debounced so dragging doesn't write on every pointer move.
@@ -113,12 +140,24 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
       dispatchIntent,
       presenting,
       setPresenting,
+      // An offer is moot once presentation mode is on.
+      displayOffer: presenting ? null : offer,
+      dismissDisplayOffer: () => setOffer(null),
       currentClassId,
       setCurrentClassId,
       settingsOpen,
       setSettingsOpen
     }),
-    [state, openApp, dispatchIntent, presenting, currentClassId, setCurrentClassId, settingsOpen]
+    [
+      state,
+      openApp,
+      dispatchIntent,
+      presenting,
+      offer,
+      currentClassId,
+      setCurrentClassId,
+      settingsOpen
+    ]
   )
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>
 }

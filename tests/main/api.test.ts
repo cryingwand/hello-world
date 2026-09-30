@@ -3,6 +3,8 @@ import { API_METHODS, type ApiContract } from '@shared/api'
 import { CHANGE_NAMES } from '@shared/events'
 import { createApi } from '../../src/main/api'
 import { createFilesApi } from '../../src/main/filesApi'
+import { createNotifier } from '../../src/main/notifier'
+import { createPresentationService } from '../../src/main/presentation'
 import { createRosterService } from '../../src/main/rosterService'
 import { createScoreService } from '../../src/main/scoreService'
 import { makeEnv } from './helpers'
@@ -18,6 +20,16 @@ const env = (): { api: ApiContract; e: ReturnType<typeof makeEnv> } => {
     e.repos,
     roster,
     createScoreService(e.repos, roster.tokens, { pickSaveFile: async () => null }),
+    createPresentationService({
+      screen: {
+        getAllDisplays: () => [{ internal: true }],
+        on: () => undefined,
+        removeListener: () => undefined
+      },
+      notifier: createNotifier({ show: () => undefined }),
+      offerEnabled: () => true,
+      send: () => undefined
+    }),
     createFilesApi({
       settings: () => e.repos.settings.get(),
       exec: async () => ({ stdout: '', stderr: '' }),
