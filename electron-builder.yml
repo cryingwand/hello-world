@@ -1,0 +1,20 @@
+# Local, unsigned build for personal use on a Mac you have admin rights on.
+appId: local.teachingos.app
+productName: Teaching OS
+directories:
+  buildResources: build
+  output: release
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
+mac:
+  target:
+    - target: dir
+  category: public.app-category.education
+  identity: null # unsigned
+  hardenedRuntime: false
+  extendInfo:
+    NSAppleEventsUsageDescription: Teaching OS positions Preview, TextEdit and Office windows beside itself.
+    NSDocumentsFolderUsageDescription: Teaching OS reads your teaching folders.
