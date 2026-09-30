@@ -48,6 +48,22 @@ React modules, not iframes. Apps talk to data only through `window.api.*`, never
 - The renderer never sees a file path it did not get from the main process, and main validates every
   IPC payload.
 
+## Adding to the data API
+
+1. Declare the method in `ApiContract` and list its name in `API_METHODS` (`src/shared/api.ts`).
+2. Implement it in a repository (`src/main/repos/`) and wire it in `src/main/api.ts`.
+3. Validate input in the repository with `src/main/validate.ts`; throw `ValidationError` for anything
+   the user should see. Any other error is logged and shown as a generic message.
+4. Emit the matching change event from the repository after the write commits.
+5. Add a test in `tests/main/`. `api.test.ts` fails if the contract, method list and wiring disagree.
+
+`window.api.<namespace>.<method>()` is generated from `API_METHODS`; there is no per-method preload
+code. Every renderer call is async. Use `useApiQuery(fetcher, deps, events)` in components so views
+refetch when another window changes the data.
+
+`TEACHING_OS_DATA_DIR` overrides the data folder (database, backups, renderer storage). Use it for
+any automated run so tests never touch real data.
+
 ## Presentation mode
 
 Apps with `presentationSafe: false` are hidden while presenting. Shared components that show student

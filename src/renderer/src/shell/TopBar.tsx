@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { APP_NAME } from '@shared/app-info'
 import Icon from '@renderer/components/Icon'
 import { registry } from './appRegistry'
+import SettingsDialog from './SettingsDialog'
 import { useShell } from './ShellContext'
 
 const clockFormat = new Intl.DateTimeFormat(undefined, {
@@ -24,12 +26,15 @@ function Clock(): React.JSX.Element {
 export default function TopBar(): React.JSX.Element {
   const { state, focused, presenting, setPresenting } = useShell()
   const focusedWin = state.windows.find((w) => w.id === focused)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const focusedName = focusedWin ? registry.byId.get(focusedWin.appId)?.name : undefined
 
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <strong className="brand">{APP_NAME}</strong>
+        <button className="brand" onClick={() => setSettingsOpen(true)} title="Settings">
+          {APP_NAME}
+        </button>
         {focusedName && <span className="topbar-app">{focusedName}</span>}
       </div>
       <label className="topbar-search">
@@ -51,6 +56,9 @@ export default function TopBar(): React.JSX.Element {
         </button>
         <Clock />
       </div>
+      {/* Portaled: the top bar's backdrop-filter would otherwise become the fixed-position container. */}
+      {settingsOpen &&
+        createPortal(<SettingsDialog onClose={() => setSettingsOpen(false)} />, document.body)}
     </header>
   )
 }

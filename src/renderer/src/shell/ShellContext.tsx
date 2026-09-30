@@ -49,6 +49,8 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
   useEffect(() => {
     const onResize = (): void => dispatch({ type: 'setDesktop', desktop: desktopSize() })
     window.addEventListener('resize', onResize)
+    // The window may have resized between the first render and this effect; sync once.
+    onResize()
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
