@@ -152,6 +152,10 @@ export interface ApiContract {
     /** Asks where to save, then writes the class roster. Null if cancelled. */
     exportClass(classId: number, format: 'xlsx' | 'csv'): Awaitable<{ path: string } | null>
   }
+  vaultGate: {
+    /** Opens (or focuses) the Vault window, which holds the gradebook, students and protected files. */
+    openWindow(): Awaitable<void>
+  }
   presentation: {
     /** The window reports whether presentation mode is on; main uses it for the menu and to hold notifications. */
     setActive(on: boolean): Awaitable<void>
@@ -235,6 +239,7 @@ export const API_METHODS = {
     'setScores'
   ],
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
+  vaultGate: ['openWindow'],
   presentation: ['setActive', 'state'],
   gradebook: ['previewScores', 'commitScores', 'exportClass'],
   files: [
@@ -269,4 +274,6 @@ export interface RendererApi extends Api {
   onPresentationToggle(listener: () => void): () => void
   onDisplayOffer(listener: (offer: import('./events').DisplayOffer) => void): () => void
   platform: string
+  /** This window's role, as recorded by the main process. Null if the window is unknown. */
+  role: import('./access').Role | null
 }

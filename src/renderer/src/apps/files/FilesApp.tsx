@@ -32,7 +32,18 @@ function formatSize(n: number): string {
 const when = (ms: number): string =>
   new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
-export default function FilesApp({ intent, intentNonce }: AppProps): React.JSX.Element {
+/**
+ * `library` is the everyday view: search and preview, nothing tied to a student or class.
+ * `vault` adds attaching files to records and is only ever shown in the protected window.
+ */
+export type FilesScope = 'library' | 'vault'
+
+export default function FilesApp({
+  intent,
+  intentNonce,
+  scope
+}: AppProps & { scope: FilesScope }): React.JSX.Element {
+  const inVault = scope === 'vault'
   const { setSettingsOpen } = useShell()
   const [tab, setTab] = useState<'search' | 'attached'>('search')
   const [query, setQuery] = useState('')
@@ -64,7 +75,7 @@ export default function FilesApp({ intent, intentNonce }: AppProps): React.JSX.E
 
   // An `attach-file` intent from another app.
   useEffect(() => {
-    if (intent?.type !== 'attach-file') return
+    if (!inVault || intent?.type !== 'attach-file') return
     const { path, recordType, recordId } = intent
     window.api.fileLinks
       .add({ path, recordType, recordId })
@@ -73,7 +84,7 @@ export default function FilesApp({ intent, intentNonce }: AppProps): React.JSX.E
         setNotice(`Attached ${baseName(path)}`)
       })
       .catch((e: unknown) => setError(msg(e)))
-  }, [intent, intentNonce])
+  }, [intent, intentNonce, inVault])
 
   // Debounced Spotlight search; a slower, older response never replaces a newer one.
   useEffect(() => {
@@ -136,26 +147,28 @@ export default function FilesApp({ intent, intentNonce }: AppProps): React.JSX.E
   return (
     <div className="split">
       <aside className="files-side" aria-label="Find files">
-        <div className="tabs" role="tablist">
-          <button
-            role="tab"
-            aria-selected={tab === 'search'}
-            className={tab === 'search' ? 'tab tab-on' : 'tab'}
-            onClick={() => setTab('search')}
-          >
-            Search
-          </button>
-          <button
-            role="tab"
-            aria-selected={tab === 'attached'}
-            className={tab === 'attached' ? 'tab tab-on' : 'tab'}
-            onClick={() => setTab('attached')}
-          >
-            Attached
-          </button>
-        </div>
+        {inVault && (
+          <div className="tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={tab === 'search'}
+              className={tab === 'search' ? 'tab tab-on' : 'tab'}
+              onClick={() => setTab('search')}
+            >
+              Search
+            </button>
+            <button
+              role="tab"
+              aria-selected={tab === 'attached'}
+              className={tab === 'attached' ? 'tab tab-on' : 'tab'}
+              onClick={() => setTab('attached')}
+            >
+              Attached
+            </button>
+          </div>
+        )}
 
-        {tab === 'search' ? (
+        {tab === 'search' || !inVault ? (
           <>
             <input
               className="search"
@@ -254,7 +267,10 @@ export default function FilesApp({ intent, intentNonce }: AppProps): React.JSX.E
                   </div>
                 </div>
               </div>
-              <OpenBar path={selected} onAttach={() => setAttachFor(selected)} />
+              <OpenBar
+                path={selected}
+                onAttach={inVault ? () => setAttachFor(selected) : undefined}
+              />
               <div className="viewer">
                 <Viewer
                   key={`${selected}:${kindOf(selected)}`}
@@ -274,7 +290,7 @@ export default function FilesApp({ intent, intentNonce }: AppProps): React.JSX.E
         )}
       </section>
 
-      {attachFor && (
+      {inVault && attachFor && (
         <AttachDialog
           path={attachFor}
           onClose={() => setAttachFor(null)}

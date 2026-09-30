@@ -15,7 +15,8 @@ export default function OpenBar({
   onAttach
 }: {
   path: string
-  onAttach: () => void
+  /** Only offered in the vault, where attaching to a class or student is possible. */
+  onAttach?: () => void
 }): React.JSX.Element {
   const [app, setApp] = useState<NativeApp>(() => preferredApp(path))
   const [chosenFor, setChosenFor] = useState(path)
@@ -82,9 +83,11 @@ export default function OpenBar({
         <button className="btn" onClick={() => guard(window.api.files.reveal(path))}>
           Show in Finder
         </button>
-        <button className="btn" onClick={onAttach}>
-          Attach to…
-        </button>
+        {onAttach && (
+          <button className="btn" onClick={onAttach}>
+            Attach to…
+          </button>
+        )}
       </div>
       {error && (
         <div className="error-banner" role="alert">

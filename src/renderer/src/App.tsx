@@ -5,9 +5,9 @@ import { ShellProvider, useShell } from './shell/ShellContext'
 import TopBar from './shell/TopBar'
 
 function Shell(): React.JSX.Element {
-  const { presenting } = useShell()
+  const { presenting, space } = useShell()
   return (
-    <div className={`shell${presenting ? ' presenting' : ''}`}>
+    <div className={`shell shell-${space}${presenting ? ' presenting' : ''}`}>
       <TopBar />
       <PresentationOffer />
       <Desktop />
@@ -16,10 +16,15 @@ function Shell(): React.JSX.Element {
   )
 }
 
+/** Draws the shell for this window's role, which the main process decided (not the page). */
 export default function App(): React.JSX.Element {
-  return (
-    <ShellProvider>
-      <Shell />
-    </ShellProvider>
-  )
+  const role = window.api.role
+  if (role === 'launcher' || role === 'vault') {
+    return (
+      <ShellProvider space={role}>
+        <Shell />
+      </ShellProvider>
+    )
+  }
+  return <p className="hint pad">This window has no role.</p>
 }

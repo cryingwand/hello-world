@@ -3,6 +3,7 @@ import ClassesApp from './ClassesApp'
 
 const manifest: AppManifest = {
   id: 'classes',
+  space: 'vault',
   name: 'Classes & Rosters',
   icon: 'users',
   component: ClassesApp,

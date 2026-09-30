@@ -47,6 +47,7 @@ const env = (): { api: ApiContract; e: ReturnType<typeof makeEnv> } => {
       backupDir: '/data/backups',
       chooseFolder: async () => null,
       openAccessibilitySettings: async () => undefined,
+      openVaultWindow: () => undefined,
       version: '0.0.0',
       platform: 'test'
     }

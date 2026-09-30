@@ -4,6 +4,7 @@ import type { AppManifest } from '@apps/types'
 
 const app = (id: string, handles: AppManifest['handles'] = []): AppManifest => ({
   id,
+  space: 'vault',
   name: id.toUpperCase(),
   icon: 'grid',
   component: () => null,
@@ -31,7 +32,7 @@ describe('app registry', () => {
   })
 
   it('orders the dock with known apps first, then alphabetical', () => {
-    const sorted = sortForDock([app('zed'), app('files'), app('alpha'), app('classes')])
-    expect(sorted.map((a) => a.id)).toEqual(['classes', 'files', 'alpha', 'zed'])
+    const sorted = sortForDock([app('zed'), app('library'), app('alpha'), app('classes')])
+    expect(sorted.map((a) => a.id)).toEqual(['classes', 'library', 'alpha', 'zed'])
   })
 })

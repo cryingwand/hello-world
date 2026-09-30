@@ -10,7 +10,9 @@ import {
 } from 'react'
 import type { DisplayOffer } from '@shared/events'
 import type { Intent } from '@shared/intents'
-import { registry } from './appRegistry'
+import type { Space } from '@apps/types'
+import { registryFor } from './appRegistry'
+import type { Registry } from './registry'
 import { loadLayout, saveLayout } from './layoutStorage'
 import {
   DOCK_H,
@@ -23,6 +25,9 @@ import {
 } from './windowManager'
 
 interface ShellApi {
+  /** Which window this is: the launcher or the vault. */
+  space: Space
+  registry: Registry
   state: WmState
   focused: string | null
   dispatch: (action: WmAction) => void
@@ -58,10 +63,17 @@ function desktopSize(): { w: number; h: number } {
   return { w: window.innerWidth, h: Math.max(window.innerHeight - TOPBAR_H - DOCK_H, 0) }
 }
 
-export function ShellProvider({ children }: { children: ReactNode }): React.JSX.Element {
+export function ShellProvider({
+  space,
+  children
+}: {
+  space: Space
+  children: ReactNode
+}): React.JSX.Element {
+  const registry = registryFor(space)
   const [state, dispatch] = useReducer(wmReducer, undefined, () => {
     const base = initialState(desktopSize())
-    const saved = loadLayout(new Set(registry.byId.keys()))
+    const saved = loadLayout(new Set(registry.byId.keys()), space)
     return saved ? wmReducer(base, { type: 'hydrate', ...saved }) : base
   })
   const [presenting, setPresenting] = useState(false)
@@ -90,15 +102,20 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
   }, [])
 
   // The View menu item and its hotkey ask the window to flip presentation mode.
-  useEffect(() => window.api.onPresentationToggle(() => setPresenting((on) => !on)), [])
+  useEffect(() => {
+    if (space !== 'launcher') return
+    return window.api.onPresentationToggle(() => setPresenting((on) => !on))
+  }, [space])
 
   // Main needs to know the state to tick the menu item and to hold system notifications back.
   useEffect(() => {
+    if (space !== 'launcher') return
     window.api.presentation.setActive(presenting).catch(() => undefined)
-  }, [presenting])
+  }, [presenting, space])
 
   // Offer presentation mode when an external display connects, or is already connected at launch.
   useEffect(() => {
+    if (space !== 'launcher') return
     const off = window.api.onDisplayOffer((o) => setOffer(o))
     window.api.presentation
       .state()
@@ -107,32 +124,40 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
       })
       .catch(() => undefined)
     return off
-  }, [])
+  }, [space])
 
   // Persist the layout; debounced so dragging doesn't write on every pointer move.
   useEffect(() => {
     const t = setTimeout(
-      () => saveLayout({ windows: state.windows, nextZ: state.nextZ, nextId: state.nextId }),
+      () => saveLayout({ windows: state.windows, nextZ: state.nextZ, nextId: state.nextId }, space),
       250
     )
     return () => clearTimeout(t)
-  }, [state.windows, state.nextZ, state.nextId])
+  }, [state.windows, state.nextZ, state.nextId, space])
 
-  const openApp = useCallback((appId: string) => {
-    const app = registry.byId.get(appId)
-    if (!app) return
-    dispatch({ type: 'open', appId, size: app.defaultSize, minSize: app.minSize })
-  }, [])
+  const openApp = useCallback(
+    (appId: string) => {
+      const app = registry.byId.get(appId)
+      if (!app) return
+      dispatch({ type: 'open', appId, size: app.defaultSize, minSize: app.minSize })
+    },
+    [registry]
+  )
 
-  const dispatchIntent = useCallback((intent: Intent) => {
-    const app = registry.handlerFor(intent.type)
-    if (!app) return false
-    dispatch({ type: 'open', appId: app.id, size: app.defaultSize, minSize: app.minSize, intent })
-    return true
-  }, [])
+  const dispatchIntent = useCallback(
+    (intent: Intent) => {
+      const app = registry.handlerFor(intent.type)
+      if (!app) return false
+      dispatch({ type: 'open', appId: app.id, size: app.defaultSize, minSize: app.minSize, intent })
+      return true
+    },
+    [registry]
+  )
 
   const value = useMemo<ShellApi>(
     () => ({
+      space,
+      registry,
       state,
       focused: focusedId(state),
       dispatch,
@@ -149,6 +174,8 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
       setSettingsOpen
     }),
     [
+      space,
+      registry,
       state,
       openApp,
       dispatchIntent,

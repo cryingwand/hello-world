@@ -1,0 +1,94 @@
+import { describe, expect, it } from 'vitest'
+import { API_ACCESS, accessFor, canCall, methodsFor, type Role } from '@shared/access'
+import { API_METHODS } from '@shared/api'
+import { CHANGE_AUDIENCE, CHANGE_NAMES } from '@shared/events'
+
+describe('access policy', () => {
+  it('classifies every API method, and nothing that does not exist', () => {
+    for (const ns of Object.keys(API_METHODS) as (keyof typeof API_METHODS)[]) {
+      const declared = [...API_METHODS[ns]].sort()
+      const classified = Object.keys(API_ACCESS[ns]).sort()
+      expect(classified, ns).toEqual(declared)
+    }
+    expect(Object.keys(API_ACCESS).sort()).toEqual(Object.keys(API_METHODS).sort())
+  })
+
+  it('keeps everything that touches student data vault-only, and needing the vault', () => {
+    const vaultOnly = [
+      'terms',
+      'students',
+      'classes',
+      'grading',
+      'roster',
+      'gradebook',
+      'fileLinks'
+    ]
+    for (const ns of vaultOnly) {
+      for (const [method, access] of Object.entries(API_ACCESS[ns as keyof typeof API_ACCESS])) {
+        expect(access.roles, `${ns}.${method}`).toEqual(['vault'])
+        expect((access as { needsVault?: boolean }).needsVault, `${ns}.${method}`).toBe(true)
+      }
+    }
+  })
+
+  it('gives the launcher no method that can read or change student or grade data', () => {
+    const launcher = methodsFor('launcher')
+    for (const ns of [
+      'terms',
+      'students',
+      'classes',
+      'grading',
+      'roster',
+      'gradebook',
+      'fileLinks'
+    ]) {
+      expect(launcher[ns], ns).toBeUndefined()
+    }
+  })
+
+  it('gives the stage nothing yet (it is granted only what it needs, later)', () => {
+    expect(methodsFor('stage')).toEqual({})
+  })
+
+  it('refuses unknown roles, namespaces and methods', () => {
+    expect(canCall(undefined, 'files', 'search')).toBe(false)
+    expect(canCall('launcher', 'nope', 'search')).toBe(false)
+    expect(canCall('launcher', 'files', 'nope')).toBe(false)
+    expect(accessFor('constructor', 'name')).toBeUndefined()
+    expect(accessFor('files', 'hasOwnProperty')).toBeUndefined()
+    expect(accessFor('__proto__', 'x')).toBeUndefined()
+  })
+
+  it('lets the launcher and vault both use everyday methods, but only the vault opens students', () => {
+    expect(canCall('launcher', 'files', 'search')).toBe(true)
+    expect(canCall('vault', 'files', 'search')).toBe(true)
+    expect(canCall('launcher', 'students', 'list')).toBe(false)
+    expect(canCall('stage', 'students', 'list')).toBe(false)
+    expect(canCall('vault', 'students', 'list')).toBe(true)
+    expect(canCall('launcher', 'vaultGate', 'openWindow')).toBe(true)
+    expect(canCall('vault', 'vaultGate', 'openWindow')).toBe(false)
+  })
+
+  it('methodsFor matches canCall exactly for each role', () => {
+    for (const role of ['launcher', 'vault', 'stage'] as Role[]) {
+      const shown = methodsFor(role)
+      for (const ns of Object.keys(API_METHODS) as (keyof typeof API_METHODS)[]) {
+        for (const m of API_METHODS[ns] as readonly string[]) {
+          expect(shown[ns]?.includes(m) ?? false, `${role} ${ns}.${m}`).toBe(canCall(role, ns, m))
+        }
+      }
+    }
+  })
+})
+
+describe('change audiences', () => {
+  it('names an audience for every change, and keeps vault data changes out of other windows', () => {
+    for (const name of CHANGE_NAMES) expect(CHANGE_AUDIENCE[name], name).toBeDefined()
+    for (const name of CHANGE_NAMES) {
+      if (name === 'settings.changed') continue
+      expect(CHANGE_AUDIENCE[name], name).toEqual(['vault'])
+    }
+    expect(CHANGE_AUDIENCE['settings.changed']).toContain('launcher')
+    expect(CHANGE_AUDIENCE['settings.changed']).not.toContain('stage')
+  })
+})

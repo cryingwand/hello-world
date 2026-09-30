@@ -12,8 +12,13 @@ export interface AppProps {
 }
 
 /** The contract each `apps/<id>/manifest.ts` default-exports. */
+/** Which window role hosts an app: the everyday launcher or the protected vault. */
+export type Space = 'launcher' | 'vault'
+
 export interface AppManifest {
   id: string
+  /** Decides which shell shows the app. Anything touching student data belongs in `vault`. */
+  space: Space
   name: string
   icon: IconName
   component: ComponentType<AppProps>

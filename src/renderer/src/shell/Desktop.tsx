@@ -1,9 +1,8 @@
-import { registry } from './appRegistry'
 import { useShell } from './ShellContext'
 import WindowFrame from './WindowFrame'
 
 export default function Desktop(): React.JSX.Element {
-  const { state, focused } = useShell()
+  const { state, focused, registry } = useShell()
   return (
     <main className="desktop">
       {state.windows.map((win) => {

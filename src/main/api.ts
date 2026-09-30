@@ -12,6 +12,7 @@ export interface ApiEnv {
   backupDir: string
   chooseFolder: () => Promise<string | null>
   openAccessibilitySettings: () => Promise<void>
+  openVaultWindow: () => void
   version: string
   platform: string
 }
@@ -70,6 +71,9 @@ export function createApi(
       preview: (request) => roster.preview(request),
       commit: (request) => roster.commit(request),
       exportClass: (classId, format) => roster.exportClass(classId, format)
+    },
+    vaultGate: {
+      openWindow: () => env.openVaultWindow()
     },
     presentation: {
       setActive: (on) => presentation.setActive(!!on),

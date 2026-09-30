@@ -4,7 +4,6 @@ import { APP_NAME } from '@shared/app-info'
 import Icon from '@renderer/components/Icon'
 import { useApiQuery } from '@renderer/data/hooks'
 import { classLabel } from '@renderer/lib/labels'
-import { registry } from './appRegistry'
 import SettingsDialog from './SettingsDialog'
 import { useShell } from './ShellContext'
 
@@ -62,7 +61,9 @@ export default function TopBar(): React.JSX.Element {
     setPresenting,
     dispatchIntent,
     settingsOpen,
-    setSettingsOpen
+    setSettingsOpen,
+    registry,
+    space
   } = useShell()
   const [search, setSearch] = useState('')
   const focusedWin = state.windows.find((w) => w.id === focused)
@@ -94,16 +95,18 @@ export default function TopBar(): React.JSX.Element {
         />
       </form>
       <div className="topbar-right">
-        <ClassPicker />
-        <button
-          className={`pill${presenting ? ' pill-on' : ''}`}
-          aria-pressed={presenting}
-          onClick={() => setPresenting(!presenting)}
-          title={`Presentation mode (${window.api.platform === 'darwin' ? '⌘' : 'Ctrl+'}⇧P)`}
-        >
-          <Icon name="screen" size={14} />
-          <span>{presenting ? 'Presenting' : 'Present'}</span>
-        </button>
+        {space === 'vault' && <ClassPicker />}
+        {space === 'launcher' && (
+          <button
+            className={`pill${presenting ? ' pill-on' : ''}`}
+            aria-pressed={presenting}
+            onClick={() => setPresenting(!presenting)}
+            title={`Presentation mode (${window.api.platform === 'darwin' ? '⌘' : 'Ctrl+'}⇧P)`}
+          >
+            <Icon name="screen" size={14} />
+            <span>{presenting ? 'Presenting' : 'Present'}</span>
+          </button>
+        )}
         <Clock />
       </div>
       {/* Portaled: the top bar's backdrop-filter would otherwise become the fixed-position container. */}

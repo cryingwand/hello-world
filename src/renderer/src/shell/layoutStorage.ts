@@ -1,6 +1,6 @@
 import type { WindowState } from './windowManager'
 
-const KEY = 'teachingos.layout.v1'
+const key = (space: string): string => `teachingos.layout.v1.${space}`
 
 export interface SavedLayout {
   windows: WindowState[]
@@ -43,18 +43,18 @@ export function sanitizeLayout(raw: unknown, knownAppIds: Set<string>): SavedLay
   }
 }
 
-export function loadLayout(knownAppIds: Set<string>): SavedLayout | null {
+export function loadLayout(knownAppIds: Set<string>, space: string): SavedLayout | null {
   try {
-    const text = localStorage.getItem(KEY)
+    const text = localStorage.getItem(key(space))
     return text ? sanitizeLayout(JSON.parse(text), knownAppIds) : null
   } catch {
     return null
   }
 }
 
-export function saveLayout(layout: SavedLayout): void {
+export function saveLayout(layout: SavedLayout, space: string): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(layout))
+    localStorage.setItem(key(space), JSON.stringify(layout))
   } catch {
     // Layout is a convenience; losing it must never break the shell.
   }

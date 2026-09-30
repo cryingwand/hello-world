@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { API_METHODS, type RendererApi } from '@shared/api'
+import { methodsFor, type Role } from '@shared/access'
+import type { RendererApi } from '@shared/api'
 import {
   CHANGE_CHANNEL,
   DISPLAY_OFFER_CHANNEL,
@@ -14,9 +15,13 @@ const clean = (err: unknown): Error => {
   return new Error(msg.replace(/^Error invoking remote method '[^']*': (?:\w*Error: )?/, ''))
 }
 
+// The main process decides this window's role from its own records; nothing here can change it.
+const role = ipcRenderer.sendSync('tos:role') as Role | null
+
 function buildApi(): RendererApi {
   const api: Record<string, unknown> = {}
-  for (const [ns, methods] of Object.entries(API_METHODS)) {
+  // Only the methods this role may call exist at all. Main enforces the same policy on every call.
+  for (const [ns, methods] of Object.entries(role ? methodsFor(role) : {})) {
     const group: Record<string, unknown> = {}
     for (const method of methods) {
       group[method] = (...args: unknown[]) =>
@@ -27,6 +32,7 @@ function buildApi(): RendererApi {
     api[ns] = group
   }
   api['platform'] = process.platform
+  api['role'] = role
   api['onChange'] = (listener: (event: ChangeEvent) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, event: ChangeEvent): void => listener(event)
     ipcRenderer.on(CHANGE_CHANNEL, handler)

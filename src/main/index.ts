@@ -1,18 +1,21 @@
 import {
   app,
   BrowserWindow,
+  ipcMain,
   Menu,
   nativeImage,
   net,
   Notification,
   protocol,
   screen,
+  session,
   shell,
   systemPreferences
 } from 'electron'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { pathToFileURL } from 'node:url'
+import type { Role } from '@shared/access'
 import { APP_ID, APP_NAME } from '@shared/app-info'
 import { PRESENTATION_TOGGLE_CHANNEL } from '@shared/events'
 import { FILE_SCHEME } from '@shared/files'
@@ -23,11 +26,12 @@ import { defaultExec, isMac } from './mac/exec'
 import { createLauncherSnap } from './mac/launcherSnap'
 import { needsDailyBackup, listBackups, runBackup } from './backup'
 import { openDatabase } from './db/connection'
-import { broadcastChange } from './events'
+import { createBroadcaster } from './events'
 import { registerIpc } from './ipc'
 import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
 import { createNotifier, type Notifier } from './notifier'
 import { createPresentationService } from './presentation'
+import { createRoleRegistry } from './roles'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
 import {
@@ -39,6 +43,7 @@ import {
 } from './system'
 import { createRepositories } from './repos'
 import type { Db } from './repos'
+import { createRoleWindow, type WindowEnv } from './windows'
 
 // One folder holds the database, backups and the renderer's own storage:
 // ~/Library/Application Support/TeachingOS on a Mac. TEACHING_OS_DATA_DIR overrides it for tests.
@@ -57,45 +62,33 @@ const dbPath = join(dataDir, 'data.sqlite')
 const backupDir = join(dataDir, 'backups')
 
 let db: Db | null = null
-let mainWindow: BrowserWindow | null = null
+const registry = createRoleRegistry<BrowserWindow>()
 
-function createWindow(): BrowserWindow {
-  // Fill the usable screen (below the menu bar, clear of the dock) like a desktop environment.
-  const area = screen.getPrimaryDisplay().workArea
-  const win = new BrowserWindow({
-    title: APP_NAME,
-    x: area.x,
-    y: area.y,
-    width: area.width,
-    height: area.height,
-    show: false,
-    backgroundColor: '#1b1d23',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true
-    }
-  })
+const windowEnv: WindowEnv = {
+  registry,
+  preload: join(__dirname, '../preload/index.js'),
+  indexHtml: join(__dirname, '../renderer/index.html'),
+  devUrl: process.env['ELECTRON_RENDERER_URL']
+}
 
-  mainWindow = win
-  win.on('closed', () => {
-    if (mainWindow === win) mainWindow = null
-  })
-  win.once('ready-to-show', () => win.show())
-
-  // Never navigate the shell itself; hand external links to the default browser.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
-
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'))
+function openLauncher(): BrowserWindow {
+  const existing = registry.first('launcher')
+  if (existing && !existing.isDestroyed()) {
+    existing.show()
+    existing.focus()
+    return existing
   }
-  return win
+  return createRoleWindow('launcher', windowEnv)
+}
+
+function openVaultWindow(): void {
+  const existing = registry.first('vault')
+  if (existing && !existing.isDestroyed()) {
+    existing.show()
+    existing.focus()
+    return
+  }
+  createRoleWindow('vault', windowEnv)
 }
 
 /** Backup on launch, then check hourly so a long-running session still gets a daily backup. */
@@ -127,37 +120,52 @@ function startBackups(
 
 void app.whenReady().then(() => {
   db = openDatabase(dbPath)
-  const repos = createRepositories(db, broadcastChange)
+  const broadcast = createBroadcaster((role) =>
+    registry
+      .windows(role)
+      .filter((w) => !w.isDestroyed())
+      .map((w) => ({ send: (channel, payload) => w.webContents.send(channel, payload) }))
+  )
+  const repos = createRepositories(db, broadcast)
   const roster = createRosterService(repos, {
     pickOpenFile: pickTableFile,
     pickSaveFile: pickSaveTableFile
   })
-  protocol.handle(FILE_SCHEME, async (request) => {
-    try {
-      const path = await resolveServedPath(request.url)
-      return await net.fetch(pathToFileURL(path).toString(), { headers: request.headers })
-    } catch {
-      return new Response('Not found', { status: 404 })
-    }
-  })
-  const filesApi = createFilesApi({
-    settings: () => repos.settings.get(),
-    exec: defaultExec,
-    home: homedir(),
-    isMac,
-    // On a Mac this also shows the system's Accessibility prompt the first time it is asked.
-    isTrusted: () =>
-      process.platform !== 'darwin' || systemPreferences.isTrustedAccessibilityClient(true),
-    launcher: createLauncherSnap(() => mainWindow, screen),
-    thumbnail: async (path, size) => {
-      // Quick Look thumbnails exist on macOS only.
-      if (typeof nativeImage.createThumbnailFromPath !== 'function') return null
-      const image = await nativeImage.createThumbnailFromPath(path, { width: size, height: size })
-      return image.isEmpty() ? null : image.toDataURL()
-    },
-    reveal: (path) => shell.showItemInFolder(path),
-    pickFile: pickAnyFile
-  })
+
+  // Each role has its own storage partition, so each needs its own handler for the file scheme.
+  for (const role of ['launcher', 'vault'] as const) {
+    session
+      .fromPartition(`persist:teachingos-${role}`)
+      .protocol.handle(FILE_SCHEME, async (request) => {
+        try {
+          const path = await resolveServedPath(request.url)
+          return await net.fetch(pathToFileURL(path).toString(), { headers: request.headers })
+        } catch {
+          return new Response('Not found', { status: 404 })
+        }
+      })
+  }
+
+  const filesApiFor = (role: Role) =>
+    createFilesApi({
+      settings: () => repos.settings.get(),
+      exec: defaultExec,
+      home: homedir(),
+      isMac,
+      // On a Mac this also shows the system's Accessibility prompt the first time it is asked.
+      isTrusted: () =>
+        process.platform !== 'darwin' || systemPreferences.isTrustedAccessibilityClient(true),
+      // Snapping moves the window that asked, so each role gets its own.
+      launcher: createLauncherSnap(() => registry.first(role) ?? null, screen),
+      thumbnail: async (path, size) => {
+        // Quick Look thumbnails exist on macOS only.
+        if (typeof nativeImage.createThumbnailFromPath !== 'function') return null
+        const image = await nativeImage.createThumbnailFromPath(path, { width: size, height: size })
+        return image.isEmpty() ? null : image.toDataURL()
+      },
+      reveal: (path) => shell.showItemInFolder(path),
+      pickFile: pickAnyFile
+    })
   const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
 
   // System notifications go through one place so presentation mode can hold them back.
@@ -166,52 +174,57 @@ void app.whenReady().then(() => {
       if (Notification.isSupported()) new Notification({ title: n.title, body: n.body }).show()
     }
   })
+  const toLauncher = (channel: string, payload?: unknown): void =>
+    registry.first('launcher')?.webContents.send(channel, payload)
   const presentation = createPresentationService({
     screen,
     notifier,
     offerEnabled: () => repos.settings.get().presentation.offerOnExternalDisplay,
-    send: (channel, payload) => mainWindow?.webContents.send(channel, payload),
+    send: (channel, payload) => toLauncher(channel, payload),
     onActiveChange: (on) => {
       const item = Menu.getApplicationMenu()?.getMenuItemById(PRESENTATION_MENU_ID)
       if (item) item.checked = on
     }
   })
-  const togglePresentation = (): void => {
-    mainWindow?.webContents.send(PRESENTATION_TOGGLE_CHANNEL)
-  }
-  const applyMenu = (presenting: boolean): void =>
-    Menu.setApplicationMenu(
-      Menu.buildFromTemplate(
-        buildMenuTemplate({
-          appName: APP_NAME,
-          isMac: process.platform === 'darwin',
-          isPackaged: app.isPackaged,
-          presenting,
-          onTogglePresentation: togglePresentation
-        })
-      )
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(
+      buildMenuTemplate({
+        appName: APP_NAME,
+        isMac: process.platform === 'darwin',
+        isPackaged: app.isPackaged,
+        presenting: false,
+        onTogglePresentation: () => toLauncher(PRESENTATION_TOGGLE_CHANNEL)
+      })
     )
-  applyMenu(false)
-  registerIpc(
-    createApi(db, repos, roster, scores, presentation, filesApi, {
-      dataDir,
-      dbPath,
-      backupDir,
-      chooseFolder: chooseFolderDialog,
-      openAccessibilitySettings: async () => {
-        await shell.openExternal(
-          'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
-        )
-      },
-      version: appVersion(),
-      platform: process.platform
-    })
   )
+
+  const apiEnv = {
+    dataDir,
+    dbPath,
+    backupDir,
+    chooseFolder: chooseFolderDialog,
+    openAccessibilitySettings: async () => {
+      await shell.openExternal(
+        'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
+      )
+    },
+    openVaultWindow,
+    version: appVersion(),
+    platform: process.platform
+  }
+  registerIpc({
+    ipc: ipcMain,
+    roleOf: (sender) => registry.roleOf(sender),
+    apis: {
+      launcher: createApi(db, repos, roster, scores, presentation, filesApiFor('launcher'), apiEnv),
+      vault: createApi(db, repos, roster, scores, presentation, filesApiFor('vault'), apiEnv)
+    }
+  })
   startBackups(db, repos, notifier)
 
-  createWindow()
+  openLauncher()
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (registry.count() === 0) openLauncher()
   })
 })
 

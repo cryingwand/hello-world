@@ -29,3 +29,19 @@ export const DISPLAY_OFFER_CHANNEL = 'teachingos:display-offer'
 export interface DisplayOffer {
   reason: 'connected' | 'already-connected'
 }
+
+/**
+ * Which window roles hear each change. Student and gradebook changes go to the vault only, so a
+ * window outside the vault never even learns that vault data changed.
+ */
+export const CHANGE_AUDIENCE: Record<ChangeName, readonly ('launcher' | 'vault' | 'stage')[]> = {
+  'terms.changed': ['vault'],
+  'students.changed': ['vault'],
+  'classes.changed': ['vault'],
+  'enrollments.changed': ['vault'],
+  'categories.changed': ['vault'],
+  'assignments.changed': ['vault'],
+  'scores.changed': ['vault'],
+  'fileLinks.changed': ['vault'],
+  'settings.changed': ['launcher', 'vault']
+}

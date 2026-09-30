@@ -1,9 +1,8 @@
 import Icon from '@renderer/components/Icon'
-import { registry } from './appRegistry'
 import { useShell } from './ShellContext'
 
 export default function Dock(): React.JSX.Element {
-  const { state, focused, openApp, presenting } = useShell()
+  const { state, focused, openApp, presenting, registry, space } = useShell()
   return (
     <nav className="dock" aria-label="Apps">
       {registry.apps.map((app) => {
@@ -29,6 +28,20 @@ export default function Dock(): React.JSX.Element {
           </button>
         )
       })}
+      {space === 'launcher' && (
+        <button
+          className="dock-item dock-vault"
+          onClick={() => window.api.vaultGate.openWindow().catch(() => undefined)}
+          title="Open the Vault"
+          aria-label="Vault"
+        >
+          <span className="dock-icon">
+            <Icon name="lock" size={26} />
+          </span>
+          <span className="dock-label">Vault</span>
+          <span className="dock-dot" />
+        </button>
+      )}
     </nav>
   )
 }

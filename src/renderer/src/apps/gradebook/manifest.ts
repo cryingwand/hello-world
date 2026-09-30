@@ -3,6 +3,7 @@ import GradebookApp from './GradebookApp'
 
 const manifest: AppManifest = {
   id: 'gradebook',
+  space: 'vault',
   name: 'Gradebook',
   icon: 'grid',
   component: GradebookApp,
