@@ -1,10 +1,16 @@
-import { APP_NAME } from '@shared/app-info'
+import Desktop from './shell/Desktop'
+import Dock from './shell/Dock'
+import { ShellProvider } from './shell/ShellContext'
+import TopBar from './shell/TopBar'
 
 export default function App(): React.JSX.Element {
   return (
-    <div className="boot">
-      <h1>{APP_NAME}</h1>
-      <p>Scaffold running on {window.api.platform}.</p>
-    </div>
+    <ShellProvider>
+      <div className="shell">
+        <TopBar />
+        <Desktop />
+        <Dock />
+      </div>
+    </ShellProvider>
   )
 }
