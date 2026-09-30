@@ -60,6 +60,11 @@ export function createRoleWindow(
     return { action: 'deny' }
   })
 
+  // A page can reload itself but never wander to another address.
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url !== win.webContents.getURL()) event.preventDefault()
+  })
+
   if (env.devUrl) void win.loadURL(env.devUrl)
   else void win.loadFile(env.indexHtml)
   return win

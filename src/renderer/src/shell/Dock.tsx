@@ -33,9 +33,16 @@ export default function Dock(): React.JSX.Element {
       })}
       {space === 'launcher' && (
         <button
-          className="dock-item dock-vault"
+          className={`dock-item dock-vault${presenting ? ' dock-blocked' : ''}`}
+          disabled={presenting}
           onClick={() => window.api.vaultGate.openWindow().catch(() => undefined)}
-          title={vault && !vault.locked ? 'The Vault is open' : 'Open the Vault'}
+          title={
+            presenting
+              ? 'The Vault stays closed while the Stage is showing'
+              : vault && !vault.locked
+                ? 'The Vault is open'
+                : 'Open the Vault'
+          }
           aria-label="Vault"
         >
           <span className="dock-icon">

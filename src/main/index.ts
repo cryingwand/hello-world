@@ -19,8 +19,8 @@ import { homedir } from 'node:os'
 import { pathToFileURL } from 'node:url'
 import type { Role } from '@shared/access'
 import { APP_ID, APP_NAME } from '@shared/app-info'
-import { PRESENTATION_TOGGLE_CHANNEL } from '@shared/events'
 import { FILE_SCHEME } from '@shared/files'
+import { STAGE_VIEW_CHANNEL } from '@shared/stage'
 import { VAULT_STATUS_CHANNEL } from '@shared/vault'
 import { createApi } from './api'
 import { createFilesApi } from './filesApi'
@@ -33,10 +33,10 @@ import { createBroadcaster } from './events'
 import { registerIpc } from './ipc'
 import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
 import { createNotifier, type Notifier } from './notifier'
-import { createPresentationService } from './presentation'
 import { createFileGuard, createProtectedPaths } from './protected'
 import { createProtectionService } from './protectionService'
 import { createRoleRegistry } from './roles'
+import { countExternalDisplays, createStageService } from './stage'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
 import {
@@ -51,6 +51,7 @@ import type { Db } from './repos'
 import { createVaultGate } from './vault/gate'
 import { importLegacyData } from './vault/legacy'
 import { createVaultManager } from './vault/manager'
+import { ValidationError } from './validate'
 import { createRoleWindow, type WindowEnv } from './windows'
 
 // One folder holds the database, backups and the renderer's own storage:
@@ -156,16 +157,6 @@ void app.whenReady().then(() => {
   })
   const toLauncher = (channel: string, payload?: unknown): void =>
     registry.first('launcher')?.webContents.send(channel, payload)
-  const presentation = createPresentationService({
-    screen,
-    notifier,
-    offerEnabled: () => publicRepos.settings.get().presentation.offerOnExternalDisplay,
-    send: (channel, payload) => toLauncher(channel, payload),
-    onActiveChange: (on) => {
-      const item = Menu.getApplicationMenu()?.getMenuItemById(PRESENTATION_MENU_ID)
-      if (item) item.checked = on
-    }
-  })
 
   // The vault: its own database and passcode, closed whenever it is locked.
   const manager = createVaultManager<VaultSession>({
@@ -198,10 +189,60 @@ void app.whenReady().then(() => {
   powerMonitor.on('lock-screen', () => manager.lock('screen-lock'))
   powerMonitor.on('suspend', () => manager.lock('sleep'))
 
+  // Protected folders apply everywhere but inside the open Vault, including while it is locked.
+  const protectedPaths = createProtectedPaths({ folders: () => publicRepos.protection.list() })
+  const guardFor = (role: Role) =>
+    createFileGuard({
+      paths: protectedPaths,
+      allowProtected: () => role === 'vault' && manager.isUnlocked(),
+      externalDisplays: () => countExternalDisplays(screen)
+    })
+
+  // The Stage: a separate window on the projector that can show only what the Presenter queued.
+  const stage = createStageService({
+    screen,
+    notifier,
+    lockVault: (reason) => manager.lock(reason),
+    guard: guardFor('stage'),
+    offerEnabled: () => publicRepos.settings.get().presentation.offerOnExternalDisplay,
+    sendToLauncher: toLauncher,
+    onActiveChange: (on) => {
+      const item = Menu.getApplicationMenu()?.getMenuItemById(PRESENTATION_MENU_ID)
+      if (item) item.checked = on
+    },
+    openWindow: (display) => {
+      const b = display?.bounds
+      const win = createRoleWindow('stage', windowEnv, {
+        ...(b ? { x: b.x, y: b.y, width: b.width, height: b.height } : {}),
+        frame: false,
+        backgroundColor: '#000000',
+        autoHideMenuBar: true,
+        movable: false,
+        resizable: false,
+        fullscreen: process.platform !== 'darwin',
+        simpleFullscreen: process.platform === 'darwin'
+      })
+      // Keys work even while a PDF has focus, which a page-level listener would miss.
+      win.webContents.on('before-input-event', (event, input) => {
+        if (input.type !== 'keyDown' || input.isAutoRepeat) return
+        if (stage.handleKey(input)) event.preventDefault()
+      })
+      win.on('closed', () => stage.windowClosed())
+      return {
+        showView: (view) => {
+          if (!win.isDestroyed()) win.webContents.send(STAGE_VIEW_CHANNEL, view)
+        },
+        close: () => {
+          if (!win.isDestroyed()) win.destroy()
+        }
+      }
+    }
+  })
+
   const gate = createVaultGate({
     manager,
-    presenting: () => presentation.isActive(),
-    externalDisplays: () => presentation.externalDisplays(),
+    presenting: () => stage.isActive(),
+    externalDisplays: () => stage.externalDisplays(),
     confirmExternalDisplay: async () => {
       const win = registry.first('vault')
       const options = {
@@ -229,15 +270,6 @@ void app.whenReady().then(() => {
     extraDir: () => publicRepos.settings.get().backupFolder
   })
 
-  // Protected folders apply everywhere but inside the open Vault, including while it is locked.
-  const protectedPaths = createProtectedPaths({ folders: () => publicRepos.protection.list() })
-  const guardFor = (role: Role) =>
-    createFileGuard({
-      paths: protectedPaths,
-      allowProtected: () => role === 'vault' && manager.isUnlocked(),
-      externalDisplays: () => presentation.externalDisplays()
-    })
-
   // Each role has its own storage partition, so each needs its own handler for the file scheme, and
   // each applies its own protected-file policy.
   for (const role of ['launcher', 'vault'] as const) {
@@ -253,6 +285,17 @@ void app.whenReady().then(() => {
         }
       })
   }
+
+  session
+    .fromPartition('persist:teachingos-stage')
+    .protocol.handle(FILE_SCHEME, async (request) => {
+      try {
+        const path = await stage.resolveServed(request.url)
+        return await net.fetch(pathToFileURL(path).toString(), { headers: request.headers })
+      } catch {
+        return new Response('Not found', { status: 404 })
+      }
+    })
 
   const filesApiFor = (role: Role) =>
     createFilesApi({
@@ -283,7 +326,13 @@ void app.whenReady().then(() => {
         isMac: process.platform === 'darwin',
         isPackaged: app.isPackaged,
         presenting: false,
-        onTogglePresentation: () => toLauncher(PRESENTATION_TOGGLE_CHANNEL)
+        onTogglePresentation: () => {
+          try {
+            stage.toggle()
+          } catch (err) {
+            console.error('[stage] could not start:', err)
+          }
+        }
       })
     )
   )
@@ -320,21 +369,27 @@ void app.whenReady().then(() => {
       protection,
       backups,
       gate,
-      presentation,
+      stage,
       files: filesApiFor(role),
       env
     })
   registerIpc({
     ipc: ipcMain,
     roleOf: (sender) => registry.roleOf(sender),
-    apis: { launcher: apiFor('launcher'), vault: apiFor('vault') },
+    apis: { launcher: apiFor('launcher'), vault: apiFor('vault'), stage: apiFor('stage') },
     // Anything that needs the vault is refused while it is locked.
     beforeCall: (_role, _ns, _method, access) => {
-      if (access.needsVault) manager.assertUnlocked()
+      if (!access.needsVault) return
+      if (stage.isActive())
+        throw new ValidationError('End the presentation before using the Vault.')
+      manager.assertUnlocked()
     }
   })
   startBackups(backups, notifier)
-  app.on('will-quit', () => manager.dispose())
+  app.on('will-quit', () => {
+    stage.dispose()
+    manager.dispose()
+  })
 
   openLauncher()
   app.on('activate', () => {

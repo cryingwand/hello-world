@@ -9,6 +9,7 @@ import {
   type ReactNode
 } from 'react'
 import type { DisplayOffer } from '@shared/events'
+import type { StageState } from '@shared/stage'
 import type { Intent } from '@shared/intents'
 import type { Space } from '@apps/types'
 import { registryFor } from './appRegistry'
@@ -34,9 +35,13 @@ interface ShellApi {
   openApp: (appId: string) => void
   /** Route an intent to whichever app handles it. Returns false if none does. */
   dispatchIntent: (intent: Intent) => boolean
+  /** The Stage is showing. Only the launcher ever sees this: the Vault is closed while it runs. */
   presenting: boolean
-  setPresenting: (on: boolean) => void
-  /** Set when an external display is (or just became) connected and presentation mode is off. */
+  /** The Presenter's view of the queue and the Stage; null until main has answered (launcher only). */
+  stage: StageState | null
+  /** Ends the Stage if it is showing, starts it if files are queued, otherwise opens the Presenter. */
+  toggleStage: () => void
+  /** Set when an external display is (or just became) connected and the Stage is not showing. */
   displayOffer: DisplayOffer | null
   dismissDisplayOffer: () => void
   /** The class most apps default to; chosen in the top bar or by opening a class. */
@@ -76,10 +81,11 @@ export function ShellProvider({
     const saved = loadLayout(new Set(registry.byId.keys()), space)
     return saved ? wmReducer(base, { type: 'hydrate', ...saved }) : base
   })
-  const [presenting, setPresenting] = useState(false)
+  const [stage, setStage] = useState<StageState | null>(null)
+  const presenting = stage?.active ?? false
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [offer, setOffer] = useState<DisplayOffer | null>(null)
-  // Once presentation mode is on, any pending offer is moot; clear it so it cannot resurface when it ends.
+  // Once the Stage is showing, any pending offer is moot; clear it so it cannot resurface when it ends.
   if (presenting && offer) setOffer(null)
   const [currentClassId, setCurrentClassIdState] = useState<number | null>(loadCurrentClass)
 
@@ -101,29 +107,31 @@ export function ShellProvider({
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // The View menu item and its hotkey ask the window to flip presentation mode.
+  // The Presenter's state: the queue and whether the Stage is showing. The hotkey acts in main.
   useEffect(() => {
     if (space !== 'launcher') return
-    return window.api.onPresentationToggle(() => setPresenting((on) => !on))
-  }, [space])
-
-  // Main needs to know the state to tick the menu item and to hold system notifications back.
-  useEffect(() => {
-    if (space !== 'launcher') return
-    window.api.presentation.setActive(presenting).catch(() => undefined)
-  }, [presenting, space])
-
-  // Offer presentation mode when an external display connects, or is already connected at launch.
-  useEffect(() => {
-    if (space !== 'launcher') return
-    const off = window.api.onDisplayOffer((o) => setOffer(o))
-    window.api.presentation
+    let live = true
+    const off = window.api.onStageState((s) => live && setStage(s))
+    window.api.stage
       .state()
-      .then((st) => {
-        if (st.externalDisplays > 0 && st.offerEnabled) setOffer({ reason: 'already-connected' })
+      .then((s) => {
+        if (!live) return
+        setStage((cur) => cur ?? s)
+        // A display that was already connected at launch gets the same offer as one plugged in later.
+        if (s.externalDisplays > 0 && s.offerEnabled && !s.active)
+          setOffer({ reason: 'already-connected' })
       })
       .catch(() => undefined)
-    return off
+    return () => {
+      live = false
+      off()
+    }
+  }, [space])
+
+  // A display that is (or becomes) connected gets an offer, unless the Stage is already showing.
+  useEffect(() => {
+    if (space !== 'launcher') return
+    return window.api.onDisplayOffer((o) => setOffer(o))
   }, [space])
 
   // Persist the layout; debounced so dragging doesn't write on every pointer move.
@@ -143,6 +151,13 @@ export function ShellProvider({
     },
     [registry]
   )
+
+  const toggleStage = useCallback(() => {
+    const s = stage
+    if (s?.active) window.api.stage.end().catch(() => undefined)
+    else if (!s || s.items.length === 0) openApp('presenter')
+    else window.api.stage.start().catch(() => undefined)
+  }, [stage, openApp])
 
   const dispatchIntent = useCallback(
     (intent: Intent) => {
@@ -164,8 +179,9 @@ export function ShellProvider({
       openApp,
       dispatchIntent,
       presenting,
-      setPresenting,
-      // An offer is moot once presentation mode is on.
+      stage,
+      toggleStage,
+      // An offer is moot once the Stage is showing.
       displayOffer: presenting ? null : offer,
       dismissDisplayOffer: () => setOffer(null),
       currentClassId,
@@ -180,6 +196,8 @@ export function ShellProvider({
       openApp,
       dispatchIntent,
       presenting,
+      stage,
+      toggleStage,
       offer,
       currentClassId,
       setCurrentClassId,

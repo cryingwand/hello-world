@@ -3,6 +3,7 @@ import Dock from './shell/Dock'
 import PresentationOffer from './shell/PresentationOffer'
 import { ShellProvider, useShell } from './shell/ShellContext'
 import TopBar from './shell/TopBar'
+import StageApp from './stage/StageApp'
 import VaultRoot from './vault/VaultRoot'
 
 function Shell(): React.JSX.Element {
@@ -37,5 +38,6 @@ export default function App(): React.JSX.Element {
       </VaultRoot>
     )
   }
+  if (role === 'stage') return <StageApp />
   return <p className="hint pad">This window has no role.</p>
 }

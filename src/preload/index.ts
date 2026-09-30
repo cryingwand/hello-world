@@ -4,10 +4,15 @@ import type { RendererApi } from '@shared/api'
 import {
   CHANGE_CHANNEL,
   DISPLAY_OFFER_CHANNEL,
-  PRESENTATION_TOGGLE_CHANNEL,
   type ChangeEvent,
   type DisplayOffer
 } from '@shared/events'
+import {
+  STAGE_STATE_CHANNEL,
+  STAGE_VIEW_CHANNEL,
+  type StageState,
+  type StageView
+} from '@shared/stage'
 import { VAULT_STATUS_CHANNEL, type VaultStatus } from '@shared/vault'
 
 /** ipcRenderer prefixes remote errors; show the user only the message the main process wrote. */
@@ -39,10 +44,15 @@ function buildApi(): RendererApi {
     ipcRenderer.on(CHANGE_CHANNEL, handler)
     return () => ipcRenderer.removeListener(CHANGE_CHANNEL, handler)
   }
-  api['onPresentationToggle'] = (listener: () => void): (() => void) => {
-    const handler = (): void => listener()
-    ipcRenderer.on(PRESENTATION_TOGGLE_CHANNEL, handler)
-    return () => ipcRenderer.removeListener(PRESENTATION_TOGGLE_CHANNEL, handler)
+  api['onStageState'] = (listener: (state: StageState) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, state: StageState): void => listener(state)
+    ipcRenderer.on(STAGE_STATE_CHANNEL, handler)
+    return () => ipcRenderer.removeListener(STAGE_STATE_CHANNEL, handler)
+  }
+  api['onStageView'] = (listener: (view: StageView) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, view: StageView): void => listener(view)
+    ipcRenderer.on(STAGE_VIEW_CHANNEL, handler)
+    return () => ipcRenderer.removeListener(STAGE_VIEW_CHANNEL, handler)
   }
   api['onVaultStatus'] = (listener: (status: VaultStatus) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, status: VaultStatus): void => listener(status)

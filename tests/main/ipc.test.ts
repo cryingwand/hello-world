@@ -52,7 +52,8 @@ function setup(
     roleOf: (s) => registry.roleOf(s),
     apis: {
       launcher: fakeApi('launcher', opts.overrides),
-      vault: fakeApi('vault', opts.overrides)
+      vault: fakeApi('vault', opts.overrides),
+      stage: fakeApi('stage', opts.overrides)
     },
     beforeCall: opts.beforeCall
   })
@@ -104,10 +105,31 @@ describe('registerIpc', () => {
     }
   })
 
-  it('refuses unknown windows and windows whose role has no implementation', async () => {
+  it('refuses unknown windows', async () => {
     const { call } = setup()
     await expect(call(99, 'files.search')).rejects.toBeInstanceOf(AccessDeniedError)
-    await expect(call(3, 'files.search')).rejects.toBeInstanceOf(AccessDeniedError)
+  })
+
+  it('lets the stage ask what to show and nothing else', async () => {
+    const { call } = setup()
+    expect(await call(3, 'stage.view')).toBe('stage:stage.view')
+    const { API_ACCESS } = await import('@shared/access')
+    for (const ns of Object.keys(API_ACCESS) as (keyof typeof API_ACCESS)[]) {
+      for (const method of Object.keys(API_ACCESS[ns])) {
+        if (ns === 'stage' && method === 'view') continue
+        await expect(call(3, `${ns}.${method}`), `${ns}.${method}`).rejects.toBeInstanceOf(
+          AccessDeniedError
+        )
+      }
+    }
+  })
+
+  it('refuses the stage controls to the stage and the vault, and the stage view to the launcher', async () => {
+    const { call } = setup()
+    await expect(call(3, 'stage.end')).rejects.toBeInstanceOf(AccessDeniedError)
+    await expect(call(2, 'stage.start')).rejects.toBeInstanceOf(AccessDeniedError)
+    await expect(call(1, 'stage.view')).rejects.toBeInstanceOf(AccessDeniedError)
+    expect(await call(1, 'stage.start')).toBe('launcher:stage.start')
   })
 
   it('refuses calls from a sub-frame, such as an iframe preview, and from a missing frame', async () => {

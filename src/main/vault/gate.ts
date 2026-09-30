@@ -25,8 +25,15 @@ export function createVaultGate<S>(deps: GateDeps<S>) {
       throw new ValidationError('End the presentation before opening the Vault.')
   }
 
-  /** Runs after a successful unlock; locks again if the person declines. */
+  /**
+   * Runs after a successful unlock; locks again if a presentation started while the passcode was
+   * being checked, or if the person declines to open with another display connected.
+   */
   const confirmDisplays = async (): Promise<void> => {
+    if (deps.presenting()) {
+      manager.lock('presenting')
+      throw new ValidationError('End the presentation before opening the Vault.')
+    }
     if (deps.externalDisplays() === 0) return
     // A dialog that fails to show counts as "no": when in doubt the vault stays closed.
     const ok = await deps.confirmExternalDisplay().catch(() => false)

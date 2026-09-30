@@ -21,6 +21,8 @@ const EVERYDAY: Access = { roles: ['launcher', 'vault'] }
 const LAUNCHER: Access = { roles: ['launcher'] }
 /** The lock screen's own calls: the vault window must be able to make them while locked. */
 const GATE: Access = { roles: ['vault'] }
+/** The projector window: it can ask what to show and nothing else. */
+const STAGE: Access = { roles: ['stage'] }
 
 /**
  * Who may call what. This is the single source of truth for the access policy: the main process
@@ -90,7 +92,20 @@ export const API_ACCESS = {
     lock: EVERYDAY
   },
   vault: { touch: VAULT, changePasscode: VAULT, settings: VAULT, updateSettings: VAULT },
-  presentation: { setActive: LAUNCHER, state: LAUNCHER }
+  stage: {
+    state: LAUNCHER,
+    add: LAUNCHER,
+    remove: LAUNCHER,
+    move: LAUNCHER,
+    clear: LAUNCHER,
+    start: LAUNCHER,
+    end: LAUNCHER,
+    next: LAUNCHER,
+    previous: LAUNCHER,
+    goto: LAUNCHER,
+    blank: LAUNCHER,
+    view: STAGE
+  }
 } as const satisfies { [N in keyof ApiContract]: { [M in keyof ApiContract[N]]: Access } }
 
 type Namespace = keyof typeof API_ACCESS

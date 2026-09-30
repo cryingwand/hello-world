@@ -68,6 +68,26 @@ describe('vault gate', () => {
     expect((await gate.unlock('first passcode')).locked).toBe(false)
   })
 
+  it('locks again if a presentation started while the passcode was being checked', async () => {
+    const dir = tmp()
+    const manager = createVaultManager<object>({
+      dir,
+      openDb: openVaultDatabase,
+      createSession: () => ({}),
+      scrypt: FAST
+    })
+    let calls = 0
+    // Not presenting when the unlock begins, presenting by the time the passcode check finishes.
+    const gate = createVaultGate({
+      manager,
+      presenting: () => ++calls > 1,
+      externalDisplays: () => 0,
+      confirmExternalDisplay: async () => true
+    })
+    await expect(gate.setup('first passcode')).rejects.toThrow(/End the presentation/)
+    expect(manager.isUnlocked()).toBe(false)
+  })
+
   it('asks first when another display is connected, and relocks if the answer is no', async () => {
     const { gate, manager, s } = make()
     await gate.setup('first passcode')

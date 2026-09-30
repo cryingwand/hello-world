@@ -9,6 +9,7 @@ import type {
   TableView,
   TextFile
 } from './files'
+import type { StageState, StageView } from './stage'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
@@ -177,11 +178,23 @@ export interface ApiContract {
       touchIdEnabled?: boolean
     }): Awaitable<VaultSettings>
   }
-  presentation: {
-    /** The window reports whether presentation mode is on; main uses it for the menu and to hold notifications. */
-    setActive(on: boolean): Awaitable<void>
-    /** Whether an external display is connected right now, and whether the offer should be shown. */
-    state(): Awaitable<{ externalDisplays: number; offerEnabled: boolean }>
+  stage: {
+    /** Presenter: the queue, and whether the Stage is showing. No paths are returned. */
+    state(): Awaitable<StageState>
+    /** Adds files to the queue. Each must be a PDF, image, Word or text file outside protected folders. */
+    add(paths: string[]): Awaitable<StageState>
+    remove(index: number): Awaitable<StageState>
+    move(from: number, to: number): Awaitable<StageState>
+    clear(): Awaitable<StageState>
+    /** Locks the Vault, then opens the Stage window on the other display (or this one). */
+    start(): Awaitable<StageState>
+    end(): Awaitable<StageState>
+    next(): Awaitable<StageState>
+    previous(): Awaitable<StageState>
+    goto(index: number): Awaitable<StageState>
+    blank(on?: boolean): Awaitable<StageState>
+    /** The Stage window only: what to show right now. */
+    view(): Awaitable<StageView>
   }
   gradebook: {
     /** What importing this file would do, without writing anything. */
@@ -271,7 +284,20 @@ export const API_METHODS = {
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
   vaultGate: ['openWindow', 'status', 'setup', 'unlock', 'unlockWithTouchId', 'lock'],
   vault: ['touch', 'changePasscode', 'settings', 'updateSettings'],
-  presentation: ['setActive', 'state'],
+  stage: [
+    'state',
+    'add',
+    'remove',
+    'move',
+    'clear',
+    'start',
+    'end',
+    'next',
+    'previous',
+    'goto',
+    'blank',
+    'view'
+  ],
   gradebook: ['previewScores', 'commitScores', 'exportClass'],
   files: [
     'search',
@@ -303,7 +329,8 @@ export type Api = {
 
 export interface RendererApi extends Api {
   onChange(listener: (event: import('./events').ChangeEvent) => void): () => void
-  onPresentationToggle(listener: () => void): () => void
+  onStageState(listener: (state: StageState) => void): () => void
+  onStageView(listener: (view: StageView) => void): () => void
   onVaultStatus(listener: (status: VaultStatus) => void): () => void
   onDisplayOffer(listener: (offer: import('./events').DisplayOffer) => void): () => void
   platform: string

@@ -58,7 +58,7 @@ export default function TopBar(): React.JSX.Element {
     state,
     focused,
     presenting,
-    setPresenting,
+    toggleStage,
     dispatchIntent,
     settingsOpen,
     setSettingsOpen,
@@ -110,11 +110,11 @@ export default function TopBar(): React.JSX.Element {
           <button
             className={`pill${presenting ? ' pill-on' : ''}`}
             aria-pressed={presenting}
-            onClick={() => setPresenting(!presenting)}
-            title={`Presentation mode (${window.api.platform === 'darwin' ? '⌘' : 'Ctrl+'}⇧P)`}
+            onClick={toggleStage}
+            title={`Start or end the Stage (${window.api.platform === 'darwin' ? '⌘' : 'Ctrl+'}⇧P)`}
           >
             <Icon name="screen" size={14} />
-            <span>{presenting ? 'Presenting' : 'Present'}</span>
+            <span>{presenting ? 'On stage' : 'Present'}</span>
           </button>
         )}
         <Clock />

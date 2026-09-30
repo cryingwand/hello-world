@@ -48,8 +48,40 @@ describe('access policy', () => {
     }
   })
 
-  it('gives the stage nothing yet (it is granted only what it needs, later)', () => {
-    expect(methodsFor('stage')).toEqual({})
+  it('gives the stage exactly one method: asking what to show', () => {
+    expect(methodsFor('stage')).toEqual({ stage: ['view'] })
+  })
+
+  it('keeps Stage controls with the launcher: the vault and the stage cannot drive it', () => {
+    for (const m of [
+      'start',
+      'end',
+      'add',
+      'remove',
+      'move',
+      'clear',
+      'next',
+      'previous',
+      'goto',
+      'blank',
+      'state'
+    ]) {
+      expect(canCall('launcher', 'stage', m), m).toBe(true)
+      expect(canCall('vault', 'stage', m), m).toBe(false)
+      expect(canCall('stage', 'stage', m), m).toBe(false)
+    }
+    expect(canCall('stage', 'stage', 'view')).toBe(true)
+    expect(canCall('launcher', 'stage', 'view')).toBe(false)
+    expect(canCall('vault', 'stage', 'view')).toBe(false)
+  })
+
+  it('gives the stage nothing else at all (exhaustive)', () => {
+    for (const ns of Object.keys(API_ACCESS) as (keyof typeof API_ACCESS)[]) {
+      for (const method of Object.keys(API_ACCESS[ns])) {
+        const allowed = canCall('stage', ns, method)
+        expect(allowed, `${ns}.${method}`).toBe(ns === 'stage' && method === 'view')
+      }
+    }
   })
 
   it('refuses unknown roles, namespaces and methods', () => {

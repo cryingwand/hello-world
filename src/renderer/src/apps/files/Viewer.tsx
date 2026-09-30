@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import { kindOf, toFileUrl, viewerFor } from '@shared/files'
 import { useMasked } from '@renderer/components/Sensitive'
 import { useApiQuery } from '@renderer/data/hooks'
+import { PAPER_CSS } from './paper'
 import TextEditor from './TextEditor'
-
-const PAPER_CSS = `body{margin:0;padding:24px 32px;background:#fff;color:#1b1b1b;font:14px/1.55 'Palatino Linotype',Palatino,Georgia,serif}
-table{border-collapse:collapse}td,th{border:1px solid #bbb;padding:4px 8px}img{max-width:100%}h1,h2,h3{line-height:1.25}`
 
 function DocxView({ path }: { path: string }): React.JSX.Element {
   const doc = useApiQuery(() => window.api.files.docxHtml(path), [path])

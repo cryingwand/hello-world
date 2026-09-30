@@ -1352,3 +1352,102 @@ td .badge:first-child {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---- presenter and stage ---- */
+.presenter-pane {
+  padding: 14px 16px;
+  overflow: auto;
+}
+.stage-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.stage-controls {
+  margin-top: 10px;
+}
+.queue {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.queue li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+}
+.queue-on {
+  background: var(--panel-2);
+  outline: 1px solid var(--accent);
+}
+.queue-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.queue-main:disabled {
+  cursor: default;
+}
+.queue-n {
+  width: 18px;
+  color: var(--muted);
+  text-align: right;
+}
+.queue-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stage {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: none;
+}
+.stage-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+.stage-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.stage-text {
+  margin: 0;
+  padding: 6vh 8vw;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font:
+    4vh/1.4 -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  white-space: pre-wrap;
+}
+.stage-message {
+  margin: 0;
+  color: #8a8f9c;
+  font-size: 3vh;
+}

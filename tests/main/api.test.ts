@@ -9,12 +9,12 @@ import { createBackupService } from '../../src/main/backupService'
 import { openVaultDatabase } from '../../src/main/db/connection'
 import { createFilesApi } from '../../src/main/filesApi'
 import { createNotifier } from '../../src/main/notifier'
-import { createPresentationService } from '../../src/main/presentation'
 import { createFileGuard, createProtectedPaths } from '../../src/main/protected'
 import { createProtectionService } from '../../src/main/protectionService'
 import { createVaultRepositories } from '../../src/main/repos'
 import { createRosterService } from '../../src/main/rosterService'
 import { createScoreService } from '../../src/main/scoreService'
+import { createStageService } from '../../src/main/stage'
 import { createVaultGate } from '../../src/main/vault/gate'
 import { createVaultManager } from '../../src/main/vault/manager'
 import { makePublicEnv, type TestEnv } from './helpers'
@@ -52,19 +52,26 @@ function env(opts: { unlocked?: boolean } = {}) {
     },
     scrypt: { N: 1 << 4, r: 8, p: 1, keylen: 32 }
   })
-  const presentation = createPresentationService({
+  const stage = createStageService({
     screen: {
       getAllDisplays: () => [{ internal: true }],
       on: () => undefined,
       removeListener: () => undefined
     },
     notifier: createNotifier({ show: () => undefined }),
+    lockVault: () => undefined,
+    guard: createFileGuard({
+      paths: createProtectedPaths({ folders: () => [] }),
+      allowProtected: () => false,
+      externalDisplays: () => 0
+    }),
     offerEnabled: () => true,
-    send: () => undefined
+    sendToLauncher: () => undefined,
+    openWindow: () => ({ showView: () => undefined, close: () => undefined })
   })
   const gate = createVaultGate({
     manager,
-    presenting: () => presentation.isActive(),
+    presenting: () => stage.isActive(),
     externalDisplays: () => 0,
     confirmExternalDisplay: async () => true
   })
@@ -87,7 +94,7 @@ function env(opts: { unlocked?: boolean } = {}) {
       extraDir: () => null
     }),
     gate,
-    presentation,
+    stage,
     files: createFilesApi({
       settings: () => pub.repos.settings.get(),
       exec: async () => ({ stdout: '', stderr: '' }),

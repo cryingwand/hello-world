@@ -1,10 +1,10 @@
 import type { ApiContract, SystemInfo } from '@shared/api'
 import type { BackupService } from './backupService'
-import type { PresentationService } from './presentation'
 import type { ProtectionService } from './protectionService'
 import type { PublicRepositories, Repositories } from './repos'
 import type { RosterService } from './rosterService'
 import type { ScoreService } from './scoreService'
+import type { StageService } from './stage'
 import type { VaultGate } from './vault/gate'
 
 export interface ApiEnv {
@@ -26,14 +26,14 @@ export interface ApiDeps {
   protection: ProtectionService
   backups: BackupService
   gate: VaultGate<unknown>
-  presentation: PresentationService
+  stage: StageService
   files: ApiContract['files']
   env: ApiEnv
 }
 
 /** Wires the repositories and services into the shape a window sees as `window.api`. */
 export function createApi(deps: ApiDeps): ApiContract {
-  const { env, presentation, gate } = deps
+  const { env, stage, gate } = deps
   const repos = (): Repositories => deps.vault.repos()
   const roster = (): RosterService => deps.vault.roster()
   const scores = (): ScoreService => deps.vault.scores()
@@ -96,12 +96,19 @@ export function createApi(deps: ApiDeps): ApiContract {
       settings: () => gate.settings(),
       updateSettings: (patch) => gate.updateSettings(patch)
     },
-    presentation: {
-      setActive: (on) => presentation.setActive(!!on),
-      state: () => ({
-        externalDisplays: presentation.externalDisplays(),
-        offerEnabled: presentation.offerEnabled()
-      })
+    stage: {
+      state: () => stage.state(),
+      add: (paths) => stage.add(paths),
+      remove: (index) => stage.remove(index),
+      move: (from, to) => stage.move(from, to),
+      clear: () => stage.clear(),
+      start: () => stage.start(),
+      end: () => stage.end(),
+      next: () => stage.next(),
+      previous: () => stage.previous(),
+      goto: (index) => stage.goto(index),
+      blank: (on) => stage.blank(on),
+      view: () => stage.view()
     },
     gradebook: {
       previewScores: (request) => scores().previewScores(request),
