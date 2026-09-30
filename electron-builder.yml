@@ -1,6 +1,9 @@
 # Local, unsigned build for personal use on a Mac you have admin rights on.
 appId: local.teachingos.app
 productName: Teaching OS
+# better-sqlite3 ships prebuilt N-API binaries for macOS (arm64 and x64), which load in Electron without
+# a rebuild, so skip @electron/rebuild.
+npmRebuild: false
 directories:
   buildResources: build
   output: release

@@ -20,7 +20,9 @@ export function searchWords(text: string): string[] {
 
 /**
  * Builds the Spotlight query. Every word must match (AND). Case and diacritics are ignored (`cd`).
- * By default only file names are matched; with `includeContents` the text inside files counts too.
+ * A word matches the display name or the real file name (the display name can leave out the
+ * extension when Finder hides extensions, so "quiz.docx" would otherwise miss). With
+ * `includeContents` the text inside files counts too.
  */
 export function buildMdQuery(text: string, includeContents: boolean): string | null {
   const words = searchWords(text)
@@ -28,8 +30,8 @@ export function buildMdQuery(text: string, includeContents: boolean): string | n
   return words
     .map((w) => {
       const e = mdEscape(w)
-      const name = `kMDItemDisplayName == "*${e}*"cd`
-      return includeContents ? `(${name} || kMDItemTextContent == "${e}"cd)` : name
+      const name = `kMDItemDisplayName == "*${e}*"cd || kMDItemFSName == "*${e}*"cd`
+      return includeContents ? `(${name} || kMDItemTextContent == "${e}"cd)` : `(${name})`
     })
     .join(' && ')
 }

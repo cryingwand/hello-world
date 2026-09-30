@@ -19,15 +19,17 @@ describe('mdEscape and buildMdQuery', () => {
     expect(mdEscape('line1\nline2')).toBe('line1 line2')
   })
 
-  it('ANDs every word against the display name, ignoring case and diacritics', () => {
+  it('ANDs every word against the display name or file name, ignoring case and diacritics', () => {
     expect(buildMdQuery('unit 3  quiz', false)).toBe(
-      'kMDItemDisplayName == "*unit*"cd && kMDItemDisplayName == "*3*"cd && kMDItemDisplayName == "*quiz*"cd'
+      '(kMDItemDisplayName == "*unit*"cd || kMDItemFSName == "*unit*"cd) && ' +
+        '(kMDItemDisplayName == "*3*"cd || kMDItemFSName == "*3*"cd) && ' +
+        '(kMDItemDisplayName == "*quiz*"cd || kMDItemFSName == "*quiz*"cd)'
     )
   })
 
   it('adds text content matching when asked', () => {
     expect(buildMdQuery('mitosis', true)).toBe(
-      '(kMDItemDisplayName == "*mitosis*"cd || kMDItemTextContent == "mitosis"cd)'
+      '(kMDItemDisplayName == "*mitosis*"cd || kMDItemFSName == "*mitosis*"cd || kMDItemTextContent == "mitosis"cd)'
     )
   })
 
