@@ -1,3 +1,4 @@
+import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
   AppSettings,
   Assignment,
@@ -131,6 +132,16 @@ export interface ApiContract {
     setScore(input: ScoreInput): Score | null
     setScores(inputs: ScoreInput[]): void
   }
+  roster: {
+    /** Opens a native file picker for .xlsx/.csv and reads the chosen file. Null if cancelled. */
+    chooseFile(): Awaitable<TableFile | null>
+    /** Re-reads a previously chosen file, on a different worksheet. */
+    readSheet(token: string, sheet: string): Awaitable<TableFile>
+    preview(request: ImportRequest): Awaitable<ImportPreview>
+    commit(request: ImportRequest): Awaitable<ImportResult>
+    /** Asks where to save, then writes the class roster. Null if cancelled. */
+    exportClass(classId: number, format: 'xlsx' | 'csv'): Awaitable<{ path: string } | null>
+  }
   fileLinks: {
     list(recordType: LinkRecordType, recordId: number): FileLink[]
     add(input: FileLinkInput): FileLink
@@ -179,6 +190,7 @@ export const API_METHODS = {
     'setScore',
     'setScores'
   ],
+  roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
   fileLinks: ['list', 'add', 'remove'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],

@@ -30,6 +30,20 @@ interface ShellApi {
   dispatchIntent: (intent: Intent) => boolean
   presenting: boolean
   setPresenting: (on: boolean) => void
+  /** The class most apps default to; chosen in the top bar or by opening a class. */
+  currentClassId: number | null
+  setCurrentClassId: (id: number | null) => void
+}
+
+const CLASS_KEY = 'teachingos.currentClass.v1'
+
+function loadCurrentClass(): number | null {
+  try {
+    const n = Number(localStorage.getItem(CLASS_KEY))
+    return Number.isInteger(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
 }
 
 const ShellContext = createContext<ShellApi | null>(null)
@@ -45,6 +59,17 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
     return saved ? wmReducer(base, { type: 'hydrate', ...saved }) : base
   })
   const [presenting, setPresenting] = useState(false)
+  const [currentClassId, setCurrentClassIdState] = useState<number | null>(loadCurrentClass)
+
+  const setCurrentClassId = useCallback((id: number | null) => {
+    setCurrentClassIdState(id)
+    try {
+      if (id === null) localStorage.removeItem(CLASS_KEY)
+      else localStorage.setItem(CLASS_KEY, String(id))
+    } catch {
+      // A convenience only.
+    }
+  }, [])
 
   useEffect(() => {
     const onResize = (): void => dispatch({ type: 'setDesktop', desktop: desktopSize() })
@@ -84,9 +109,11 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
       openApp,
       dispatchIntent,
       presenting,
-      setPresenting
+      setPresenting,
+      currentClassId,
+      setCurrentClassId
     }),
-    [state, openApp, dispatchIntent, presenting]
+    [state, openApp, dispatchIntent, presenting, currentClassId, setCurrentClassId]
   )
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>
 }

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { APP_NAME } from '@shared/app-info'
 import Icon from '@renderer/components/Icon'
+import { useApiQuery } from '@renderer/data/hooks'
+import { classLabel } from '@renderer/lib/labels'
 import { registry } from './appRegistry'
 import SettingsDialog from './SettingsDialog'
 import { useShell } from './ShellContext'
@@ -23,6 +25,35 @@ function Clock(): React.JSX.Element {
   return <time className="clock">{clockFormat.format(now)}</time>
 }
 
+function ClassPicker(): React.JSX.Element {
+  const { currentClassId, setCurrentClassId } = useShell()
+  const classes = useApiQuery(
+    () => window.api.classes.list(),
+    [],
+    ['classes.changed', 'terms.changed']
+  )
+  const list = classes.data ?? []
+  // Show "No class" for an id that is not in the list rather than clearing it: the list can be
+  // momentarily older than a class that was just created, and clearing would drop that selection.
+  const value = list.some((c) => c.id === currentClassId) ? currentClassId : ''
+
+  return (
+    <select
+      className="class-picker"
+      aria-label="Current class"
+      value={value ?? ''}
+      onChange={(e) => setCurrentClassId(e.target.value ? Number(e.target.value) : null)}
+    >
+      <option value="">No class</option>
+      {list.map((c) => (
+        <option key={c.id} value={c.id}>
+          {classLabel(c)} ({c.termName})
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export default function TopBar(): React.JSX.Element {
   const { state, focused, presenting, setPresenting } = useShell()
   const focusedWin = state.windows.find((w) => w.id === focused)
@@ -42,9 +73,7 @@ export default function TopBar(): React.JSX.Element {
         <input type="search" placeholder="Search files" disabled aria-label="Search files" />
       </label>
       <div className="topbar-right">
-        <select className="class-picker" disabled aria-label="Current class" defaultValue="">
-          <option value="">No class</option>
-        </select>
+        <ClassPicker />
         <button
           className={`pill${presenting ? ' pill-on' : ''}`}
           aria-pressed={presenting}

@@ -26,6 +26,12 @@ npm run build      # typecheck, bundle, and produce an unsigned .app in release/
 `npm run build` writes `release/mac-arm64/Teaching OS.app` (or `mac/` on Intel). Drag it to
 `/Applications`. Because it is unsigned, the first launch needs right-click, then Open.
 
+## Try the importer
+
+`samples/sample-roster.xlsx` is a fake roster (invented names, `example.org` emails). Regenerate it with
+`node scripts/make-sample-roster.mjs`. In Classes & Rosters, choose Import roster, pick that file, check the
+column mapping, preview, and import.
+
 ## Where things live
 
 | Path                                                   | What                                          |

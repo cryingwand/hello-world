@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { API_METHODS, type ApiContract } from '@shared/api'
 import { CHANGE_NAMES } from '@shared/events'
 import { createApi } from '../../src/main/api'
+import { createRosterService } from '../../src/main/rosterService'
 import { makeEnv } from './helpers'
 
 const env = (): { api: ApiContract; e: ReturnType<typeof makeEnv> } => {
   const e = makeEnv()
-  const api = createApi(e.db, e.repos, {
+  const roster = createRosterService(e.repos, {
+    pickOpenFile: async () => null,
+    pickSaveFile: async () => null
+  })
+  const api = createApi(e.db, e.repos, roster, {
     dataDir: '/data',
     dbPath: '/data/data.sqlite',
     backupDir: '/data/backups',

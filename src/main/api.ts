@@ -2,6 +2,7 @@ import type { ApiContract, SystemInfo } from '@shared/api'
 import { listBackups, runBackup } from './backup'
 import type { Db } from './repos/types'
 import type { Repositories } from './repos'
+import type { RosterService } from './rosterService'
 
 export interface ApiEnv {
   dataDir: string
@@ -13,7 +14,12 @@ export interface ApiEnv {
 }
 
 /** Wires the repositories and services into the shape the renderer sees as `window.api`. */
-export function createApi(db: Db, repos: Repositories, env: ApiEnv): ApiContract {
+export function createApi(
+  db: Db,
+  repos: Repositories,
+  roster: RosterService,
+  env: ApiEnv
+): ApiContract {
   return {
     terms: {
       list: () => repos.terms.list(),
@@ -51,6 +57,13 @@ export function createApi(db: Db, repos: Repositories, env: ApiEnv): ApiContract
       scores: (classId) => repos.grading.scores(classId),
       setScore: (input) => repos.grading.setScore(input),
       setScores: (inputs) => repos.grading.setScores(inputs)
+    },
+    roster: {
+      chooseFile: () => roster.chooseFile(),
+      readSheet: (token, sheet) => roster.readSheet(token, sheet),
+      preview: (request) => roster.preview(request),
+      commit: (request) => roster.commit(request),
+      exportClass: (classId, format) => roster.exportClass(classId, format)
     },
     fileLinks: {
       list: (type, id) => repos.fileLinks.list(type, id),

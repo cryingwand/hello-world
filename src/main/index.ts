@@ -6,7 +6,8 @@ import { needsDailyBackup, listBackups, runBackup } from './backup'
 import { openDatabase } from './db/connection'
 import { broadcastChange } from './events'
 import { registerIpc } from './ipc'
-import { appVersion, chooseFolderDialog } from './system'
+import { createRosterService } from './rosterService'
+import { appVersion, chooseFolderDialog, pickSaveTableFile, pickTableFile } from './system'
 import { createRepositories } from './repos'
 import type { Db } from './repos'
 
@@ -71,8 +72,12 @@ function startBackups(database: Db, repos: ReturnType<typeof createRepositories>
 void app.whenReady().then(() => {
   db = openDatabase(dbPath)
   const repos = createRepositories(db, broadcastChange)
+  const roster = createRosterService(repos, {
+    pickOpenFile: pickTableFile,
+    pickSaveFile: pickSaveTableFile
+  })
   registerIpc(
-    createApi(db, repos, {
+    createApi(db, repos, roster, {
       dataDir,
       dbPath,
       backupDir,
