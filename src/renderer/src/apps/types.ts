@@ -26,6 +26,4 @@ export interface AppManifest {
   minSize?: { w: number; h: number }
   /** Intent types this app can open. */
   handles: IntentType[]
-  /** False hides the app's windows while presentation mode is on. */
-  presentationSafe: boolean
 }

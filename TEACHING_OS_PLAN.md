@@ -49,7 +49,7 @@ This file defines the scope and the Phase 1 build for the next session.
   - A shared DB plus a **change-event bus**. The main process broadcasts `students.changed`, `scores.changed` and similar events, and every open window refreshes.
   - **Intents**: `open-student`, `open-class`, `attach-file`, `record-score`. Any app can ask the shell to open a record in whichever app handles it (e.g. a student name in Advising opens their Gradebook row).
   - **Drag and drop** of files and records between windows.
-- **App module contract** (`src/apps/<id>/manifest.ts`): `{ id, name, icon, component, defaultSize, handles: Intent[], presentationSafe: boolean }`. The shell's registry reads the manifests, and the dock and launcher are built from them.
+- **App module contract** (`src/apps/<id>/manifest.ts`): `{ id, name, icon, component, defaultSize, handles: Intent[], presentationSafe: boolean }` (amended: `space` replaces `presentationSafe`, see the Vault and Stage amendment). The shell's registry reads the manifests, and the dock and launcher are built from them.
 - **macOS integration** (main process, `src/main/mac/`):
   - Search: `mdfind` (Spotlight), plus `mdfind -onlyin <folder>` for teaching folders. Results in teaching folders rank first.
   - Thumbnails: `nativeImage.createThumbnailFromPath` (uses Quick Look).
@@ -67,7 +67,7 @@ This file defines the scope and the Phase 1 build for the next session.
   - `pptxgenjs`: PowerPoint export
   - `mammoth`: Word import
   - `papaparse`: CSV
-- **Presentation mode**: a top-bar toggle plus a hotkey. It also offers to turn on automatically when an external display connects (Electron `screen` events). While on, it hides or blurs every window whose manifest is not `presentationSafe`, masks student names and grades in shared components, and suppresses notifications.
+- **Presentation mode** (superseded by the Stage, see the amendment at the end): a top-bar toggle plus a hotkey. It also offers to turn on automatically when an external display connects (Electron `screen` events). While on, it hides or blurs every window whose manifest is not `presentationSafe`, masks student names and grades in shared components, and suppresses notifications.
 - **Backups**: SQLite online backup on launch and daily to `~/Library/Application Support/TeachingOS/backups/`, keeping 14 days, with an optional extra folder Tyler chooses.
 - **AI seam (not built)**: fields are tagged `sensitive` in the schema. A future `src/main/ai/` service would strip sensitive fields before any call. Nothing is implemented in Phase 1 beyond the tag.
 
@@ -142,3 +142,31 @@ This file defines the scope and the Phase 1 build for the next session.
 Paste this into Claude Code on the Mac, inside the new empty repo folder, with this file copied into that folder:
 
 > Read `TEACHING_OS_PLAN.md`. It is the approved scope for a teaching suite I want to run as a desktop-style environment on this Mac. Build **Phase 1** exactly as described: scaffold, shell, data layer, Classes & Rosters, Files (Spotlight search, built-in viewers, open-and-snap Preview/TextEdit/Office), Gradebook, presentation mode and backups. Work through it in order, and commit after each numbered step. My teaching folders are: `<list them here>`. A fake sample roster is at `<path>` and a sample gradebook export is at `<path>`. When you finish, run the verification checklist and tell me which items need me to check by hand.
+
+## Amendment: Vault and Stage
+
+Requested after Phase 1 shipped: "make the presentation mode a presentation tool so there isn't an opening
+for sensitive information to get through, and put the gradebook and anything else that should be protected
+in a dedicated space, including exams, quizzes and other things I wouldn't want to leak."
+
+Phase 1's presentation mode was a mask: one window, one database, and about fifty places that had to
+remember to hide student data. A missed tooltip or input value leaked. It is replaced by isolation.
+
+Decisions:
+
+| Topic | Decision |
+|---|---|
+| Presenting | A separate **Stage** window on the other display, able to call one method. The Presenter app queues PDFs, images, Word and text files. Slides and spreadsheets open in their own app. |
+| Protected space | A **Vault** window holding Classes & Rosters, Gradebook, Files with attachments and Protected Files. Its data is in a separate `vault.sqlite`. |
+| Lock | Passcode gate (scrypt, persisted backoff), optional Touch ID, idle lock, screen-lock and sleep lock. No custom encryption; FileVault covers the disk. |
+| Exams and quizzes | Protected folders the teacher chooses. Their files are hidden from search and refused by every preview, picker and handler outside the Vault, whether or not it is locked. |
+| Display connected | The Vault locks immediately and the Stage is offered. Unlock asks first while another display is connected. Starting the Stage always locks the Vault, and the Vault will not open until it ends. |
+| Module contract | `presentationSafe` is replaced by `space: 'launcher' | 'vault'`. |
+| Future modules | New tables (Quiz Builder, Advising) default to the vault database. |
+
+Implementation followed five stages, one commit each: roles and an access map; vault storage and gate;
+protected folders; Stage and Presenter; removal of the masks and this documentation.
+
+Known limits, documented in the README: no encryption at rest, no screenshot prevention, Word and Preview
+keep their own Recent Files lists, hard links and Finder aliases are not seen by protected folders, and a
+mirrored projector may not be detected as a second display.

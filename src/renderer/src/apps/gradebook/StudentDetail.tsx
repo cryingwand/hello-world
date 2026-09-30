@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import type { ScoreInput } from '@shared/api'
 import { computeStudentGrade, formatPercent, formatPoints } from '@shared/grades'
 import type { Score, ScoreStatus } from '@shared/models'
-import Sensitive from '@renderer/components/Sensitive'
 import { useApiQuery } from '@renderer/data/hooks'
 import { classLabel } from '@renderer/lib/labels'
 import { scoreKey, type GradebookData } from './useGradebook'
@@ -70,9 +69,7 @@ export default function StudentDetail({
           <button className="btn btn-quiet" onClick={onBack}>
             ← Back to scores
           </button>
-          <h2>
-            <Sensitive>{[student.firstName, student.lastName].filter(Boolean).join(' ')}</Sensitive>
-          </h2>
+          <h2>{[student.firstName, student.lastName].filter(Boolean).join(' ')}</h2>
           <div className="hint">
             {(classes.data ?? []).length > 1 ? (
               <label className="inline">
@@ -95,9 +92,7 @@ export default function StudentDetail({
           </div>
         </div>
         <div className="big-grade" aria-label="Overall grade">
-          <div className="big-number">
-            <Sensitive>{formatPercent(grade.percent)}</Sensitive>
-          </div>
+          <div className="big-number">{formatPercent(grade.percent)}</div>
           <div className="hint">
             {cls.gradingMode === 'points'
               ? `${formatPoints(grade.earned)} of ${formatPoints(grade.possible)} points`
@@ -134,9 +129,7 @@ export default function StudentDetail({
                 <td>
                   {c.possible > 0 ? `${formatPoints(c.earned)} / ${formatPoints(c.possible)}` : ''}
                 </td>
-                <td>
-                  <Sensitive>{formatPercent(c.percent)}</Sensitive>
-                </td>
+                <td>{formatPercent(c.percent)}</td>
               </tr>
             ))}
           </tbody>
@@ -166,31 +159,29 @@ export default function StudentDetail({
                     </div>
                   </td>
                   <td>
-                    <Sensitive>
-                      <input
-                        key={`${s?.points}:${s?.status}`}
-                        className="narrow"
-                        defaultValue={formatPoints(s?.points)}
-                        inputMode="decimal"
-                        aria-label={`Score for ${a.title}`}
-                        onBlur={(e) => {
-                          const t = e.currentTarget.value.trim()
-                          if (t === formatPoints(s?.points)) return
-                          if (t === '')
-                            return save(a.id, {
-                              points: null,
-                              status: s?.status === 'late' ? null : (s?.status ?? null)
-                            })
-                          const n = Number(t)
-                          if (!Number.isFinite(n) || n < 0) {
-                            e.currentTarget.value = formatPoints(s?.points)
-                            return
-                          }
-                          save(a.id, { points: n, status: s?.status === 'late' ? 'late' : null })
-                        }}
-                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                      />
-                    </Sensitive>
+                    <input
+                      key={`${s?.points}:${s?.status}`}
+                      className="narrow"
+                      defaultValue={formatPoints(s?.points)}
+                      inputMode="decimal"
+                      aria-label={`Score for ${a.title}`}
+                      onBlur={(e) => {
+                        const t = e.currentTarget.value.trim()
+                        if (t === formatPoints(s?.points)) return
+                        if (t === '')
+                          return save(a.id, {
+                            points: null,
+                            status: s?.status === 'late' ? null : (s?.status ?? null)
+                          })
+                        const n = Number(t)
+                        if (!Number.isFinite(n) || n < 0) {
+                          e.currentTarget.value = formatPoints(s?.points)
+                          return
+                        }
+                        save(a.id, { points: n, status: s?.status === 'late' ? 'late' : null })
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                    />
                   </td>
                   <td>{formatPoints(a.pointsPossible)}</td>
                   <td>
@@ -215,19 +206,17 @@ export default function StudentDetail({
                     </select>
                   </td>
                   <td>
-                    <Sensitive>
-                      <input
-                        key={s?.comment}
-                        className="wide"
-                        defaultValue={s?.comment ?? ''}
-                        aria-label={`Comment for ${a.title}`}
-                        onBlur={(e) =>
-                          e.currentTarget.value.trim() !== (s?.comment ?? '') &&
-                          save(a.id, { comment: e.currentTarget.value.trim() })
-                        }
-                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                      />
-                    </Sensitive>
+                    <input
+                      key={s?.comment}
+                      className="wide"
+                      defaultValue={s?.comment ?? ''}
+                      aria-label={`Comment for ${a.title}`}
+                      onBlur={(e) =>
+                        e.currentTarget.value.trim() !== (s?.comment ?? '') &&
+                        save(a.id, { comment: e.currentTarget.value.trim() })
+                      }
+                      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                    />
                   </td>
                 </tr>
               )

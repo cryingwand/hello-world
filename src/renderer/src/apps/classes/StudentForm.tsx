@@ -79,7 +79,6 @@ export default function StudentForm({
     <Modal
       error={error}
       title={student ? 'Edit student' : 'New student'}
-      sensitive
       onClose={onClose}
       footer={
         <>

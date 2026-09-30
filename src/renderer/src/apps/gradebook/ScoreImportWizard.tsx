@@ -4,7 +4,6 @@ import { formatPoints } from '@shared/grades'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from '@shared/scoreImport'
 import { detectScoreColumns, parseColumnHeader } from '@shared/scoreImport'
 import Modal from '@renderer/components/Modal'
-import Sensitive from '@renderer/components/Sensitive'
 import { columnLetter } from '@renderer/lib/labels'
 import type { GradebookData } from './useGradebook'
 
@@ -207,7 +206,6 @@ export default function ScoreImportWizard({
     <Modal
       title="Import scores"
       wide
-      sensitive
       error={error}
       onClose={onClose}
       footer={
@@ -426,7 +424,7 @@ export default function ScoreImportWizard({
               <div>
                 {plan.problems.slice(0, 8).map((p, i) => (
                   <div key={i}>
-                    Row {p.rowNumber}: <Sensitive>{p.message}</Sensitive>
+                    Row {p.rowNumber}: {p.message}
                   </div>
                 ))}
                 {plan.problems.length > 8 && <div>…and {plan.problems.length - 8} more</div>}
@@ -448,18 +446,14 @@ export default function ScoreImportWizard({
                 {plan.changes.slice(0, 300).map((c, i) => (
                   <tr key={i} className={c.unchanged ? 'dim' : ''}>
                     <td>{c.rowNumber}</td>
-                    <td>
-                      <Sensitive>{label(c.rowNumber)}</Sensitive>
-                    </td>
+                    <td>{label(c.rowNumber)}</td>
                     <td>{plan.assignments[c.column].title}</td>
                     <td>
-                      <Sensitive>
-                        {c.status === 'missing'
-                          ? 'Missing'
-                          : c.status === 'excused'
-                            ? 'Excused'
-                            : formatPoints(c.points)}
-                      </Sensitive>
+                      {c.status === 'missing'
+                        ? 'Missing'
+                        : c.status === 'excused'
+                          ? 'Excused'
+                          : formatPoints(c.points)}
                     </td>
                     <td className="hint">
                       {c.unchanged

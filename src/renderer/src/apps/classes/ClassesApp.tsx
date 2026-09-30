@@ -3,7 +3,6 @@ import type { ClassSummary, Student, Term } from '@shared/models'
 import type { ImportResult } from '@shared/roster'
 import type { AppProps } from '@apps/types'
 import ErrorBanner from '@renderer/components/ErrorBanner'
-import Sensitive, { useMasked } from '@renderer/components/Sensitive'
 import { useApiQuery } from '@renderer/data/hooks'
 import { classLabel, studentName } from '@renderer/lib/labels'
 import { useShell } from '@renderer/shell/ShellContext'
@@ -24,7 +23,6 @@ const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 export default function ClassesApp({ intent, intentNonce }: AppProps): React.JSX.Element {
   const { currentClassId, setCurrentClassId, dispatchIntent } = useShell()
-  const masked = useMasked()
   const [mode, setMode] = useState<'class' | 'students'>('class')
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -46,9 +44,8 @@ export default function ClassesApp({ intent, intentNonce }: AppProps): React.JSX
     ['students.changed', 'enrollments.changed']
   )
   const everyone = useApiQuery(
-    // While presenting, typed names and tag filters are ignored so they cannot narrow what is on screen.
-    () => window.api.students.list(masked ? {} : { search, tag: tag || undefined }),
-    [search, tag, masked],
+    () => window.api.students.list({ search, tag: tag || undefined }),
+    [search, tag],
     ['students.changed']
   )
   const allTags = useApiQuery(() => window.api.students.list(), [], ['students.changed'])
@@ -180,19 +177,17 @@ export default function ClassesApp({ intent, intentNonce }: AppProps): React.JSX
               <input
                 className="search"
                 placeholder="Search name or email"
-                value={masked ? '' : search}
-                disabled={masked}
+                value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Search students"
               />
               <select
-                value={masked ? '' : tag}
-                disabled={masked}
+                value={tag}
                 onChange={(e) => setTag(e.target.value)}
                 aria-label="Filter by tag"
               >
                 <option value="">All tags</option>
-                {(masked ? [] : tagOptions).map((t) => (
+                {tagOptions.map((t) => (
                   <option key={t}>{t}</option>
                 ))}
               </select>
@@ -353,20 +348,14 @@ function StudentTable({
         <tbody>
           {students.map((s) => (
             <tr key={s.id} className="clickable" onClick={() => onOpen(s)}>
+              <td>{studentName(s)}</td>
+              <td>{s.email}</td>
               <td>
-                <Sensitive>{studentName(s)}</Sensitive>
-              </td>
-              <td>
-                <Sensitive>{s.email}</Sensitive>
-              </td>
-              <td>
-                <Sensitive placeholder="•">
-                  {s.tags.map((t) => (
-                    <span key={t} className="badge">
-                      {t}
-                    </span>
-                  ))}
-                </Sensitive>
+                {s.tags.map((t) => (
+                  <span key={t} className="badge">
+                    {t}
+                  </span>
+                ))}
               </td>
               {onRemove && (
                 <td className="right">

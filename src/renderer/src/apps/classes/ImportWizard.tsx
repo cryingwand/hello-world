@@ -14,7 +14,6 @@ import {
   type TableFile
 } from '@shared/roster'
 import Modal from '@renderer/components/Modal'
-import Sensitive from '@renderer/components/Sensitive'
 import { classLabel, columnLetter } from '@renderer/lib/labels'
 
 const ACTION_LABEL: Record<ImportAction, string> = {
@@ -153,7 +152,6 @@ export default function ImportWizard({
     <Modal
       title="Import roster"
       wide
-      sensitive
       onClose={onClose}
       footer={
         <>
@@ -262,9 +260,7 @@ export default function ImportWizard({
                     {file.rows.slice(0, 5).map((r, i) => (
                       <tr key={i}>
                         {columns.map((c) => (
-                          <td key={c.index}>
-                            <Sensitive>{r[c.index] ?? ''}</Sensitive>
-                          </td>
+                          <td key={c.index}>{r[c.index] ?? ''}</td>
                         ))}
                       </tr>
                     ))}
@@ -375,13 +371,9 @@ export default function ImportWizard({
                   <tr key={r.rowNumber} className={`plan-${r.action}`}>
                     <td>{r.rowNumber}</td>
                     <td>
-                      <Sensitive>
-                        {[r.student?.lastName, r.student?.firstName].filter(Boolean).join(', ')}
-                      </Sensitive>
+                      {[r.student?.lastName, r.student?.firstName].filter(Boolean).join(', ')}
                     </td>
-                    <td>
-                      <Sensitive>{r.student?.email}</Sensitive>
-                    </td>
+                    <td>{r.student?.email}</td>
                     <td>
                       {ACTION_LABEL[r.action]}
                       {r.action === 'invalid' && r.note ? ` — ${r.note}` : ''}

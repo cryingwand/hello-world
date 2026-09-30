@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useMasked } from './Sensitive'
 
 export default function Modal({
   title,
@@ -8,7 +7,6 @@ export default function Modal({
   children,
   footer,
   wide = false,
-  sensitive = false,
   error = null
 }: {
   title: string
@@ -16,13 +14,9 @@ export default function Modal({
   children: React.ReactNode
   footer?: React.ReactNode
   wide?: boolean
-  /** Shows student data; its content is hidden while presenting. */
-  sensitive?: boolean
   /** Shown inside the dialog so it is never hidden behind the backdrop. */
   error?: string | null
 }): React.JSX.Element {
-  const masked = useMasked()
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -46,19 +40,13 @@ export default function Modal({
             Close
           </button>
         </header>
-        {sensitive && masked ? (
-          <p className="hint">Hidden while presenting.</p>
-        ) : (
-          <>
-            {error && (
-              <div className="error-banner" role="alert">
-                {error}
-              </div>
-            )}
-            <div className="modal-body">{children}</div>
-            {footer && <footer className="modal-foot">{footer}</footer>}
-          </>
+        {error && (
+          <div className="error-banner" role="alert">
+            {error}
+          </div>
         )}
+        <div className="modal-body">{children}</div>
+        {footer && <footer className="modal-foot">{footer}</footer>}
       </div>
     </div>,
     document.body

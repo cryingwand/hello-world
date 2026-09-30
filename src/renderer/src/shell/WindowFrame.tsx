@@ -38,7 +38,7 @@ export default function WindowFrame({
   app: AppManifest
   focused: boolean
 }): React.JSX.Element {
-  const { state, dispatch, presenting } = useShell()
+  const { state, dispatch } = useShell()
   const drag = useRef<{
     px: number
     py: number
@@ -49,7 +49,7 @@ export default function WindowFrame({
   } | null>(null)
   const rect = effectiveRect(win, state.desktop)
   const Body = app.component
-  const hidden = win.minimized || (presenting && !app.presentationSafe)
+  const hidden = win.minimized
 
   const onTitleDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
     if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return

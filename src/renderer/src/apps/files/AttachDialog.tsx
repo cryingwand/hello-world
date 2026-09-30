@@ -31,7 +31,6 @@ export default function AttachDialog({
   return (
     <Modal
       title={`Attach ${baseName(path)}`}
-      sensitive
       error={error}
       onClose={onClose}
       footer={

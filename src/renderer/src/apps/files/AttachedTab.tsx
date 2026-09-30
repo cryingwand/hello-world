@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { baseName, dirName, kindOf } from '@shared/files'
-import { useMasked } from '@renderer/components/Sensitive'
 import { useApiQuery } from '@renderer/data/hooks'
 import RecordPicker, { type RecordRef } from './RecordPicker'
 
@@ -11,7 +10,6 @@ export default function AttachedTab({
   selected: string | null
   onSelect: (path: string) => void
 }): React.JSX.Element {
-  const masked = useMasked()
   const [target, setTarget] = useState<RecordRef | null>(null)
   const [error, setError] = useState<string | null>(null)
   const links = useApiQuery(
@@ -26,7 +24,6 @@ export default function AttachedTab({
     ['fileLinks.changed']
   )
 
-  if (masked) return <p className="hint pad">Attached files are hidden while presenting.</p>
   return (
     <div className="attached">
       <RecordPicker value={target} onChange={setTarget} />

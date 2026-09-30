@@ -9,8 +9,7 @@ const manifest: AppManifest = {
   component: ProtectedApp,
   defaultSize: { w: 1120, h: 700 },
   minSize: { w: 720, h: 460 },
-  handles: [],
-  presentationSafe: false
+  handles: []
 }
 
 export default manifest

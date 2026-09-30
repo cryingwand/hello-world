@@ -9,7 +9,6 @@ import {
 } from '@shared/grades'
 import type { Assignment, Score, ScoreStatus } from '@shared/models'
 import { parseScoreCell } from '@shared/scoreImport'
-import Sensitive, { useMasked } from '@renderer/components/Sensitive'
 import { scoreKey, type GradebookData } from './useGradebook'
 
 interface Cell {
@@ -53,16 +52,10 @@ export default function ScoreGrid({
   const rows = students.length
   const cols = assignments.length
   const wrap = useRef<HTMLDivElement>(null)
-  const masked = useMasked()
   const [pos, setPos] = useState<Cell>({ r: 0, c: 0 })
   const [editing, setEditing] = useState<string | null>(null)
   const [invalid, setInvalid] = useState(false)
   const finishing = useRef(false)
-  // Presenting starts: drop a half-typed score rather than carry it across.
-  if (masked && editing !== null) {
-    setEditing(null)
-    setInvalid(false)
-  }
   const wasEditing = useRef(false)
 
   // Keep the cursor on the grid if rows or columns disappear.
@@ -275,7 +268,7 @@ export default function ScoreGrid({
                     onClick={() => onOpenStudent(st.id)}
                     title="Open student view"
                   >
-                    <Sensitive>{[st.lastName, st.firstName].filter(Boolean).join(', ')}</Sensitive>
+                    {[st.lastName, st.firstName].filter(Boolean).join(', ')}
                   </button>
                 </th>
                 {assignments.map((a, c) => {
@@ -296,7 +289,7 @@ export default function ScoreGrid({
                       }}
                       onDoubleClick={() => setEditing(cellText(s))}
                     >
-                      {isActive && editing !== null && !masked ? (
+                      {isActive && editing !== null ? (
                         <input
                           className={`cell-input${invalid ? ' cell-invalid' : ''}`}
                           autoFocus
@@ -336,7 +329,7 @@ export default function ScoreGrid({
                           }}
                         />
                       ) : (
-                        <Sensitive placeholder="•">
+                        <>
                           {s?.status === 'missing' ? (
                             <span className="flag flag-missing">M</span>
                           ) : s?.status === 'excused' ? (
@@ -348,7 +341,7 @@ export default function ScoreGrid({
                             </>
                           )}
                           {s?.comment ? <span className="note-dot" title={s.comment} /> : null}
-                        </Sensitive>
+                        </>
                       )}
                     </td>
                   )
@@ -356,21 +349,19 @@ export default function ScoreGrid({
                 <td
                   className="avg-cell"
                   title={
-                    masked
-                      ? undefined
-                      : g.percent === null
-                        ? 'Nothing graded yet'
-                        : cls.gradingMode === 'points'
-                          ? `${formatPoints(g.earned)} of ${formatPoints(g.possible)} points`
-                          : g.categories
-                              .map(
-                                (cat) =>
-                                  `${cat.name} (${formatPoints(cat.weight)}%): ${formatPercent(cat.percent)}`
-                              )
-                              .join('\n')
+                    g.percent === null
+                      ? 'Nothing graded yet'
+                      : cls.gradingMode === 'points'
+                        ? `${formatPoints(g.earned)} of ${formatPoints(g.possible)} points`
+                        : g.categories
+                            .map(
+                              (cat) =>
+                                `${cat.name} (${formatPoints(cat.weight)}%): ${formatPercent(cat.percent)}`
+                            )
+                            .join('\n')
                   }
                 >
-                  <Sensitive>{formatPercent(g.percent)}</Sensitive>
+                  {formatPercent(g.percent)}
                 </td>
               </tr>
             )
@@ -390,13 +381,11 @@ export default function ScoreGrid({
                   className="foot-cell"
                   title={st.counted ? `${st.counted} scores counted` : 'No scores yet'}
                 >
-                  <Sensitive placeholder="•">{formatPercent(st.averagePercent)}</Sensitive>
+                  {formatPercent(st.averagePercent)}
                 </td>
               )
             })}
-            <td className="avg-cell">
-              <Sensitive>{formatPercent(grades.average)}</Sensitive>
-            </td>
+            <td className="avg-cell">{formatPercent(grades.average)}</td>
           </tr>
         </tfoot>
       </table>

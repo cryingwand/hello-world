@@ -11,14 +11,12 @@ export default function Dock(): React.JSX.Element {
       {registry.apps.map((app) => {
         const win = state.windows.find((w) => w.appId === app.id)
         const active = !!win && win.id === focused
-        const blocked = presenting && !app.presentationSafe
         return (
           <button
             key={app.id}
-            className={`dock-item${active ? ' dock-active' : ''}${blocked ? ' dock-blocked' : ''}`}
-            disabled={blocked}
+            className={`dock-item${active ? ' dock-active' : ''}`}
             onClick={() => openApp(app.id)}
-            title={blocked ? `${app.name} is hidden while presenting` : app.name}
+            title={app.name}
             aria-label={app.name}
           >
             <span className="dock-icon">

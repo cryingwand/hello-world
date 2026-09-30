@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Modal from '@renderer/components/Modal'
-import Sensitive from '@renderer/components/Sensitive'
 import { useApiQuery } from '@renderer/data/hooks'
 import { studentName } from '@renderer/lib/labels'
 
@@ -31,7 +30,6 @@ export default function AddExistingDialog({
     <Modal
       error={error}
       title="Add existing students"
-      sensitive
       onClose={onClose}
       footer={
         <button className="btn btn-primary" onClick={onClose}>
@@ -49,9 +47,7 @@ export default function AddExistingDialog({
       <ul className="pick-list">
         {candidates.map((s) => (
           <li key={s.id}>
-            <span>
-              <Sensitive>{studentName(s)}</Sensitive>
-            </span>
+            <span>{studentName(s)}</span>
             <button
               className="btn"
               onClick={() =>

@@ -270,6 +270,14 @@ void app.whenReady().then(() => {
     extraDir: () => publicRepos.settings.get().backupFolder
   })
 
+  // No window needs the camera, microphone, location or notifications from the page itself
+  // (system notifications come from main), so every request is refused.
+  for (const role of ['launcher', 'vault', 'stage'] as const) {
+    const ses = session.fromPartition(`persist:teachingos-${role}`)
+    ses.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+    ses.setPermissionCheckHandler(() => false)
+  }
+
   // Each role has its own storage partition, so each needs its own handler for the file scheme, and
   // each applies its own protected-file policy.
   for (const role of ['launcher', 'vault'] as const) {

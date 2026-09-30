@@ -9,9 +9,7 @@ const manifest: AppManifest = {
   component: ClassesApp,
   defaultSize: { w: 1040, h: 660 },
   minSize: { w: 640, h: 420 },
-  handles: ['open-class'],
-  // Student names are masked inside via <Sensitive>, so the window itself may stay up.
-  presentationSafe: true
+  handles: ['open-class']
 }
 
 export default manifest

@@ -128,7 +128,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
         </section>
 
         <section>
-          <h3>Presentation</h3>
+          <h3>Stage</h3>
           <label className="row">
             <input
               type="checkbox"
@@ -139,7 +139,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
                   .catch(report)
               }
             />
-            Offer presentation mode when an external display connects
+            Offer the Stage when an external display connects
           </label>
         </section>
 

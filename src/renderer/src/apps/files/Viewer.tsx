@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { kindOf, toFileUrl, viewerFor } from '@shared/files'
-import { useMasked } from '@renderer/components/Sensitive'
 import { useApiQuery } from '@renderer/data/hooks'
 import { PAPER_CSS } from './paper'
 import TextEditor from './TextEditor'
@@ -21,16 +20,8 @@ function DocxView({ path }: { path: string }): React.JSX.Element {
 }
 
 function TableView({ path }: { path: string }): React.JSX.Element {
-  const masked = useMasked()
   const [sheet, setSheet] = useState<string | null>(null)
   const table = useApiQuery(() => window.api.files.table(path, sheet), [path, sheet])
-  // Spreadsheets are the likeliest place for grades; keep them off the projector.
-  if (masked)
-    return (
-      <p className="hint pad">
-        Spreadsheet previews are hidden while presenting. Use “Open in Excel”.
-      </p>
-    )
   if (table.error) return <p className="hint pad">{table.error}</p>
   const t = table.data
   if (!t) return <p className="hint pad">Loading…</p>

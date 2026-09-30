@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { LinkRecordType } from '@shared/models'
-import Sensitive from '@renderer/components/Sensitive'
 import { useApiQuery } from '@renderer/data/hooks'
 import { classLabel, studentName } from '@renderer/lib/labels'
 
@@ -9,7 +8,7 @@ export interface RecordRef {
   recordId: number
 }
 
-/** Chooses a class or a student. Student names are masked while presenting. */
+/** Chooses a class or a student. */
 export default function RecordPicker({
   value,
   onChange
@@ -90,7 +89,7 @@ export default function RecordPicker({
                     checked={value?.recordType === 'student' && value.recordId === s.id}
                     onChange={() => onChange({ recordType: 'student', recordId: s.id })}
                   />
-                  <Sensitive>{studentName(s)}</Sensitive>
+                  {studentName(s)}
                 </label>
               </li>
             ))}

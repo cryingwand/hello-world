@@ -80,7 +80,7 @@ export interface AppSettings {
   /** An extra folder that also receives every backup. */
   backupFolder: string | null
   presentation: {
-    /** Offer to turn presentation mode on when an external display connects. */
+    /** Offer the Stage when an external display connects. The Vault locks either way. */
     offerOnExternalDisplay: boolean
   }
 }

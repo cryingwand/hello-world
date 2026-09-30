@@ -9,8 +9,7 @@ const app = (id: string, handles: AppManifest['handles'] = []): AppManifest => (
   icon: 'grid',
   component: () => null,
   defaultSize: { w: 100, h: 100 },
-  handles,
-  presentationSafe: true
+  handles
 })
 
 describe('app registry', () => {
