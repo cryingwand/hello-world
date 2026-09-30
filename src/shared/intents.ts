@@ -6,5 +6,6 @@ export type Intent =
   | { type: 'open-class'; classId: number }
   | { type: 'attach-file'; path: string; recordType: RecordType; recordId: number }
   | { type: 'record-score'; assignmentId: number; studentId: number }
+  | { type: 'search-files'; query: string }
 
 export type IntentType = Intent['type']

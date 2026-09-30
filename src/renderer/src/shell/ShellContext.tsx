@@ -33,6 +33,8 @@ interface ShellApi {
   /** The class most apps default to; chosen in the top bar or by opening a class. */
   currentClassId: number | null
   setCurrentClassId: (id: number | null) => void
+  settingsOpen: boolean
+  setSettingsOpen: (open: boolean) => void
 }
 
 const CLASS_KEY = 'teachingos.currentClass.v1'
@@ -59,6 +61,7 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
     return saved ? wmReducer(base, { type: 'hydrate', ...saved }) : base
   })
   const [presenting, setPresenting] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [currentClassId, setCurrentClassIdState] = useState<number | null>(loadCurrentClass)
 
   const setCurrentClassId = useCallback((id: number | null) => {
@@ -111,9 +114,11 @@ export function ShellProvider({ children }: { children: ReactNode }): React.JSX.
       presenting,
       setPresenting,
       currentClassId,
-      setCurrentClassId
+      setCurrentClassId,
+      settingsOpen,
+      setSettingsOpen
     }),
-    [state, openApp, dispatchIntent, presenting, currentClassId, setCurrentClassId]
+    [state, openApp, dispatchIntent, presenting, currentClassId, setCurrentClassId, settingsOpen]
   )
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>
 }

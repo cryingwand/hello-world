@@ -90,6 +90,19 @@ export function clampRect(rect: Rect, desktop: Size): Rect {
   return { x, y, w, h }
 }
 
+/**
+ * Fits a window entirely inside the desktop. Used when the desktop itself changes (the launcher was
+ * snapped to half the screen, or a display changed), where a partly hidden window would clip its
+ * own controls.
+ */
+export function fitRect(rect: Rect, desktop: Size): Rect {
+  const w = Math.min(rect.w, Math.max(desktop.w, 0))
+  const h = Math.min(rect.h, Math.max(desktop.h, 0))
+  const x = Math.min(Math.max(rect.x, 0), Math.max(desktop.w - w, 0))
+  const y = Math.min(Math.max(rect.y, 0), Math.max(desktop.h - h, 0))
+  return { x, y, w, h }
+}
+
 /** Normal bounds for a window dragged out of a snapped or maximized state. */
 export function unsnapRect(
   win: WindowState,
@@ -211,7 +224,7 @@ export function wmReducer(state: WmState, action: WmAction): WmState {
       return {
         ...state,
         desktop,
-        windows: state.windows.map((w) => ({ ...w, ...clampRect(w, desktop) }))
+        windows: state.windows.map((w) => ({ ...w, ...fitRect(w, desktop) }))
       }
     }
     case 'hydrate':
@@ -219,7 +232,7 @@ export function wmReducer(state: WmState, action: WmAction): WmState {
         ...state,
         nextZ: action.nextZ,
         nextId: action.nextId,
-        windows: action.windows.map((w) => ({ ...w, ...clampRect(w, state.desktop) }))
+        windows: action.windows.map((w) => ({ ...w, ...fitRect(w, state.desktop) }))
       }
   }
 }

@@ -9,6 +9,7 @@ export interface ApiEnv {
   dbPath: string
   backupDir: string
   chooseFolder: () => Promise<string | null>
+  openAccessibilitySettings: () => Promise<void>
   version: string
   platform: string
 }
@@ -18,6 +19,7 @@ export function createApi(
   db: Db,
   repos: Repositories,
   roster: RosterService,
+  filesApi: ApiContract['files'],
   env: ApiEnv
 ): ApiContract {
   return {
@@ -65,6 +67,7 @@ export function createApi(
       commit: (request) => roster.commit(request),
       exportClass: (classId, format) => roster.exportClass(classId, format)
     },
+    files: filesApi,
     fileLinks: {
       list: (type, id) => repos.fileLinks.list(type, id),
       add: (input) => repos.fileLinks.add(input),
@@ -87,7 +90,8 @@ export function createApi(
         platform: env.platform,
         version: env.version
       }),
-      chooseFolder: () => env.chooseFolder()
+      chooseFolder: () => env.chooseFolder(),
+      openAccessibilitySettings: () => env.openAccessibilitySettings()
     }
   }
 }

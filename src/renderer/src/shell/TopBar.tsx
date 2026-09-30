@@ -55,9 +55,17 @@ function ClassPicker(): React.JSX.Element {
 }
 
 export default function TopBar(): React.JSX.Element {
-  const { state, focused, presenting, setPresenting } = useShell()
+  const {
+    state,
+    focused,
+    presenting,
+    setPresenting,
+    dispatchIntent,
+    settingsOpen,
+    setSettingsOpen
+  } = useShell()
+  const [search, setSearch] = useState('')
   const focusedWin = state.windows.find((w) => w.id === focused)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const focusedName = focusedWin ? registry.byId.get(focusedWin.appId)?.name : undefined
 
   return (
@@ -68,10 +76,23 @@ export default function TopBar(): React.JSX.Element {
         </button>
         {focusedName && <span className="topbar-app">{focusedName}</span>}
       </div>
-      <label className="topbar-search">
+      <form
+        className="topbar-search"
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (search.trim()) dispatchIntent({ type: 'search-files', query: search.trim() })
+        }}
+      >
         <Icon name="search" size={14} />
-        <input type="search" placeholder="Search files" disabled aria-label="Search files" />
-      </label>
+        <input
+          type="search"
+          placeholder="Search files"
+          aria-label="Search files"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </form>
       <div className="topbar-right">
         <ClassPicker />
         <button

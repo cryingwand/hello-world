@@ -1,3 +1,12 @@
+import type {
+  FileInfo,
+  FileSearchQuery,
+  FileSearchResponse,
+  OpenRequest,
+  OpenResult,
+  TableView,
+  TextFile
+} from './files'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
   AppSettings,
@@ -142,6 +151,25 @@ export interface ApiContract {
     /** Asks where to save, then writes the class roster. Null if cancelled. */
     exportClass(classId: number, format: 'xlsx' | 'csv'): Awaitable<{ path: string } | null>
   }
+  files: {
+    /** Spotlight search with teaching folders ranked first. */
+    search(query: FileSearchQuery): Awaitable<FileSearchResponse>
+    /** Null if the file is gone. */
+    info(path: string): Awaitable<FileInfo | null>
+    readText(path: string): Awaitable<TextFile>
+    writeText(path: string, text: string, expectedMtime: number): Awaitable<{ mtime: number }>
+    docxHtml(path: string): Awaitable<{ html: string; messages: string[] }>
+    table(path: string, sheet?: string | null): Awaitable<TableView>
+    /** A Quick Look thumbnail as a data URL, or null when none is available. */
+    thumbnail(path: string): Awaitable<string | null>
+    /** Opens in a native app and optionally snaps it beside the launcher. */
+    open(request: OpenRequest): Awaitable<OpenResult>
+    reveal(path: string): Awaitable<void>
+    /** Puts the launcher back where it was before a snap. */
+    restoreLayout(): Awaitable<void>
+    /** Native file picker, for attaching a file that search does not find. */
+    pickFile(): Awaitable<string | null>
+  }
   fileLinks: {
     list(recordType: LinkRecordType, recordId: number): FileLink[]
     add(input: FileLinkInput): FileLink
@@ -159,6 +187,8 @@ export interface ApiContract {
     info(): SystemInfo
     /** Opens a native folder picker. Null if cancelled. */
     chooseFolder(): Awaitable<string | null>
+    /** Opens System Settings at Privacy & Security, Accessibility. */
+    openAccessibilitySettings(): Awaitable<void>
   }
 }
 
@@ -191,10 +221,23 @@ export const API_METHODS = {
     'setScores'
   ],
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
+  files: [
+    'search',
+    'info',
+    'readText',
+    'writeText',
+    'docxHtml',
+    'table',
+    'thumbnail',
+    'open',
+    'reveal',
+    'restoreLayout',
+    'pickFile'
+  ],
   fileLinks: ['list', 'add', 'remove'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],
-  system: ['info', 'chooseFolder']
+  system: ['info', 'chooseFolder', 'openAccessibilitySettings']
 } as const satisfies { [N in keyof ApiContract]: readonly (keyof ApiContract[N])[] }
 
 export type Api = {

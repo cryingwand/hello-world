@@ -137,13 +137,37 @@ describe('window manager', () => {
     expect(s.windows[0].x).toBe(x)
   })
 
-  it('re-clamps windows when the desktop shrinks', () => {
+  it('fits windows entirely inside the desktop when it shrinks', () => {
     let s = open(initialState(desktop), 'a')
-    s = wmReducer(s, { type: 'move', id: s.windows[0].id, x: 900, y: 500 })
-    s = wmReducer(s, { type: 'setDesktop', desktop: { w: 800, h: 500 } })
+    s = wmReducer(s, { type: 'move', id: s.windows[0].id, x: 500, y: 250 })
+    s = wmReducer(s, { type: 'setDesktop', desktop: { w: 500, h: 300 } })
     const w = s.windows[0]
-    expect(w.x).toBeLessThanOrEqual(800 - 120)
-    expect(w.y).toBeLessThanOrEqual(500 - 32)
+    expect(w.w).toBeLessThanOrEqual(500)
+    expect(w.h).toBeLessThanOrEqual(300)
+    expect(w.x).toBeGreaterThanOrEqual(0)
+    expect(w.y).toBeGreaterThanOrEqual(0)
+    expect(w.x + w.w).toBeLessThanOrEqual(500)
+    expect(w.y + w.h).toBeLessThanOrEqual(300)
+  })
+
+  it('a window that already fits is left where it is when the desktop changes', () => {
+    let s = open(initialState(desktop), 'a')
+    s = wmReducer(s, { type: 'move', id: s.windows[0].id, x: 100, y: 80 })
+    s = wmReducer(s, { type: 'setDesktop', desktop: { w: 1600, h: 900 } })
+    expect(s.windows[0]).toMatchObject({ x: 100, y: 80, w: 600, h: 400 })
+  })
+
+  it('restored layouts are fitted to the current desktop', () => {
+    let s = open(initialState(desktop), 'a')
+    const saved = { ...s.windows[0], x: 1100, y: 600, w: 1000, h: 650 }
+    s = wmReducer(initialState({ w: 800, h: 500 }), {
+      type: 'hydrate',
+      windows: [saved],
+      nextZ: 5,
+      nextId: 5
+    })
+    expect(s.windows[0].x + s.windows[0].w).toBeLessThanOrEqual(800)
+    expect(s.windows[0].y + s.windows[0].h).toBeLessThanOrEqual(500)
   })
 
   it('routes an intent into the window and bumps the nonce even for an identical intent', () => {

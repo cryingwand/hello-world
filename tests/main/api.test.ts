@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { API_METHODS, type ApiContract } from '@shared/api'
 import { CHANGE_NAMES } from '@shared/events'
 import { createApi } from '../../src/main/api'
+import { createFilesApi } from '../../src/main/filesApi'
 import { createRosterService } from '../../src/main/rosterService'
 import { makeEnv } from './helpers'
 
@@ -11,14 +12,31 @@ const env = (): { api: ApiContract; e: ReturnType<typeof makeEnv> } => {
     pickOpenFile: async () => null,
     pickSaveFile: async () => null
   })
-  const api = createApi(e.db, e.repos, roster, {
-    dataDir: '/data',
-    dbPath: '/data/data.sqlite',
-    backupDir: '/data/backups',
-    chooseFolder: async () => null,
-    version: '0.0.0',
-    platform: 'test'
-  })
+  const api = createApi(
+    e.db,
+    e.repos,
+    roster,
+    createFilesApi({
+      settings: () => e.repos.settings.get(),
+      exec: async () => ({ stdout: '', stderr: '' }),
+      home: '/Users/t',
+      isMac: () => true,
+      isTrusted: () => true,
+      launcher: { snapLeft: async () => null, restore: () => undefined },
+      thumbnail: async () => null,
+      reveal: () => undefined,
+      pickFile: async () => null
+    }),
+    {
+      dataDir: '/data',
+      dbPath: '/data/data.sqlite',
+      backupDir: '/data/backups',
+      chooseFolder: async () => null,
+      openAccessibilitySettings: async () => undefined,
+      version: '0.0.0',
+      platform: 'test'
+    }
+  )
   return { api, e }
 }
 

@@ -64,6 +64,18 @@ refetch when another window changes the data.
 `TEACHING_OS_DATA_DIR` overrides the data folder (database, backups, renderer storage). Use it for
 any automated run so tests never touch real data.
 
+## macOS integration (`src/main/mac/`)
+
+All of it takes injected dependencies (`exec`, `stat`, `isMac`, `isTrusted`, the launcher window) so it can
+be unit-tested off a Mac. Programs are run with `execFile`, never a shell. For automated runs on a
+non-Mac machine these environment variables stand in for the real thing:
+
+- `TEACHING_OS_FORCE_MAC=1` treats the machine as macOS for gating.
+- `TEACHING_OS_BIN_MDFIND`, `TEACHING_OS_BIN_OPEN`, `TEACHING_OS_BIN_OSASCRIPT` replace those executables.
+
+PDFs and images reach the renderer through the `tos-file://` scheme (`resolveServedPath` allows only
+existing PDFs and images). The renderer's CSP blocks `fetch()` to it on purpose.
+
 ## Presentation mode
 
 Apps with `presentationSafe: false` are hidden while presenting. Shared components that show student

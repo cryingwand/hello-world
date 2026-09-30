@@ -1,15 +1,16 @@
-import { createElement } from 'react'
-import AppPlaceholder from '@renderer/components/AppPlaceholder'
 import type { AppManifest } from '../types'
+import FilesApp from './FilesApp'
 
 const manifest: AppManifest = {
   id: 'files',
   name: 'Files',
   icon: 'folder',
-  component: () => createElement(AppPlaceholder, { name: 'Files' }),
-  defaultSize: { w: 900, h: 600 },
-  minSize: { w: 480, h: 320 },
-  handles: ['attach-file'],
+  component: FilesApp,
+  defaultSize: { w: 1120, h: 700 },
+  minSize: { w: 720, h: 460 },
+  handles: ['attach-file', 'search-files'],
+  // Student names in the attach UI are masked, spreadsheet previews and the attached-files tab are
+  // hidden while presenting. Lesson PDFs, images and documents stay usable on the projector.
   presentationSafe: true
 }
 
