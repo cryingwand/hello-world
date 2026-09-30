@@ -4,6 +4,7 @@ import { CHANGE_NAMES } from '@shared/events'
 import { createApi } from '../../src/main/api'
 import { createFilesApi } from '../../src/main/filesApi'
 import { createRosterService } from '../../src/main/rosterService'
+import { createScoreService } from '../../src/main/scoreService'
 import { makeEnv } from './helpers'
 
 const env = (): { api: ApiContract; e: ReturnType<typeof makeEnv> } => {
@@ -16,6 +17,7 @@ const env = (): { api: ApiContract; e: ReturnType<typeof makeEnv> } => {
     e.db,
     e.repos,
     roster,
+    createScoreService(e.repos, roster.tokens, { pickSaveFile: async () => null }),
     createFilesApi({
       settings: () => e.repos.settings.get(),
       exec: async () => ({ stdout: '', stderr: '' }),

@@ -103,6 +103,11 @@ function worksheetName(name: string): string {
 
 export type ExportCell = string | number | null | undefined
 
+export interface SheetData {
+  name: string
+  rows: ExportCell[][]
+}
+
 /** Writes rows to .xlsx or .csv. Numbers stay numbers so a spreadsheet can total them. */
 export async function writeTable(
   path: string,
@@ -110,22 +115,40 @@ export async function writeTable(
   format: TableFormat,
   sheetName = 'Sheet1'
 ): Promise<void> {
-  const safe = rows.map((r) => r.map(safeCell))
+  await writeWorkbook(path, [{ name: sheetName, rows }], format)
+}
+
+/** Like `writeTable` with several sheets; a CSV holds only the first. */
+export async function writeWorkbook(
+  path: string,
+  sheets: SheetData[],
+  format: TableFormat = 'xlsx'
+): Promise<void> {
+  if (sheets.length === 0) throw new Error('Nothing to write')
   if (format === 'csv') {
     // BOM so Excel opens UTF-8 names correctly.
+    const safe = sheets[0].rows.map((r) => r.map(safeCell))
     await writeFile(path, '\uFEFF' + Papa.unparse(safe, { newline: '\r\n' }), 'utf8')
     return
   }
   const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet(worksheetName(sheetName))
-  safe.forEach((r) => ws.addRow(r))
-  if (safe.length > 0) ws.getRow(1).font = { bold: true }
-  ws.columns.forEach((col) => {
-    let max = 8
-    col.eachCell?.({ includeEmpty: false }, (c) => {
-      max = Math.max(max, String(c.value ?? '').length + 2)
+  const used = new Set<string>()
+  for (const sheet of sheets) {
+    let name = worksheetName(sheet.name)
+    for (let n = 2; used.has(name.toLowerCase()); n++)
+      name = `${worksheetName(sheet.name).slice(0, 28)} ${n}`
+    used.add(name.toLowerCase())
+    const ws = wb.addWorksheet(name)
+    const safe = sheet.rows.map((r) => r.map(safeCell))
+    safe.forEach((r) => ws.addRow(r))
+    if (safe.length > 0) ws.getRow(1).font = { bold: true }
+    ws.columns.forEach((col) => {
+      let max = 8
+      col.eachCell?.({ includeEmpty: false }, (c) => {
+        max = Math.max(max, String(c.value ?? '').length + 2)
+      })
+      col.width = Math.min(max, 48)
     })
-    col.width = Math.min(max, 48)
-  })
+  }
   await wb.xlsx.writeFile(path)
 }

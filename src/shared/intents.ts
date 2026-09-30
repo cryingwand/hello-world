@@ -5,7 +5,7 @@ export type Intent =
   | { type: 'open-student'; studentId: number; classId?: number }
   | { type: 'open-class'; classId: number }
   | { type: 'attach-file'; path: string; recordType: RecordType; recordId: number }
-  | { type: 'record-score'; assignmentId: number; studentId: number }
+  | { type: 'record-score'; assignmentId: number; studentId: number; classId?: number }
   | { type: 'search-files'; query: string }
 
 export type IntentType = Intent['type']

@@ -1,15 +1,15 @@
-import { createElement } from 'react'
-import AppPlaceholder from '@renderer/components/AppPlaceholder'
 import type { AppManifest } from '../types'
+import GradebookApp from './GradebookApp'
 
 const manifest: AppManifest = {
   id: 'gradebook',
   name: 'Gradebook',
   icon: 'grid',
-  component: () => createElement(AppPlaceholder, { name: 'Gradebook' }),
-  defaultSize: { w: 900, h: 600 },
-  minSize: { w: 480, h: 320 },
+  component: GradebookApp,
+  defaultSize: { w: 1180, h: 700 },
+  minSize: { w: 640, h: 420 },
   handles: ['open-student', 'record-score'],
+  // Grades never go on the projector: this app's windows are hidden while presenting.
   presentationSafe: false
 }
 

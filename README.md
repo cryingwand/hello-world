@@ -28,9 +28,14 @@ npm run build      # typecheck, bundle, and produce an unsigned .app in release/
 
 ## Try the importer
 
-`samples/sample-roster.xlsx` is a fake roster (invented names, `example.org` emails). Regenerate it with
-`node scripts/make-sample-roster.mjs`. In Classes & Rosters, choose Import roster, pick that file, check the
-column mapping, preview, and import.
+`samples/` holds fake files (invented names, `example.org` emails); regenerate them with
+`node scripts/make-samples.mjs`.
+
+- `sample-roster.xlsx`: in Classes & Rosters, choose Import roster, pick it, check the column mapping,
+  preview, and import.
+- `sample-gradebook-export.xlsx`: a school-system style score export for the same students. In Gradebook,
+  choose Import scores. Points possible come from the headers (`Quiz 1 (20)`), `M` means missing and `EX`
+  excused, and the Total and Current Grade columns are skipped automatically.
 
 ## Where things live
 

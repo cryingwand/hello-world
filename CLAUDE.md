@@ -64,6 +64,13 @@ refetch when another window changes the data.
 `TEACHING_OS_DATA_DIR` overrides the data folder (database, backups, renderer storage). Use it for
 any automated run so tests never touch real data.
 
+## Grades
+
+Grade rules live in one place, `src/shared/grades.ts`, with the rules written at the top of the file:
+missing counts as zero, excused and ungraded are left out, late is only a flag, weighted mode rescales
+over categories that have graded work. The grid, student view and exports all call it; do not
+reimplement it. `src/shared/scoreImport.ts` holds the score import planner and export layout.
+
 ## macOS integration (`src/main/mac/`)
 
 All of it takes injected dependencies (`exec`, `stat`, `isMac`, `isTrusted`, the launcher window) so it can

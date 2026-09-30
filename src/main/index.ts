@@ -23,6 +23,7 @@ import { openDatabase } from './db/connection'
 import { broadcastChange } from './events'
 import { registerIpc } from './ipc'
 import { createRosterService } from './rosterService'
+import { createScoreService } from './scoreService'
 import {
   appVersion,
   chooseFolderDialog,
@@ -141,8 +142,9 @@ void app.whenReady().then(() => {
     reveal: (path) => shell.showItemInFolder(path),
     pickFile: pickAnyFile
   })
+  const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
   registerIpc(
-    createApi(db, repos, roster, filesApi, {
+    createApi(db, repos, roster, scores, filesApi, {
       dataDir,
       dbPath,
       backupDir,

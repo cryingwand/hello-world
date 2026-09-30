@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { ImportRequest, ImportPreview, ImportResult, TableFile } from '@shared/roster'
 import {
   IMPORT_FIELDS,
@@ -10,6 +9,7 @@ import {
 } from '@shared/roster'
 import { readTable, writeTable, type TableFormat } from './tableIO'
 import type { Repositories } from './repos'
+import { createTokenStore, type TokenStore } from './tokens'
 import * as v from './validate'
 
 export interface RosterDeps {
@@ -17,29 +17,20 @@ export interface RosterDeps {
   pickSaveFile: (defaultName: string, format: TableFormat) => Promise<string | null>
 }
 
-const MAX_OPEN_FILES = 20
-
-const safeName = (s: string): string =>
+export const safeName = (s: string): string =>
   s
     .replace(/[\\/:*?"<>|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim() || 'Roster'
 
-export function createRosterService(repos: Repositories, deps: RosterDeps) {
+export function createRosterService(
+  repos: Repositories,
+  deps: RosterDeps,
+  tokens: TokenStore = createTokenStore()
+) {
   // Tokens stand in for file paths so the renderer never handles a path it did not pick itself.
-  const files = new Map<string, string>()
-
-  const remember = (path: string): string => {
-    const token = randomUUID()
-    files.set(token, path)
-    if (files.size > MAX_OPEN_FILES) files.delete(files.keys().next().value as string)
-    return token
-  }
-  const pathFor = (token: unknown): string => {
-    const p = typeof token === 'string' ? files.get(token) : undefined
-    if (!p) throw new v.ValidationError('That file is no longer open. Choose it again.')
-    return p
-  }
+  const remember = tokens.remember
+  const pathFor = tokens.get
 
   const checkMapping = (mapping: ImportMapping, hasHeader: unknown): void => {
     if (typeof hasHeader !== 'boolean')
@@ -78,6 +69,7 @@ export function createRosterService(repos: Repositories, deps: RosterDeps) {
   }
 
   return {
+    tokens,
     async chooseFile(): Promise<TableFile | null> {
       const path = await deps.pickOpenFile()
       if (!path) return null

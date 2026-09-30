@@ -7,6 +7,7 @@ import type {
   TableView,
   TextFile
 } from './files'
+import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
   AppSettings,
@@ -151,6 +152,13 @@ export interface ApiContract {
     /** Asks where to save, then writes the class roster. Null if cancelled. */
     exportClass(classId: number, format: 'xlsx' | 'csv'): Awaitable<{ path: string } | null>
   }
+  gradebook: {
+    /** What importing this file would do, without writing anything. */
+    previewScores(request: ScoreImportRequest): Awaitable<ScoreImportPlan>
+    commitScores(request: ScoreImportRequest): Awaitable<ScoreImportResult>
+    /** Asks where to save, then writes the class's scores. Null if cancelled. */
+    exportClass(classId: number, format: 'xlsx' | 'csv'): Awaitable<{ path: string } | null>
+  }
   files: {
     /** Spotlight search with teaching folders ranked first. */
     search(query: FileSearchQuery): Awaitable<FileSearchResponse>
@@ -221,6 +229,7 @@ export const API_METHODS = {
     'setScores'
   ],
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
+  gradebook: ['previewScores', 'commitScores', 'exportClass'],
   files: [
     'search',
     'info',

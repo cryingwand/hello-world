@@ -7,12 +7,15 @@ import { classLabel } from '@renderer/lib/labels'
 export default function StudentForm({
   student,
   enrollInClassId,
+  onOpenGradebook,
   onClose,
   onSaved
 }: {
   student?: Student
   /** For a new student: also enroll them here. */
   enrollInClassId?: number | null
+  /** Opens this student in the Gradebook (the `open-student` intent). */
+  onOpenGradebook?: (studentId: number) => void
   onClose: () => void
   onSaved: (s: Student) => void
 }): React.JSX.Element {
@@ -86,6 +89,11 @@ export default function StudentForm({
             </button>
           )}
           <span className="spacer" />
+          {student && onOpenGradebook && (
+            <button type="button" className="btn" onClick={() => onOpenGradebook(student.id)}>
+              Open in Gradebook
+            </button>
+          )}
           <button type="button" className="btn" onClick={onClose}>
             Cancel
           </button>

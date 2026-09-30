@@ -23,7 +23,7 @@ type Dialog =
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 export default function ClassesApp({ intent, intentNonce }: AppProps): React.JSX.Element {
-  const { currentClassId, setCurrentClassId } = useShell()
+  const { currentClassId, setCurrentClassId, dispatchIntent } = useShell()
   const [mode, setMode] = useState<'class' | 'students'>('class')
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -292,6 +292,17 @@ export default function ClassesApp({ intent, intentNonce }: AppProps): React.JSX
         <StudentForm
           student={dialog.student}
           enrollInClassId={dialog.enrollInClassId}
+          onOpenGradebook={(studentId) => {
+            // Only name a class if they are in the one on screen; the Gradebook picks one otherwise.
+            const inThisClass =
+              mode === 'class' && (roster.data ?? []).some((s) => s.id === studentId)
+            dispatchIntent({
+              type: 'open-student',
+              studentId,
+              classId: inThisClass ? (currentClassId ?? undefined) : undefined
+            })
+            close()
+          }}
           onClose={close}
           onSaved={close}
         />
