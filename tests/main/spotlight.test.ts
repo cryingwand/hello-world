@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Exec } from '../../src/main/mac/exec'
+import { createProtectedPaths } from '../../src/main/protected'
 import {
   buildMdQuery,
   isNoisePath,
@@ -300,5 +301,45 @@ describe('searchFiles', () => {
       mtime: 123456,
       isTeaching: false
     })
+  })
+})
+
+describe('searchFiles and protected folders', () => {
+  const guard = (hide: boolean) => ({
+    snapshot: () =>
+      createProtectedPaths({
+        folders: () => ['/Users/tyler/Courses/Exams'],
+        foldCase: true,
+        realpath: async (p) => p
+      }).snapshot(),
+    hide
+  })
+
+  it('never lets hidden protected matches crowd ordinary ones out of the candidate cap', async () => {
+    const protectedHits = Array.from(
+      { length: 700 },
+      (_, i) => `/Users/tyler/Courses/Exams/unit 3 exam ${i}.pdf`
+    )
+    const ordinary = '/Users/tyler/Courses/unit 3 plan.pdf'
+    const { d } = deps({ paths: { '/Users/tyler/Courses': [...protectedHits, ordinary] } })
+    const res = await searchFiles(Q, TEACH, { ...d, protection: guard(true) })
+    expect(res.results.map((r) => r.path)).toEqual([ordinary])
+  })
+
+  it('keeps protected matches, marked, when not hiding them', async () => {
+    const hit = '/Users/tyler/Courses/Exams/unit 3 exam.pdf'
+    const ordinary = '/Users/tyler/Courses/unit 3 plan.pdf'
+    const { d } = deps({ paths: { '/Users/tyler/Courses': [hit, ordinary] } })
+    const res = await searchFiles(Q, TEACH, { ...d, protection: guard(false) })
+    const by = new Map(res.results.map((r) => [r.path, r.isProtected]))
+    expect(by.get(hit)).toBe(true)
+    expect(by.get(ordinary)).toBeUndefined()
+  })
+
+  it('matches protected folders case-insensitively, like the disk', async () => {
+    const hit = '/users/TYLER/courses/EXAMS/unit 3 exam.pdf'
+    const { d } = deps({ paths: { '*': [hit] } })
+    const res = await searchFiles(Q, [], { ...d, protection: guard(true) })
+    expect(res.results).toEqual([])
   })
 })

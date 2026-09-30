@@ -1,36 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  baseName,
-  dirName,
-  kindOf,
-  type FileSearchResponse,
-  type FileSearchResult
-} from '@shared/files'
+import { baseName, type FileSearchResponse, type FileSearchResult } from '@shared/files'
 import type { AppProps } from '@apps/types'
 import ErrorBanner from '@renderer/components/ErrorBanner'
+import Icon from '@renderer/components/Icon'
 import { useApiQuery } from '@renderer/data/hooks'
 import { useShell } from '@renderer/shell/ShellContext'
 import AttachDialog from './AttachDialog'
 import AttachedTab from './AttachedTab'
-import OpenBar from './OpenBar'
-import Viewer from './Viewer'
+import FileDetail from './FileDetail'
+import { shortDir, when } from './format'
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
-
-/** The last two folders are enough to tell two "Unit 3.pdf" files apart at a glance. */
-function shortDir(path: string): string {
-  const parts = dirName(path).split('/').filter(Boolean)
-  return parts.length <= 2 ? `/${parts.join('/')}` : `…/${parts.slice(-2).join('/')}`
-}
-
-function formatSize(n: number): string {
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
-  return `${(n / 1024 / 1024).toFixed(1)} MB`
-}
-
-const when = (ms: number): string =>
-  new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
 /**
  * `library` is the everyday view: search and preview, nothing tied to a student or class.
@@ -60,10 +40,6 @@ export default function FilesApp({
 
   const settings = useApiQuery(() => window.api.settings.get(), [], ['settings.changed'])
   const noFolders = !!settings.data && settings.data.teachingFolders.length === 0
-  const info = useApiQuery(
-    () => (selected ? window.api.files.info(selected) : Promise.resolve(null)),
-    [selected]
-  )
 
   // A search request from the top bar or another app (the `search-files` intent).
   const [handledNonce, setHandledNonce] = useState<number | undefined>(undefined)
@@ -135,7 +111,14 @@ export default function FilesApp({
           {r.kind === 'spreadsheet' ? 'xls' : r.kind === 'other' ? '···' : r.kind}
         </span>
         <span className="result-text">
-          <span className="result-name">{r.name}</span>
+          <span className="result-name">
+            {r.isProtected && (
+              <span className="lock-badge" title="Protected: only shown inside the Vault">
+                <Icon name="lock" size={12} />
+              </span>
+            )}
+            {r.name}
+          </span>
           <span className="hint">
             {shortDir(r.path)} · {when(r.mtime)}
           </span>
@@ -250,38 +233,13 @@ export default function FilesApp({
           </div>
         )}
         {selected ? (
-          info.data === null && !info.loading ? (
-            <p className="hint pad">
-              This file could not be found. It may have been moved or deleted.
-            </p>
-          ) : (
-            <>
-              <div className="pane-head">
-                <div className="file-title">
-                  <h2>{baseName(selected)}</h2>
-                  <div className="hint" title={selected}>
-                    {shortDir(selected)}
-                    {info.data
-                      ? ` · ${formatSize(info.data.size)} · modified ${when(info.data.mtime)}`
-                      : ''}
-                  </div>
-                </div>
-              </div>
-              <OpenBar
-                path={selected}
-                onAttach={inVault ? () => setAttachFor(selected) : undefined}
-              />
-              <div className="viewer">
-                <Viewer
-                  key={`${selected}:${kindOf(selected)}`}
-                  path={selected}
-                  onDirtyChange={(d) => {
-                    dirty.current = d
-                  }}
-                />
-              </div>
-            </>
-          )
+          <FileDetail
+            path={selected}
+            onAttach={inVault ? () => setAttachFor(selected) : undefined}
+            onDirtyChange={(d) => {
+              dirty.current = d
+            }}
+          />
         ) : (
           <div className="placeholder">
             <strong>Find a file</strong>

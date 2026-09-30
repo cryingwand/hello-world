@@ -100,6 +100,8 @@ export interface FileSearchResult {
   /** Milliseconds since the epoch. */
   mtime: number
   size: number
+  /** In a protected folder. Only ever set for the Vault window; other windows never see these. */
+  isProtected?: boolean
 }
 
 export interface FileSearchResponse {
@@ -115,6 +117,34 @@ export interface FileInfo {
   kind: FileKind
   size: number
   mtime: number
+  /** In a protected folder (only reported to the Vault window). */
+  isProtected?: boolean
+}
+
+/** A folder the teacher marked protected. */
+export interface ProtectedFolder {
+  path: string
+  /** False when it is not there right now (an unplugged drive); it is still protected. */
+  exists: boolean
+}
+
+export interface ProtectedEntry {
+  name: string
+  path: string
+  isDir: boolean
+  kind: FileKind
+  size: number
+  mtime: number
+}
+
+/** One level of a protected folder, for browsing inside the Vault. */
+export interface ProtectedListing {
+  dir: string
+  /** The folder above, or null at the protected folder itself. */
+  parent: string | null
+  entries: ProtectedEntry[]
+  /** More entries exist than were listed. */
+  truncated: boolean
 }
 
 export interface TextFile {

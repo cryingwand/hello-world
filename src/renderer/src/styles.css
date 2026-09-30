@@ -1333,3 +1333,22 @@ td .badge:first-child {
 .dock-vault .dock-icon {
   color: var(--muted);
 }
+
+/* ---- protected files ---- */
+.lock-badge {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 5px;
+  color: var(--muted);
+}
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.crumb strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

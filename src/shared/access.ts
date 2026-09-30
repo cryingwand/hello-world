@@ -64,6 +64,7 @@ export const API_ACCESS = {
   },
   gradebook: { previewScores: VAULT, commitScores: VAULT, exportClass: VAULT },
   fileLinks: { list: VAULT, add: VAULT, remove: VAULT },
+  protection: { folders: VAULT, chooseAndAdd: VAULT, remove: VAULT, browse: VAULT },
   files: {
     search: EVERYDAY,
     info: EVERYDAY,

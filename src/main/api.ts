@@ -1,6 +1,7 @@
 import type { ApiContract, SystemInfo } from '@shared/api'
 import type { BackupService } from './backupService'
 import type { PresentationService } from './presentation'
+import type { ProtectionService } from './protectionService'
 import type { PublicRepositories, Repositories } from './repos'
 import type { RosterService } from './rosterService'
 import type { ScoreService } from './scoreService'
@@ -22,6 +23,7 @@ export interface ApiDeps {
   /** Resolve the open vault's objects; each throws while the vault is locked. */
   vault: { repos: () => Repositories; roster: () => RosterService; scores: () => ScoreService }
   publicRepos: PublicRepositories
+  protection: ProtectionService
   backups: BackupService
   gate: VaultGate<unknown>
   presentation: PresentationService
@@ -107,6 +109,12 @@ export function createApi(deps: ApiDeps): ApiContract {
       exportClass: (classId, format) => scores().exportClass(classId, format)
     },
     files: deps.files,
+    protection: {
+      folders: () => deps.protection.folders(),
+      chooseAndAdd: () => deps.protection.chooseAndAdd(),
+      remove: (path) => deps.protection.remove(path),
+      browse: (dir) => deps.protection.browse(dir)
+    },
     fileLinks: {
       list: (type, id) => repos().fileLinks.list(type, id),
       add: (input) => repos().fileLinks.add(input),

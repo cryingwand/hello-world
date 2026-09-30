@@ -27,6 +27,7 @@ import {
   tableView,
   writeText
 } from '../../src/main/files'
+import { ValidationError } from '../../src/main/validate'
 
 const dirs: string[] = []
 const tmp = (): string => {
@@ -221,6 +222,33 @@ describe('tableView', () => {
       ],
       truncated: false
     })
+  })
+})
+
+describe('resolveServedPath policy hook', () => {
+  it('asks the window policy about the real file and lets it refuse', async () => {
+    const d = tmp()
+    writeFileSync(join(d, 'exam.pdf'), '%PDF')
+    const asked: string[] = []
+    const url = toFileUrl(join(d, 'exam.pdf'))
+    await expect(
+      resolveServedPath(url, async (p) => {
+        asked.push(p)
+        throw new ValidationError('protected')
+      })
+    ).rejects.toThrow('protected')
+    expect(asked).toEqual([join(d, 'exam.pdf')])
+    expect(await resolveServedPath(url, async () => undefined)).toBe(join(d, 'exam.pdf'))
+  })
+
+  it('does not ask about files it would refuse anyway', async () => {
+    const d = tmp()
+    writeFileSync(join(d, 'secret.txt'), 'x')
+    let asked = 0
+    await expect(
+      resolveServedPath(toFileUrl(join(d, 'secret.txt')), async () => void asked++)
+    ).rejects.toThrow(/not served/)
+    expect(asked).toBe(0)
   })
 })
 

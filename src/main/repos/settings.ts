@@ -17,9 +17,16 @@ export function settingsRepo(db: Db, emit: Emit) {
         // A corrupt value falls back to its default rather than breaking startup.
       }
     }
+    // Only the named settings are returned: the same table also holds the protected folder list,
+    // which must never travel to a window outside the vault.
     return {
-      ...DEFAULT_SETTINGS,
-      ...(stored as Partial<AppSettings>),
+      teachingFolders: Array.isArray(stored.teachingFolders)
+        ? (stored.teachingFolders as string[])
+        : DEFAULT_SETTINGS.teachingFolders,
+      backupFolder:
+        typeof stored.backupFolder === 'string' || stored.backupFolder === null
+          ? (stored.backupFolder as string | null)
+          : DEFAULT_SETTINGS.backupFolder,
       presentation: {
         ...DEFAULT_SETTINGS.presentation,
         ...((stored.presentation as Partial<AppSettings['presentation']>) ?? {})

@@ -1,6 +1,7 @@
 import type { FileSearchQuery, FileSearchResponse, FileSearchResult } from '@shared/files'
 import { baseName, dirName, kindOf } from '@shared/files'
 import type { Exec } from './exec'
+import type { ProtectedSnapshot } from '../protected'
 
 const DEFAULT_LIMIT = 100
 /** Stat at most this many candidates per search so a broad term cannot stall the UI. */
@@ -104,6 +105,11 @@ export interface SpotlightDeps {
   stat: (path: string) => Promise<{ isFile: boolean; size: number; mtimeMs: number } | null>
   home: string
   isMac: () => boolean
+  /**
+   * Protected folders. With `hide`, protected files are dropped before anything else so they cannot
+   * use up result slots or show a name; without it they are kept and marked.
+   */
+  protection?: { snapshot: () => Promise<ProtectedSnapshot>; hide: boolean }
 }
 
 const lines = (stdout: string): string[] =>
@@ -153,16 +159,30 @@ export async function searchFiles(
     return { results: [], truncated: false, unavailable: why }
   }
 
+  const snap = deps.protection ? await deps.protection.snapshot() : null
+  const hide = !!deps.protection?.hide
   const candidates = [...found]
     .filter((p) => !isNoisePath(p, deps.home, teachingFolders))
+    .filter((p) => !(hide && snap?.lexical(p)))
     .slice(0, MAX_CANDIDATES)
   const statted = await Promise.all(
     candidates.map(async (p) => ({ p, st: await deps.stat(p).catch(() => null) }))
   )
 
+  // The strong check (symlinks, `..`) on what is left, which is at most MAX_CANDIDATES paths.
+  const flagged = new Set<string>()
+  if (snap) {
+    await Promise.all(
+      statted.map(async ({ p, st }) => {
+        if (st?.isFile && (await snap.has(p))) flagged.add(p)
+      })
+    )
+  }
+
   const results: FileSearchResult[] = []
   for (const { p, st } of statted) {
     if (!st || !st.isFile) continue
+    if (hide && flagged.has(p)) continue
     const folder = teachingFolderFor(p, teachingFolders)
     results.push({
       path: p,
@@ -172,7 +192,8 @@ export async function searchFiles(
       isTeaching: folder !== null,
       teachingFolder: folder,
       mtime: st.mtimeMs,
-      size: st.size
+      size: st.size,
+      ...(flagged.has(p) ? { isProtected: true } : {})
     })
   }
 

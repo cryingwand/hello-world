@@ -4,6 +4,8 @@ import type {
   FileSearchResponse,
   OpenRequest,
   OpenResult,
+  ProtectedFolder,
+  ProtectedListing,
   TableView,
   TextFile
 } from './files'
@@ -207,6 +209,15 @@ export interface ApiContract {
     /** Native file picker, for attaching a file that search does not find. */
     pickFile(): Awaitable<string | null>
   }
+  protection: {
+    /** The protected folders. Only the unlocked Vault can see or change them. */
+    folders(): Awaitable<ProtectedFolder[]>
+    /** Shows a folder picker (in the main process) and protects the folder that is chosen. */
+    chooseAndAdd(): Awaitable<ProtectedFolder[]>
+    remove(path: string): Awaitable<ProtectedFolder[]>
+    /** One level of a protected folder. Refuses anything that is not inside one. */
+    browse(dir: string): Awaitable<ProtectedListing>
+  }
   fileLinks: {
     list(recordType: LinkRecordType, recordId: number): FileLink[]
     add(input: FileLinkInput): FileLink
@@ -275,6 +286,7 @@ export const API_METHODS = {
     'restoreLayout',
     'pickFile'
   ],
+  protection: ['folders', 'chooseAndAdd', 'remove', 'browse'],
   fileLinks: ['list', 'add', 'remove'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],

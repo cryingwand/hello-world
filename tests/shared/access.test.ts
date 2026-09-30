@@ -21,7 +21,8 @@ describe('access policy', () => {
       'grading',
       'roster',
       'gradebook',
-      'fileLinks'
+      'fileLinks',
+      'protection'
     ]
     for (const ns of vaultOnly) {
       for (const [method, access] of Object.entries(API_ACCESS[ns as keyof typeof API_ACCESS])) {
@@ -34,6 +35,7 @@ describe('access policy', () => {
   it('gives the launcher no method that can read or change student or grade data', () => {
     const launcher = methodsFor('launcher')
     for (const ns of [
+      'protection',
       'terms',
       'students',
       'classes',

@@ -1,6 +1,7 @@
 import { classesRepo } from './classes'
 import { fileLinksRepo } from './fileLinks'
 import { gradingRepo } from './grading'
+import { protectionRepo } from './protection'
 import { settingsRepo } from './settings'
 import { studentsRepo } from './students'
 import { termsRepo } from './terms'
@@ -65,7 +66,7 @@ export function createVaultRepositories(db: Db, emit: Emit) {
 
 /** Everything in the public database. */
 export function createPublicRepositories(db: Db, emit: Emit) {
-  return { settings: settingsRepo(db, emit) }
+  return { settings: settingsRepo(db, emit), protection: protectionRepo(db, emit) }
 }
 
 export type Repositories = ReturnType<typeof createVaultRepositories>

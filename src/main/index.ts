@@ -34,6 +34,8 @@ import { registerIpc } from './ipc'
 import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
 import { createNotifier, type Notifier } from './notifier'
 import { createPresentationService } from './presentation'
+import { createFileGuard, createProtectedPaths } from './protected'
+import { createProtectionService } from './protectionService'
 import { createRoleRegistry } from './roles'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
@@ -227,13 +229,24 @@ void app.whenReady().then(() => {
     extraDir: () => publicRepos.settings.get().backupFolder
   })
 
-  // Each role has its own storage partition, so each needs its own handler for the file scheme.
+  // Protected folders apply everywhere but inside the open Vault, including while it is locked.
+  const protectedPaths = createProtectedPaths({ folders: () => publicRepos.protection.list() })
+  const guardFor = (role: Role) =>
+    createFileGuard({
+      paths: protectedPaths,
+      allowProtected: () => role === 'vault' && manager.isUnlocked(),
+      externalDisplays: () => presentation.externalDisplays()
+    })
+
+  // Each role has its own storage partition, so each needs its own handler for the file scheme, and
+  // each applies its own protected-file policy.
   for (const role of ['launcher', 'vault'] as const) {
+    const guard = guardFor(role)
     session
       .fromPartition(`persist:teachingos-${role}`)
       .protocol.handle(FILE_SCHEME, async (request) => {
         try {
-          const path = await resolveServedPath(request.url)
+          const path = await resolveServedPath(request.url, (p) => guard.assertReadable(p))
           return await net.fetch(pathToFileURL(path).toString(), { headers: request.headers })
         } catch {
           return new Response('Not found', { status: 404 })
@@ -259,7 +272,8 @@ void app.whenReady().then(() => {
         return image.isEmpty() ? null : image.toDataURL()
       },
       reveal: (path) => shell.showItemInFolder(path),
-      pickFile: pickAnyFile
+      pickFile: pickAnyFile,
+      guard: guardFor(role)
     })
 
   Menu.setApplicationMenu(
@@ -273,6 +287,12 @@ void app.whenReady().then(() => {
       })
     )
   )
+
+  const protection = createProtectionService({
+    repo: publicRepos.protection,
+    paths: protectedPaths,
+    chooseFolder: chooseFolderDialog
+  })
 
   const env = {
     dataDir,
@@ -297,6 +317,7 @@ void app.whenReady().then(() => {
         scores: () => manager.session().scores
       },
       publicRepos,
+      protection,
       backups,
       gate,
       presentation,

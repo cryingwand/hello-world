@@ -135,10 +135,15 @@ export async function tableView(path: string, sheet?: string | null): Promise<Ta
  * Validates a tos-file:// URL and returns the path to serve. Only existing PDFs and images are
  * ever served, so the renderer cannot use the protocol to read arbitrary files.
  */
-export async function resolveServedPath(url: string): Promise<string> {
+export async function resolveServedPath(
+  url: string,
+  /** Extra policy for the window asking, such as refusing protected files. Throws to refuse. */
+  allow?: (path: string) => Promise<void>
+): Promise<string> {
   const path = fromFileUrl(url)
   if (!path) throw new ValidationError('Bad file URL')
   const f = await assertFile(path)
   if (!SERVED.has(kindOf(f.path))) throw new ValidationError('That file type is not served')
+  await allow?.(f.path)
   return f.path
 }

@@ -10,6 +10,8 @@ import { openVaultDatabase } from '../../src/main/db/connection'
 import { createFilesApi } from '../../src/main/filesApi'
 import { createNotifier } from '../../src/main/notifier'
 import { createPresentationService } from '../../src/main/presentation'
+import { createFileGuard, createProtectedPaths } from '../../src/main/protected'
+import { createProtectionService } from '../../src/main/protectionService'
 import { createVaultRepositories } from '../../src/main/repos'
 import { createRosterService } from '../../src/main/rosterService'
 import { createScoreService } from '../../src/main/scoreService'
@@ -73,6 +75,11 @@ function env(opts: { unlocked?: boolean } = {}) {
       scores: () => manager.session().scores
     },
     publicRepos: pub.repos,
+    protection: createProtectionService({
+      repo: pub.repos.protection,
+      paths: createProtectedPaths({ folders: () => pub.repos.protection.list() }),
+      chooseFolder: async () => null
+    }),
     backups: createBackupService({
       dir: join(dir, 'backups'),
       publicDb: () => pub.db,
@@ -90,7 +97,12 @@ function env(opts: { unlocked?: boolean } = {}) {
       launcher: { snapLeft: async () => null, restore: () => undefined },
       thumbnail: async () => null,
       reveal: () => undefined,
-      pickFile: async () => null
+      pickFile: async () => null,
+      guard: createFileGuard({
+        paths: createProtectedPaths({ folders: () => [] }),
+        allowProtected: () => false,
+        externalDisplays: () => 0
+      })
     }),
     env: {
       dataDir: '/data',
