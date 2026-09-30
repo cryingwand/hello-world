@@ -7,6 +7,7 @@ import type {
   TableView,
   TextFile
 } from './files'
+import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
@@ -89,6 +90,7 @@ export interface FileLinkInput {
 export interface SystemInfo {
   dataDir: string
   dbPath: string
+  vaultPath: string
   backupDir: string
   platform: string
   version: string
@@ -155,6 +157,23 @@ export interface ApiContract {
   vaultGate: {
     /** Opens (or focuses) the Vault window, which holds the gradebook, students and protected files. */
     openWindow(): Awaitable<void>
+    status(): Awaitable<VaultStatus>
+    /** First run: choose the passcode (and optionally turn on Touch ID). Opens the vault. */
+    setup(passcode: string, touchId?: boolean): Awaitable<VaultStatus>
+    unlock(passcode: string): Awaitable<VaultStatus>
+    unlockWithTouchId(): Awaitable<VaultStatus>
+    /** Locks at once: the database closes and every vault window closes. */
+    lock(): Awaitable<void>
+  }
+  vault: {
+    /** Real activity (a click or key press) in the vault: restarts the idle-lock countdown. */
+    touch(): Awaitable<void>
+    changePasscode(current: string, next: string): Awaitable<void>
+    settings(): Awaitable<VaultSettings>
+    updateSettings(patch: {
+      autoLockMinutes?: number
+      touchIdEnabled?: boolean
+    }): Awaitable<VaultSettings>
   }
   presentation: {
     /** The window reports whether presentation mode is on; main uses it for the menu and to hold notifications. */
@@ -239,7 +258,8 @@ export const API_METHODS = {
     'setScores'
   ],
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
-  vaultGate: ['openWindow'],
+  vaultGate: ['openWindow', 'status', 'setup', 'unlock', 'unlockWithTouchId', 'lock'],
+  vault: ['touch', 'changePasscode', 'settings', 'updateSettings'],
   presentation: ['setActive', 'state'],
   gradebook: ['previewScores', 'commitScores', 'exportClass'],
   files: [
@@ -272,6 +292,7 @@ export type Api = {
 export interface RendererApi extends Api {
   onChange(listener: (event: import('./events').ChangeEvent) => void): () => void
   onPresentationToggle(listener: () => void): () => void
+  onVaultStatus(listener: (status: VaultStatus) => void): () => void
   onDisplayOffer(listener: (offer: import('./events').DisplayOffer) => void): () => void
   platform: string
   /** This window's role, as recorded by the main process. Null if the window is unknown. */

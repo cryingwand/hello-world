@@ -96,6 +96,16 @@ export default function TopBar(): React.JSX.Element {
       </form>
       <div className="topbar-right">
         {space === 'vault' && <ClassPicker />}
+        {space === 'vault' && (
+          <button
+            className="pill"
+            onClick={() => window.api.vaultGate.lock()}
+            title="Lock the Vault and close this window"
+          >
+            <Icon name="lock" size={14} />
+            <span>Lock</span>
+          </button>
+        )}
         {space === 'launcher' && (
           <button
             className={`pill${presenting ? ' pill-on' : ''}`}

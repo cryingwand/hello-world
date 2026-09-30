@@ -1,11 +1,13 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Menu,
   nativeImage,
   net,
   Notification,
+  powerMonitor,
   protocol,
   screen,
   session,
@@ -19,13 +21,14 @@ import type { Role } from '@shared/access'
 import { APP_ID, APP_NAME } from '@shared/app-info'
 import { PRESENTATION_TOGGLE_CHANNEL } from '@shared/events'
 import { FILE_SCHEME } from '@shared/files'
+import { VAULT_STATUS_CHANNEL } from '@shared/vault'
 import { createApi } from './api'
 import { createFilesApi } from './filesApi'
 import { resolveServedPath } from './files'
 import { defaultExec, isMac } from './mac/exec'
 import { createLauncherSnap } from './mac/launcherSnap'
-import { needsDailyBackup, listBackups, runBackup } from './backup'
-import { openDatabase } from './db/connection'
+import { createBackupService, type BackupService } from './backupService'
+import { openPublicDatabase, openVaultDatabase } from './db/connection'
 import { createBroadcaster } from './events'
 import { registerIpc } from './ipc'
 import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
@@ -41,8 +44,11 @@ import {
   pickSaveTableFile,
   pickTableFile
 } from './system'
-import { createRepositories } from './repos'
+import { createPublicRepositories, createVaultRepositories } from './repos'
 import type { Db } from './repos'
+import { createVaultGate } from './vault/gate'
+import { importLegacyData } from './vault/legacy'
+import { createVaultManager } from './vault/manager'
 import { createRoleWindow, type WindowEnv } from './windows'
 
 // One folder holds the database, backups and the renderer's own storage:
@@ -59,9 +65,10 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 const dbPath = join(dataDir, 'data.sqlite')
+const vaultDir = join(dataDir, 'vault')
 const backupDir = join(dataDir, 'backups')
 
-let db: Db | null = null
+let publicDb: Db | null = null
 const registry = createRoleRegistry<BrowserWindow>()
 
 const windowEnv: WindowEnv = {
@@ -92,13 +99,12 @@ function openVaultWindow(): void {
 }
 
 /** Backup on launch, then check hourly so a long-running session still gets a daily backup. */
-function startBackups(
-  database: Db,
-  repos: ReturnType<typeof createRepositories>,
-  notifier: Notifier
-): void {
+function startBackups(backups: BackupService, notifier: Notifier): void {
   const run = (): void => {
-    runBackup(database, { dir: backupDir, extraDir: repos.settings.get().backupFolder }).catch(
+    backups.runAll().then(
+      (info) => {
+        if (info.vaultError) console.error('[backup] vault backup failed:', info.vaultError)
+      },
       (err) => {
         console.error('[backup] failed:', err)
         notifier.notify({
@@ -111,25 +117,114 @@ function startBackups(
   run()
   setInterval(
     () => {
-      if (needsDailyBackup(backupDir, new Date())) run()
+      if (backups.needsDaily()) run()
     },
     60 * 60 * 1000
   ).unref()
-  console.log(`[backup] ${listBackups(backupDir).length} backups on disk`)
+}
+
+interface VaultSession {
+  repos: ReturnType<typeof createVaultRepositories>
+  roster: ReturnType<typeof createRosterService>
+  scores: ReturnType<typeof createScoreService>
 }
 
 void app.whenReady().then(() => {
-  db = openDatabase(dbPath)
+  const db = openPublicDatabase(dbPath)
+  publicDb = db
+  const toRoles = (roles: Role[], channel: string, payload?: unknown): void => {
+    for (const role of roles) {
+      for (const w of registry.windows(role))
+        if (!w.isDestroyed()) w.webContents.send(channel, payload)
+    }
+  }
   const broadcast = createBroadcaster((role) =>
     registry
       .windows(role)
       .filter((w) => !w.isDestroyed())
       .map((w) => ({ send: (channel, payload) => w.webContents.send(channel, payload) }))
   )
-  const repos = createRepositories(db, broadcast)
-  const roster = createRosterService(repos, {
-    pickOpenFile: pickTableFile,
-    pickSaveFile: pickSaveTableFile
+  const publicRepos = createPublicRepositories(db, broadcast)
+
+  // System notifications go through one place so presentation mode can hold them back.
+  const notifier = createNotifier({
+    show: (n) => {
+      if (Notification.isSupported()) new Notification({ title: n.title, body: n.body }).show()
+    }
+  })
+  const toLauncher = (channel: string, payload?: unknown): void =>
+    registry.first('launcher')?.webContents.send(channel, payload)
+  const presentation = createPresentationService({
+    screen,
+    notifier,
+    offerEnabled: () => publicRepos.settings.get().presentation.offerOnExternalDisplay,
+    send: (channel, payload) => toLauncher(channel, payload),
+    onActiveChange: (on) => {
+      const item = Menu.getApplicationMenu()?.getMenuItemById(PRESENTATION_MENU_ID)
+      if (item) item.checked = on
+    }
+  })
+
+  // The vault: its own database and passcode, closed whenever it is locked.
+  const manager = createVaultManager<VaultSession>({
+    dir: vaultDir,
+    openDb: openVaultDatabase,
+    createSession: (vdb) => {
+      const repos = createVaultRepositories(vdb, broadcast)
+      const roster = createRosterService(repos, {
+        pickOpenFile: pickTableFile,
+        pickSaveFile: pickSaveTableFile
+      })
+      const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
+      return { repos, roster, scores }
+    },
+    // A database from before the vault existed is moved in the first time the vault opens.
+    afterOpen: (vdb) => void importLegacyData(db, vdb, { backupDir }),
+    onLock: () => {
+      // Closing the windows throws away everything they were showing.
+      for (const w of registry.windows('vault')) if (!w.isDestroyed()) w.destroy()
+    },
+    onStatusChange: (status) => toRoles(['launcher', 'vault'], VAULT_STATUS_CHANNEL, status),
+    touchId: {
+      available: () =>
+        process.platform === 'darwin' &&
+        typeof systemPreferences.canPromptTouchID === 'function' &&
+        systemPreferences.canPromptTouchID(),
+      prompt: (reason) => systemPreferences.promptTouchID(reason)
+    }
+  })
+  powerMonitor.on('lock-screen', () => manager.lock('screen-lock'))
+  powerMonitor.on('suspend', () => manager.lock('sleep'))
+
+  const gate = createVaultGate({
+    manager,
+    presenting: () => presentation.isActive(),
+    externalDisplays: () => presentation.externalDisplays(),
+    confirmExternalDisplay: async () => {
+      const win = registry.first('vault')
+      const options = {
+        type: 'warning' as const,
+        buttons: ['Open Vault anyway', 'Keep it locked'],
+        defaultId: 1,
+        cancelId: 1,
+        message: 'Another display is connected.',
+        detail: 'Anything you open in the Vault could be visible to the people watching it.'
+      }
+      const res = win
+        ? await dialog.showMessageBox(win, options)
+        : await dialog.showMessageBox(options)
+      return res.response === 0
+    }
+  })
+
+  const backups = createBackupService({
+    dir: backupDir,
+    publicDb: () => db,
+    vault: {
+      open: () => (manager.isUnlocked() ? manager.database() : null),
+      dbPath: manager.paths.db
+    },
+    extraDir: () => publicRepos.settings.get().backupFolder
   })
 
   // Each role has its own storage partition, so each needs its own handler for the file scheme.
@@ -148,7 +243,7 @@ void app.whenReady().then(() => {
 
   const filesApiFor = (role: Role) =>
     createFilesApi({
-      settings: () => repos.settings.get(),
+      settings: () => publicRepos.settings.get(),
       exec: defaultExec,
       home: homedir(),
       isMac,
@@ -166,26 +261,7 @@ void app.whenReady().then(() => {
       reveal: (path) => shell.showItemInFolder(path),
       pickFile: pickAnyFile
     })
-  const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
 
-  // System notifications go through one place so presentation mode can hold them back.
-  const notifier = createNotifier({
-    show: (n) => {
-      if (Notification.isSupported()) new Notification({ title: n.title, body: n.body }).show()
-    }
-  })
-  const toLauncher = (channel: string, payload?: unknown): void =>
-    registry.first('launcher')?.webContents.send(channel, payload)
-  const presentation = createPresentationService({
-    screen,
-    notifier,
-    offerEnabled: () => repos.settings.get().presentation.offerOnExternalDisplay,
-    send: (channel, payload) => toLauncher(channel, payload),
-    onActiveChange: (on) => {
-      const item = Menu.getApplicationMenu()?.getMenuItemById(PRESENTATION_MENU_ID)
-      if (item) item.checked = on
-    }
-  })
   Menu.setApplicationMenu(
     Menu.buildFromTemplate(
       buildMenuTemplate({
@@ -198,9 +274,10 @@ void app.whenReady().then(() => {
     )
   )
 
-  const apiEnv = {
+  const env = {
     dataDir,
     dbPath,
+    vaultPath: manager.paths.db,
     backupDir,
     chooseFolder: chooseFolderDialog,
     openAccessibilitySettings: async () => {
@@ -212,15 +289,31 @@ void app.whenReady().then(() => {
     version: appVersion(),
     platform: process.platform
   }
+  const apiFor = (role: Role) =>
+    createApi({
+      vault: {
+        repos: () => manager.session().repos,
+        roster: () => manager.session().roster,
+        scores: () => manager.session().scores
+      },
+      publicRepos,
+      backups,
+      gate,
+      presentation,
+      files: filesApiFor(role),
+      env
+    })
   registerIpc({
     ipc: ipcMain,
     roleOf: (sender) => registry.roleOf(sender),
-    apis: {
-      launcher: createApi(db, repos, roster, scores, presentation, filesApiFor('launcher'), apiEnv),
-      vault: createApi(db, repos, roster, scores, presentation, filesApiFor('vault'), apiEnv)
+    apis: { launcher: apiFor('launcher'), vault: apiFor('vault') },
+    // Anything that needs the vault is refused while it is locked.
+    beforeCall: (_role, _ns, _method, access) => {
+      if (access.needsVault) manager.assertUnlocked()
     }
   })
-  startBackups(db, repos, notifier)
+  startBackups(backups, notifier)
+  app.on('will-quit', () => manager.dispose())
 
   openLauncher()
   app.on('activate', () => {
@@ -233,6 +326,6 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
-  db?.close()
-  db = null
+  publicDb?.close()
+  publicDb = null
 })

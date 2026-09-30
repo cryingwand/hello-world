@@ -19,6 +19,8 @@ export interface Access {
 const VAULT: Access = { roles: ['vault'], needsVault: true }
 const EVERYDAY: Access = { roles: ['launcher', 'vault'] }
 const LAUNCHER: Access = { roles: ['launcher'] }
+/** The lock screen's own calls: the vault window must be able to make them while locked. */
+const GATE: Access = { roles: ['vault'] }
 
 /**
  * Who may call what. This is the single source of truth for the access policy: the main process
@@ -78,7 +80,15 @@ export const API_ACCESS = {
   settings: { get: EVERYDAY, update: EVERYDAY },
   backup: { runNow: EVERYDAY, list: EVERYDAY },
   system: { info: EVERYDAY, chooseFolder: EVERYDAY, openAccessibilitySettings: EVERYDAY },
-  vaultGate: { openWindow: LAUNCHER },
+  vaultGate: {
+    openWindow: LAUNCHER,
+    status: EVERYDAY,
+    setup: GATE,
+    unlock: GATE,
+    unlockWithTouchId: GATE,
+    lock: EVERYDAY
+  },
+  vault: { touch: VAULT, changePasscode: VAULT, settings: VAULT, updateSettings: VAULT },
   presentation: { setActive: LAUNCHER, state: LAUNCHER }
 } as const satisfies { [N in keyof ApiContract]: { [M in keyof ApiContract[N]]: Access } }
 

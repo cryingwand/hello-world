@@ -99,4 +99,8 @@ export interface BackupInfo {
   createdAt: string
   /** Set when the copy to the extra backup folder failed. */
   extraError?: string
+  /** The matching vault backup taken alongside this one, if any. */
+  vaultName?: string
+  /** Set when the vault backup failed (the public backup above still succeeded). */
+  vaultError?: string
 }

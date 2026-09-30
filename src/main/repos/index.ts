@@ -48,7 +48,8 @@ export function createDeferredEmit(db: Db, emit: Emit) {
   return { emit: wrapped, transaction }
 }
 
-export function createRepositories(db: Db, emit: Emit) {
+/** Everything in the vault database. */
+export function createVaultRepositories(db: Db, emit: Emit) {
   const deferred = createDeferredEmit(db, emit)
   emit = deferred.emit
   return {
@@ -58,9 +59,14 @@ export function createRepositories(db: Db, emit: Emit) {
     students: studentsRepo(db, emit),
     classes: classesRepo(db, emit),
     grading: gradingRepo(db, emit),
-    fileLinks: fileLinksRepo(db, emit),
-    settings: settingsRepo(db, emit)
+    fileLinks: fileLinksRepo(db, emit)
   }
 }
 
-export type Repositories = ReturnType<typeof createRepositories>
+/** Everything in the public database. */
+export function createPublicRepositories(db: Db, emit: Emit) {
+  return { settings: settingsRepo(db, emit) }
+}
+
+export type Repositories = ReturnType<typeof createVaultRepositories>
+export type PublicRepositories = ReturnType<typeof createPublicRepositories>

@@ -1278,3 +1278,58 @@ td .badge:first-child {
   pointer-events: none;
   box-shadow: inset 0 0 0 3px #b3261e;
 }
+
+/* ---- vault lock screen ---- */
+.vault-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+}
+.vault-card {
+  width: min(380px, calc(100vw - 48px));
+  display: grid;
+  gap: 10px;
+  padding: 26px 26px 20px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.vault-card h1 {
+  margin: 0;
+  font-size: 18px;
+}
+.vault-card .hint {
+  margin: 0;
+}
+.vault-lock {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.vault-field {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+}
+.vault-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.vault-note {
+  font-size: 11px;
+}
+.vault-change {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+.dock-vault .dock-icon {
+  color: var(--muted);
+}

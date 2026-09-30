@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeEnv, seedClass } from './helpers'
+import { makeEnv, makePublicEnv, seedClass } from './helpers'
 
 describe('terms', () => {
   it('creates, lists newest first, and keeps a single current term', () => {
@@ -417,7 +417,7 @@ describe('file links', () => {
 
 describe('settings', () => {
   it('returns defaults, merges updates, and normalises folders', () => {
-    const { repos, events } = makeEnv()
+    const { repos, events } = makePublicEnv()
     expect(repos.settings.get()).toEqual({
       teachingFolders: [],
       backupFolder: null,
@@ -437,7 +437,7 @@ describe('settings', () => {
   })
 
   it('rejects relative folders', () => {
-    const { repos } = makeEnv()
+    const { repos } = makePublicEnv()
     expect(() => repos.settings.update({ teachingFolders: ['Courses'] })).toThrow(/absolute/)
     expect(() => repos.settings.update({ backupFolder: 'backups' })).toThrow(/absolute/)
   })

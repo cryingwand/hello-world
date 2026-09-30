@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { guessMapping } from '@shared/roster'
-import { openDatabase } from '../../src/main/db/connection'
-import { createRepositories } from '../../src/main/repos'
+import { openVaultDatabase } from '../../src/main/db/connection'
+import { createVaultRepositories } from '../../src/main/repos'
 import { createRosterService } from '../../src/main/rosterService'
 
 const dirs: string[] = []
@@ -13,9 +13,9 @@ afterEach(() => {
 })
 
 function setup() {
-  const db = openDatabase(':memory:')
+  const db = openVaultDatabase(':memory:')
   const log: { name: string; classId?: number; inTransaction: boolean }[] = []
-  const repos = createRepositories(db, (name, detail) =>
+  const repos = createVaultRepositories(db, (name, detail) =>
     log.push({ name, ...detail, inTransaction: db.inTransaction })
   )
   return { db, repos, log }

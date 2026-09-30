@@ -1,7 +1,12 @@
 import type Database from 'better-sqlite3'
 import type { ChangeName } from '@shared/events'
-import { openDatabase } from '../../src/main/db/connection'
-import { createRepositories, type Repositories } from '../../src/main/repos'
+import { openPublicDatabase, openVaultDatabase } from '../../src/main/db/connection'
+import {
+  createPublicRepositories,
+  createVaultRepositories,
+  type PublicRepositories,
+  type Repositories
+} from '../../src/main/repos'
 
 export interface TestEnv {
   db: Database.Database
@@ -9,11 +14,23 @@ export interface TestEnv {
   events: { name: ChangeName; classId?: number }[]
 }
 
-/** A fresh in-memory database with migrations applied and an event log. */
+/** A fresh in-memory vault database with migrations applied and an event log. */
 export function makeEnv(): TestEnv {
-  const db = openDatabase(':memory:')
+  const db = openVaultDatabase(':memory:')
   const events: TestEnv['events'] = []
-  const repos = createRepositories(db, (name, detail) => events.push({ name, ...detail }))
+  const repos = createVaultRepositories(db, (name, detail) => events.push({ name, ...detail }))
+  return { db, repos, events }
+}
+
+/** A fresh in-memory public database (settings only) and an event log. */
+export function makePublicEnv(): {
+  db: Database.Database
+  repos: PublicRepositories
+  events: TestEnv['events']
+} {
+  const db = openPublicDatabase(':memory:')
+  const events: TestEnv['events'] = []
+  const repos = createPublicRepositories(db, (name, detail) => events.push({ name, ...detail }))
   return { db, repos, events }
 }
 

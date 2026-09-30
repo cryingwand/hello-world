@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useApiQuery } from '@renderer/data/hooks'
+import VaultSettings from '@renderer/vault/VaultSettings'
+import { useShell } from './ShellContext'
 
 function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 export default function SettingsDialog({ onClose }: { onClose: () => void }): React.JSX.Element {
+  const { space } = useShell()
   const settings = useApiQuery(() => window.api.settings.get(), [], ['settings.changed'])
   const info = useApiQuery(() => window.api.system.info(), [])
   const backups = useApiQuery(() => window.api.backup.list(), [])
@@ -140,13 +143,28 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
           </label>
         </section>
 
+        {space === 'vault' ? (
+          <VaultSettings />
+        ) : (
+          <section>
+            <h3>Vault</h3>
+            <p className="hint">
+              Passcode, idle lock and Touch ID are in Settings inside the Vault, so they are never
+              reachable from a window you might be presenting from.
+            </p>
+          </section>
+        )}
+
         {message && (
           <p className="notice" role="status">
             {message}
           </p>
         )}
         <p className="hint">
-          Data: <code>{info.data?.dbPath}</code>
+          Settings and backups: <code>{info.data?.dbPath}</code>
+        </p>
+        <p className="hint">
+          Vault: <code>{info.data?.vaultPath}</code>
         </p>
       </div>
     </div>

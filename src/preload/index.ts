@@ -8,6 +8,7 @@ import {
   type ChangeEvent,
   type DisplayOffer
 } from '@shared/events'
+import { VAULT_STATUS_CHANNEL, type VaultStatus } from '@shared/vault'
 
 /** ipcRenderer prefixes remote errors; show the user only the message the main process wrote. */
 const clean = (err: unknown): Error => {
@@ -42,6 +43,11 @@ function buildApi(): RendererApi {
     const handler = (): void => listener()
     ipcRenderer.on(PRESENTATION_TOGGLE_CHANNEL, handler)
     return () => ipcRenderer.removeListener(PRESENTATION_TOGGLE_CHANNEL, handler)
+  }
+  api['onVaultStatus'] = (listener: (status: VaultStatus) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, status: VaultStatus): void => listener(status)
+    ipcRenderer.on(VAULT_STATUS_CHANNEL, handler)
+    return () => ipcRenderer.removeListener(VAULT_STATUS_CHANNEL, handler)
   }
   api['onDisplayOffer'] = (listener: (offer: DisplayOffer) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, offer: DisplayOffer): void => listener(offer)

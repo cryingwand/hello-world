@@ -7,14 +7,21 @@ export interface Migration {
 }
 
 /**
- * Append-only. Never edit a shipped migration; add a new one with the next version.
- * Later phases add their own tables (advising, quizzes, lessons) as new migrations.
+ * Two databases, two histories. Append-only in each: never edit a shipped migration; add a new one
+ * with the next version.
+ *
+ * - `data.sqlite` (public) holds only settings.
+ * - `vault.sqlite` holds everything about students, classes and grades, plus file links. A new table
+ *   belongs in the vault unless there is a deliberate decision that it is safe to show anywhere.
  */
-export const MIGRATIONS: Migration[] = [
-  {
-    version: 1,
-    name: 'initial schema: rosters, gradebook, file links, settings',
-    sql: `
+const SETTINGS_SQL = `
+      CREATE TABLE settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `
+
+const VAULT_V1_SQL = `
       CREATE TABLE terms (
         id         INTEGER PRIMARY KEY,
         name       TEXT NOT NULL,
@@ -94,23 +101,29 @@ export const MIGRATIONS: Migration[] = [
         UNIQUE (path, record_type, record_id)
       );
       CREATE INDEX idx_file_links_record ON file_links(record_type, record_id);
-
-      CREATE TABLE settings (
-        key   TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-      );
     `
-  }
+
+export const PUBLIC_MIGRATIONS: Migration[] = [{ version: 1, name: 'settings', sql: SETTINGS_SQL }]
+
+export const VAULT_MIGRATIONS: Migration[] = [
+  { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL }
 ]
 
-export function latestVersion(migrations: Migration[] = MIGRATIONS): number {
+/**
+ * The single-database schema from before the vault existed. A database that has these tables is a
+ * "legacy" database whose student data must be moved into the vault. Kept for recognising and
+ * testing that case; never applied to new databases.
+ */
+export const LEGACY_SCHEMA_SQL = SETTINGS_SQL + VAULT_V1_SQL
+
+export function latestVersion(migrations: Migration[]): number {
   return migrations.reduce((max, m) => Math.max(max, m.version), 0)
 }
 
 /** Applies pending migrations, each in its own transaction, tracked with PRAGMA user_version. */
 export function migrate(
   db: Database.Database,
-  migrations: Migration[] = MIGRATIONS
+  migrations: Migration[]
 ): { from: number; to: number } {
   const sorted = [...migrations].sort((a, b) => a.version - b.version)
   sorted.forEach((m, i) => {
