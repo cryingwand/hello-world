@@ -37,6 +37,7 @@ import { createFileGuard, createProtectedPaths } from './protected'
 import { createProtectionService } from './protectionService'
 import { createRoleRegistry } from './roles'
 import { countExternalDisplays, createStageService } from './stage'
+import { createLessonService } from './lessonService'
 import { createQuizService } from './quizService'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
@@ -45,6 +46,7 @@ import {
   chooseFolderDialog,
   pickAnyFile,
   pickSaveDocxFile,
+  pickSavePptxFile,
   pickSaveTableFile,
   pickTableFile
 } from './system'
@@ -133,6 +135,7 @@ interface VaultSession {
   roster: ReturnType<typeof createRosterService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
+  lessons: ReturnType<typeof createLessonService>
 }
 
 void app.whenReady().then(() => {
@@ -173,7 +176,8 @@ void app.whenReady().then(() => {
       })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
       const quizzes = createQuizService(repos, { pickSaveFile: pickSaveDocxFile })
-      return { repos, roster, scores, quizzes }
+      const lessons = createLessonService(repos, { pickSaveFile: pickSavePptxFile })
+      return { repos, roster, scores, quizzes, lessons }
     },
     // A database from before the vault existed is moved in the first time the vault opens.
     afterOpen: (vdb) => void importLegacyData(db, vdb, { backupDir }),
@@ -376,7 +380,8 @@ void app.whenReady().then(() => {
         repos: () => manager.session().repos,
         roster: () => manager.session().roster,
         scores: () => manager.session().scores,
-        quizzes: () => manager.session().quizzes
+        quizzes: () => manager.session().quizzes,
+        lessons: () => manager.session().lessons
       },
       publicRepos,
       protection,

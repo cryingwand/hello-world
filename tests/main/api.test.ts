@@ -12,6 +12,7 @@ import { createNotifier } from '../../src/main/notifier'
 import { createFileGuard, createProtectedPaths } from '../../src/main/protected'
 import { createProtectionService } from '../../src/main/protectionService'
 import { createVaultRepositories } from '../../src/main/repos'
+import { createLessonService } from '../../src/main/lessonService'
 import { createQuizService } from '../../src/main/quizService'
 import { createRosterService } from '../../src/main/rosterService'
 import { createScoreService } from '../../src/main/scoreService'
@@ -30,6 +31,7 @@ interface Session {
   roster: ReturnType<typeof createRosterService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
+  lessons: ReturnType<typeof createLessonService>
 }
 
 /** The whole API over a real vault manager in a temp folder, with cheap scrypt. */
@@ -51,7 +53,8 @@ function env(opts: { unlocked?: boolean } = {}) {
       })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: async () => null })
       const quizzes = createQuizService(repos, { pickSaveFile: async () => null })
-      return { repos, roster, scores, quizzes }
+      const lessons = createLessonService(repos, { pickSaveFile: async () => null })
+      return { repos, roster, scores, quizzes, lessons }
     },
     scrypt: { N: 1 << 4, r: 8, p: 1, keylen: 32 }
   })
@@ -83,7 +86,8 @@ function env(opts: { unlocked?: boolean } = {}) {
       repos: () => manager.session().repos,
       roster: () => manager.session().roster,
       scores: () => manager.session().scores,
-      quizzes: () => manager.session().quizzes
+      quizzes: () => manager.session().quizzes,
+      lessons: () => manager.session().lessons
     },
     publicRepos: pub.repos,
     protection: createProtectionService({

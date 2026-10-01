@@ -2,6 +2,7 @@ import type { ApiContract, SystemInfo } from '@shared/api'
 import type { BackupService } from './backupService'
 import type { ProtectionService } from './protectionService'
 import type { QuizService } from './quizService'
+import type { LessonService } from './lessonService'
 import type { PublicRepositories, Repositories } from './repos'
 import type { RosterService } from './rosterService'
 import type { ScoreService } from './scoreService'
@@ -27,6 +28,7 @@ export interface ApiDeps {
     roster: () => RosterService
     scores: () => ScoreService
     quizzes: () => QuizService
+    lessons: () => LessonService
   }
   publicRepos: PublicRepositories
   protection: ProtectionService
@@ -44,6 +46,7 @@ export function createApi(deps: ApiDeps): ApiContract {
   const roster = (): RosterService => deps.vault.roster()
   const scores = (): ScoreService => deps.vault.scores()
   const quizzes = (): QuizService => deps.vault.quizzes()
+  const lessons = (): LessonService => deps.vault.lessons()
   return {
     terms: {
       list: () => repos().terms.list(),
@@ -117,7 +120,8 @@ export function createApi(deps: ApiDeps): ApiContract {
       update: (id, patch) => repos().units.update(id, patch),
       delete: (id) => repos().units.delete(id),
       reorder: (id, lessonIds) => repos().units.reorder(id, lessonIds),
-      upcoming: () => repos().units.upcoming()
+      upcoming: () => repos().units.upcoming(),
+      exportPowerPoint: (id, lessonId) => lessons().exportPowerPoint(id, lessonId)
     },
     lessons: {
       create: (input) => repos().lessons.create(input),

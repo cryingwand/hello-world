@@ -308,6 +308,11 @@ export interface ApiContract {
     reorder(id: number, lessonIds: number[]): UnitDetail
     /** Lessons dated today or later, soonest first. */
     upcoming(): UpcomingLesson[]
+    /**
+     * Asks where to save, then writes a PowerPoint for the unit, or for one of its lessons. Only quiz
+     * titles go in it, never questions. Null if cancelled.
+     */
+    exportPowerPoint(id: number, lessonId?: number | null): Awaitable<{ path: string } | null>
   }
   lessons: {
     /** Added at the end of its unit. */
@@ -487,7 +492,7 @@ export const API_METHODS = {
     'createAssignment',
     'exportWord'
   ],
-  units: ['list', 'get', 'create', 'update', 'delete', 'reorder', 'upcoming'],
+  units: ['list', 'get', 'create', 'update', 'delete', 'reorder', 'upcoming', 'exportPowerPoint'],
   lessons: ['create', 'update', 'delete', 'linkQuiz', 'unlinkQuiz'],
   grading: [
     'categories',

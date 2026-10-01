@@ -1,3 +1,5 @@
+import { longDate } from './quiz'
+
 /** Most lessons one unit may hold. */
 export const MAX_LESSONS = 500
 
@@ -36,4 +38,12 @@ export function chunkBullets(lines: string[], budget = 8, perLine = 70): string[
   }
   if (current.length > 0) slides.push(current)
   return slides
+}
+
+/** "October 2, 2026", or "October 2, 2026 – October 16, 2026" for a span, or "" when there is none. */
+export function dateSpan(first: string | null, last: string | null): string {
+  const a = longDate(first)
+  const b = longDate(last)
+  if (a === '' || b === '') return a || b
+  return a === b ? a : `${a} – ${b}`
 }
