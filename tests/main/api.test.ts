@@ -149,11 +149,21 @@ describe('api wiring', () => {
     expect((await api.system.info()).platform).toBe('test')
   })
 
+  it('serves advising through the same vault session', async () => {
+    const { api, ready } = env()
+    await ready
+    const ada = await api.students.create({ firstName: 'Ada', lastName: 'L', tags: ['advisee'] })
+    const meeting = await api.advising.createMeeting({ studentId: ada.id, metOn: '2026-10-01' })
+    expect((await api.advising.meetings(ada.id)).map((m) => m.id)).toEqual([meeting.id])
+    expect((await api.advising.advisees())[0].student.id).toBe(ada.id)
+  })
+
   it('refuses every vault method while the vault is locked', async () => {
     const { api, manager } = env({ unlocked: false })
     expect(manager.isUnlocked()).toBe(false)
     await expect(Promise.resolve().then(() => api.students.list())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.grading.scores(1))).rejects.toThrow(/locked/)
+    await expect(Promise.resolve().then(() => api.advising.advisees())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.fileLinks.list('class', 1))).rejects.toThrow(
       /locked/
     )

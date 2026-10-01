@@ -44,6 +44,26 @@ export const API_ACCESS = {
     unenroll: VAULT,
     forStudent: VAULT
   },
+  advising: {
+    advisees: VAULT,
+    meetings: VAULT,
+    createMeeting: VAULT,
+    updateMeeting: VAULT,
+    deleteMeeting: VAULT,
+    goals: VAULT,
+    createGoal: VAULT,
+    updateGoal: VAULT,
+    deleteGoal: VAULT,
+    actions: VAULT,
+    openActions: VAULT,
+    createAction: VAULT,
+    updateAction: VAULT,
+    deleteAction: VAULT,
+    progress: VAULT,
+    createProgress: VAULT,
+    updateProgress: VAULT,
+    deleteProgress: VAULT
+  },
   grading: {
     categories: VAULT,
     createCategory: VAULT,

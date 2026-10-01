@@ -103,10 +103,66 @@ const VAULT_V1_SQL = `
       CREATE INDEX idx_file_links_record ON file_links(record_type, record_id);
     `
 
+/**
+ * Advising: meetings, goals, follow-ups and grades an advisee earned elsewhere. All of it is about a
+ * student, so it lives in the vault and goes when the student does. A deleted meeting or goal leaves
+ * its follow-ups behind (the link is cleared); they still belong to the student.
+ */
+const VAULT_V2_SQL = `
+      CREATE TABLE advising_meetings (
+        id         INTEGER PRIMARY KEY,
+        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        met_on     TEXT NOT NULL,
+        topic      TEXT NOT NULL DEFAULT '',
+        notes      TEXT NOT NULL DEFAULT '',
+        summary    TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_meetings_student ON advising_meetings(student_id, met_on);
+
+      CREATE TABLE goals (
+        id          INTEGER PRIMARY KEY,
+        student_id  INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        title       TEXT NOT NULL,
+        details     TEXT NOT NULL DEFAULT '',
+        target_date TEXT,
+        status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'achieved', 'dropped')),
+        created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_goals_student ON goals(student_id);
+
+      CREATE TABLE action_items (
+        id           INTEGER PRIMARY KEY,
+        student_id   INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        meeting_id   INTEGER REFERENCES advising_meetings(id) ON DELETE SET NULL,
+        goal_id      INTEGER REFERENCES goals(id) ON DELETE SET NULL,
+        title        TEXT NOT NULL,
+        due_date     TEXT,
+        owner        TEXT NOT NULL DEFAULT 'student' CHECK (owner IN ('student', 'me')),
+        completed_on TEXT,
+        created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_actions_student ON action_items(student_id);
+      CREATE INDEX idx_actions_meeting ON action_items(meeting_id);
+
+      CREATE TABLE external_progress (
+        id          INTEGER PRIMARY KEY,
+        student_id  INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        course      TEXT NOT NULL,
+        term        TEXT NOT NULL DEFAULT '',
+        grade       TEXT NOT NULL DEFAULT '',
+        source      TEXT NOT NULL DEFAULT '',
+        recorded_on TEXT,
+        created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_progress_student ON external_progress(student_id);
+    `
+
 export const PUBLIC_MIGRATIONS: Migration[] = [{ version: 1, name: 'settings', sql: SETTINGS_SQL }]
 
 export const VAULT_MIGRATIONS: Migration[] = [
-  { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL }
+  { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL },
+  { version: 2, name: 'advising', sql: VAULT_V2_SQL }
 ]
 
 /**

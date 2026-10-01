@@ -1445,3 +1445,95 @@ td .badge:first-child {
   color: #8a8f9c;
   font-size: 3vh;
 }
+
+/* ---- advising ---- */
+.adv-section {
+  margin: 0 0 20px;
+}
+.adv-section h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.adv-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adv-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.adv-grow {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.adv-done .adv-grow {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.adv-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.adv-add input[type='text'] {
+  flex: 1;
+  min-width: 160px;
+}
+.adv-side-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adv-flag {
+  color: #ff9a94;
+}
+.meeting-mode {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+.meeting-context {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 14px;
+  border-right: 1px solid var(--line);
+}
+.meeting-work {
+  min-height: 0;
+  overflow: auto;
+}
+.meeting-work .adv-section {
+  margin-top: 18px;
+}
+.meeting-work textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+}
+.meeting-quote {
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.copy-text {
+  width: 100%;
+  min-height: 220px;
+}

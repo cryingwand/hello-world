@@ -19,7 +19,8 @@ const tables = (db: Database.Database): string[] =>
     .map((r) => r.name)
     .sort()
 
-const VAULT_TABLES = [
+/** What the single-database app (before the vault) held; the legacy schema is frozen at this. */
+const V1_TABLES = [
   'assignments',
   'classes',
   'enrollments',
@@ -29,6 +30,8 @@ const VAULT_TABLES = [
   'students',
   'terms'
 ]
+const ADVISING_TABLES = ['action_items', 'advising_meetings', 'external_progress', 'goals']
+const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES].sort()
 
 describe('migrations', () => {
   it('build a public database that holds settings and nothing about students', () => {
@@ -49,7 +52,7 @@ describe('migrations', () => {
   it('keeps the legacy single-database schema equal to public plus vault', () => {
     const legacy = new Database(':memory:')
     legacy.exec(LEGACY_SCHEMA_SQL)
-    expect(tables(legacy)).toEqual([...VAULT_TABLES, 'settings'].sort())
+    expect(tables(legacy)).toEqual([...V1_TABLES, 'settings'].sort())
   })
 
   it('are idempotent', () => {
@@ -74,25 +77,37 @@ describe('migrations', () => {
   it('roll a failing migration back and leave the version untouched', () => {
     const db = new Database(':memory:')
     migrate(db, VAULT_MIGRATIONS)
+    const v = latestVersion(VAULT_MIGRATIONS)
     const bad = [
       ...VAULT_MIGRATIONS,
-      { version: 2, name: 'bad', sql: 'CREATE TABLE ok (a); CREATE TABLE ok (a);' }
+      { version: v + 1, name: 'bad', sql: 'CREATE TABLE ok (a); CREATE TABLE ok (a);' }
     ]
     expect(() => migrate(db, bad)).toThrow()
-    expect(db.pragma('user_version', { simple: true })).toBe(1)
+    expect(db.pragma('user_version', { simple: true })).toBe(v)
     expect(tables(db)).not.toContain('ok')
   })
 
   it('upgrade an existing database without losing data', () => {
     const db = openVaultDatabase(':memory:')
     db.prepare("INSERT INTO terms (name) VALUES ('Keep me')").run()
+    const v = latestVersion(VAULT_MIGRATIONS) + 1
     const next = [
       ...VAULT_MIGRATIONS,
-      { version: 2, name: 'add col', sql: 'ALTER TABLE terms ADD COLUMN note TEXT' }
+      { version: v, name: 'add col', sql: 'ALTER TABLE terms ADD COLUMN note TEXT' }
     ]
     migrate(db, next)
     expect(db.prepare('SELECT name FROM terms').get()).toEqual({ name: 'Keep me' })
-    expect(db.pragma('user_version', { simple: true })).toBe(2)
+    expect(db.pragma('user_version', { simple: true })).toBe(v)
+  })
+
+  it('add the advising tables to a version 1 vault without touching its data', () => {
+    const db = new Database(':memory:')
+    migrate(db, VAULT_MIGRATIONS.slice(0, 1))
+    db.prepare("INSERT INTO students (first_name, tags) VALUES ('Ada', '[\"advisee\"]')").run()
+    expect(tables(db)).toEqual(V1_TABLES)
+    migrate(db, VAULT_MIGRATIONS)
+    expect(tables(db)).toEqual(VAULT_TABLES)
+    expect(db.prepare('SELECT first_name FROM students').get()).toEqual({ first_name: 'Ada' })
   })
 
   it('enable foreign keys on connections opened by the app', () => {

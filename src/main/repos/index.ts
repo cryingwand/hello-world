@@ -1,3 +1,4 @@
+import { advisingRepo } from './advising'
 import { classesRepo } from './classes'
 import { fileLinksRepo } from './fileLinks'
 import { gradingRepo } from './grading'
@@ -59,6 +60,7 @@ export function createVaultRepositories(db: Db, emit: Emit) {
     terms: termsRepo(db, emit),
     students: studentsRepo(db, emit),
     classes: classesRepo(db, emit),
+    advising: advisingRepo(db, emit),
     grading: gradingRepo(db, emit),
     fileLinks: fileLinksRepo(db, emit)
   }

@@ -3,7 +3,7 @@ import type { Student } from '@shared/models'
 import * as v from '../validate'
 import type { Db, Emit } from './types'
 
-interface Row {
+export interface StudentRow {
   id: number
   first_name: string
   last_name: string
@@ -13,7 +13,7 @@ interface Row {
   tags: string
 }
 
-const toStudent = (r: Row): Student => ({
+export const toStudent = (r: StudentRow): Student => ({
   id: r.id,
   firstName: r.first_name,
   lastName: r.last_name,
@@ -32,7 +32,7 @@ function cleanNames(first: unknown, last: unknown): { first: string; last: strin
 
 export function studentsRepo(db: Db, emit: Emit) {
   const get = (id: number): Student | null => {
-    const r = db.prepare('SELECT * FROM students WHERE id = ?').get(id) as Row | undefined
+    const r = db.prepare('SELECT * FROM students WHERE id = ?').get(id) as StudentRow | undefined
     return r ? toStudent(r) : null
   }
   const must = (id: number): Student => {
@@ -65,7 +65,7 @@ export function studentsRepo(db: Db, emit: Emit) {
       }
       const sql = `SELECT s.* FROM ${from} ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ORDER BY s.last_name COLLATE NOCASE, s.first_name COLLATE NOCASE, s.id`
-      return (db.prepare(sql).all(...args) as Row[]).map(toStudent)
+      return (db.prepare(sql).all(...args) as StudentRow[]).map(toStudent)
     },
     create(input: StudentInput): Student {
       const { first, last } = cleanNames(input?.firstName, input?.lastName)
@@ -118,6 +118,7 @@ export function studentsRepo(db: Db, emit: Emit) {
       emit('students.changed')
       emit('enrollments.changed')
       emit('scores.changed')
+      emit('advising.changed') // meetings, goals and follow-ups cascade
     }
   }
 }

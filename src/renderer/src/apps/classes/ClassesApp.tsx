@@ -302,6 +302,10 @@ export default function ClassesApp({ intent, intentNonce }: AppProps): React.JSX
             })
             close()
           }}
+          onOpenAdvising={(studentId) => {
+            dispatchIntent({ type: 'open-advisee', studentId })
+            close()
+          }}
           onClose={close}
           onSaved={close}
         />
