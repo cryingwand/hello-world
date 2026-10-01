@@ -5,6 +5,8 @@ movable windows, where apps (Classes & Rosters, Files, Gradebook, Advising, Quiz
 Planner, and later the In-class Tools and so on) share local SQLite data. Student data never leaves the machine, and it is kept in a separate,
 passcode-locked **Vault** so that nothing you present can reach it.
 
+**To install it on your Mac and start using it, follow [`docs/START_HERE.md`](./docs/START_HERE.md).**
+
 Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
 
 ## What is in Phases 1 to 5
@@ -131,6 +133,9 @@ npm test           # Vitest suites
 npm run lint       # ESLint
 npm run typecheck  # main/preload and renderer
 npm run build      # typecheck, bundle, and produce an unsigned .app in release/
+npm run check      # format, lint, typecheck and tests
+npm run smoke      # launch the real app with throwaway data and drive it
+npm run install:mac  # build, sign and install in /Applications (see docs/START_HERE.md)
 ```
 
 `npm run build` writes `release/mac-arm64/Teaching OS.app` (or `mac/` on Intel). If macOS refuses to open

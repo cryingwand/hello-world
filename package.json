@@ -13,6 +13,7 @@
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
     "build": "npm run typecheck && electron-vite build && electron-builder --mac --dir",
+    "install:mac": "sh scripts/install-mac.sh",
     "build:renderer": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint .",

@@ -1,0 +1,62 @@
+# Mac checklist
+
+These are the parts of Teaching OS that only a person on a Mac can check: Spotlight, window snapping,
+Touch ID, displays and sleep. Everything else is covered by the automated tests and the smoke test (see
+`CLAUDE.md`, Commands). Tick each box after you have tried it. If something fails, write down what you
+expected, what happened, and what you did just before, and give that to Claude Code.
+
+Use your real setup (the installed app, your own folders) but it is fine to use a fake class.
+
+## Files and search
+
+- [ ] Search for a file name you know. Results in your teaching folders come first.
+- [ ] Turn on **Teaching folders only**. Files elsewhere disappear.
+- [ ] Preview a PDF, an image, a `.docx` and an `.xlsx` inside Files.
+- [ ] **Open in Preview** on a PDF. Preview opens and snaps to the right half, with Teaching OS on the
+      left. (The first time, macOS asks for Accessibility and Automation access. Allow both, then try
+      again.)
+- [ ] The same with a Word file in Word and a spreadsheet in Excel.
+- [ ] **Restore full screen** puts the Teaching OS window back to full size.
+
+## The Vault
+
+- [ ] Lock the Vault with **Lock**. Its window closes.
+- [ ] Open it with your passcode, then with Touch ID if you turned it on.
+- [ ] Enter a wrong passcode five times. It asks you to wait, and quitting and reopening the app does not
+      reset the wait.
+- [ ] Leave the Vault open and lock the screen (Ctrl+Cmd+Q). When you come back, the Vault is locked.
+- [ ] The same after closing the lid (sleep).
+- [ ] Set **Lock when idle** to 2 minutes and leave it alone. It locks.
+
+## Displays and the Stage
+
+- [ ] With the Vault open, plug in the projector (or a second screen) as an **extended** display. The
+      Vault locks straight away, and the Presenter offers the Stage.
+- [ ] Opening the Vault while the projector is connected asks you first.
+- [ ] In the Presenter, queue a PDF, an image and a Word file, then **Start**. They show on the
+      projector, not on your laptop.
+- [ ] `]` and `[` move between files, `B` blanks the screen, the arrow keys page through a PDF, `Esc`
+      ends the Stage.
+- [ ] While the Stage is showing, the Vault will not open, and notifications do not pop up.
+- [ ] Try to queue a file from a protected folder. It is refused.
+- [ ] Cmd+Shift+P starts and ends the Stage.
+
+## Exports and protected folders
+
+- [ ] Export a gradebook to Excel from the Gradebook. The save dialog opens in a protected folder.
+- [ ] Choose your Desktop instead. It warns you first. Choose **Save here anyway** and the file is saved.
+- [ ] Export a quiz answer key and a lesson deck, and open each in Word and PowerPoint. Both look right
+      (Palatino, the header line, the lists).
+
+## Backups
+
+- [ ] Settings shows a recent backup. **Back up now** adds one.
+- [ ] In the Vault, delete a test student, then restore the backup from just before (Settings, Restore
+      the Vault). The Vault closes; reopen it and the student is back.
+- [ ] Quit and reopen the app. Your windows, data and settings are as you left them.
+
+## In-class Tools
+
+- [ ] **Load a class** fills the picker with the names of a class in the current term.
+- [ ] Start a 1-minute timer, switch to the picker tab and back. The timer kept running, and it beeps at
+      zero.

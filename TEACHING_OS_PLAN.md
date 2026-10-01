@@ -270,3 +270,33 @@ tag lives on the student record. Instead, decided with the teacher:
 Not built: editing rosters from the everyday window, email in the copy, and showing the roster anywhere
 other than In-class Tools.
 
+
+## Review and hardening (after Phase 5)
+
+A review of Phases 1 to 5, before any more features. Decided with the teacher:
+
+| Topic | Decision |
+|---|---|
+| What the Vault is for | Keeping student data, grades and exams **off the projector**. It is not meant to stop someone using the Mac, so the database stays unencrypted (FileVault covers the disk) |
+| Presenting | Extended display. The Stage is an experiment in presenting differently; that slides are not shown is expected |
+| Records kept in Excel today | Grades and attendance. Grades come in through the existing importers; attendance stays in Excel for now |
+| Audience | University teaching, so parent contact is out of scope |
+
+Fixed:
+
+- **Backups you can restore**: retention of 14 days, then weekly for 16 weeks and monthly for a year; each
+  backup checked before it is kept; Restore the Vault in Vault Settings; a backup before every delete,
+  overwriting import and unenroll (`VAULT_DESTRUCTIVE`), refused if it cannot be taken.
+- The planner keeps typing on screen when a save is refused (it used to put the saved text back).
+- Exports from the Vault save into a protected folder by default and ask before saving anywhere else.
+- The names-only roster copy holds only classes still being taught.
+- Leaks of Vault backups to the extra backup folder, and the pre-Vault copy kept forever: in a separate
+  change.
+
+Workflow: CI on Linux and macOS, a smoke test that drives the real app, `npm run check`, `npm run
+install:mac`, `docs/START_HERE.md`, `docs/MAC_CHECKLIST.md`, and per-app notes moved out of `CLAUDE.md`
+into `docs/features/`.
+
+Ideas recorded, not built: **Stage views** for the timer, picker and groups (so they can be projected); a
+**Today** view (today's lessons, follow-ups due, ungraded work); **ending a term** (archive, roll over); a
+**grade scale** with letter grades and an export for the school's system; a **week view** for lessons.
