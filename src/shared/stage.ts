@@ -1,4 +1,5 @@
 import type { FileKind } from './files'
+import type { TimerState } from './tools'
 
 /** Main pushes the full state to the Presenter (launcher) whenever it changes. */
 export const STAGE_STATE_CHANNEL = 'teachingos:stage-state'
@@ -18,6 +19,13 @@ export const isStageKind = (kind: FileKind): kind is StageKind =>
 
 export const MAX_STAGE_ITEMS = 100
 
+/**
+ * An In-class Tool shown full screen on the Stage in place of the current file. It holds only the
+ * names being shown, and main keeps it in memory until it is put away or the Stage ends.
+ */
+export type StageTool = { kind: 'picker'; name: string } | { kind: 'groups'; groups: string[][] }
+export type StageToolKind = StageTool['kind']
+
 export interface StageItemInfo {
   name: string
   kind: StageKind
@@ -34,6 +42,10 @@ export interface StageState {
   externalDisplays: number
   /** The setting that lets a newly connected display prompt a Stage offer. */
   offerEnabled: boolean
+  /** The tool showing full screen in place of the file, if any. */
+  tool: StageToolKind | null
+  /** The timer is showing in the corner. */
+  timer: boolean
 }
 
 /** What the audience sees. */
@@ -55,7 +67,12 @@ export interface StageView {
   blanked: boolean
   index: number
   count: number
+  /** Null while blanked or while a tool is showing in its place. */
   content: StageContent | null
+  /** A tool showing full screen instead of the file. Null while blanked. */
+  tool: StageTool | null
+  /** The timer in the corner, counted down by the Stage from its clock. Null while blanked. */
+  timer: TimerState | null
 }
 
 export type StageKeyAction = 'next' | 'previous' | 'blank' | 'end'

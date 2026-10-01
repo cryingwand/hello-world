@@ -297,6 +297,17 @@ Workflow: CI on Linux and macOS, a smoke test that drives the real app, `npm run
 install:mac`, `docs/START_HERE.md`, `docs/MAC_CHECKLIST.md`, and per-app notes moved out of `CLAUDE.md`
 into `docs/features/`.
 
-Ideas recorded, not built: **Stage views** for the timer, picker and groups (so they can be projected); a
-**Today** view (today's lessons, follow-ups due, ungraded work); **ending a term** (archive, roll over); a
+Ideas recorded, not built: a **Today** view (today's lessons, follow-ups due, ungraded work); **ending a term** (archive, roll over); a
 **grade scale** with letter grades and an export for the school's system; a **week view** for lessons.
+
+## Stage views for the In-class Tools
+
+Requested after the review. Decided with the teacher:
+
+| Topic | Decision |
+|---|---|
+| How | The timer floats in a corner over whatever is showing; a picked name or the groups replace the file full screen, and Esc, Next or "Back to the file" returns to it |
+| Which | Timer, random picker and groups. The seating chart stays on the laptop |
+| Names | Sent to main only for a Stage that is already showing, held in memory, dropped when it ends. Only the drawn name goes up from the picker, never the list |
+
+Not built: the seating chart on the Stage, and a timer sound on the projector's side (the laptop beeps).

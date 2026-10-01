@@ -185,6 +185,9 @@ export const API_ACCESS = {
     previous: LAUNCHER,
     goto: LAUNCHER,
     blank: LAUNCHER,
+    // In-class Tools put names on the projector: only the everyday window, only while presenting.
+    showTool: LAUNCHER,
+    setTimer: LAUNCHER,
     view: STAGE
   }
 } as const satisfies { [N in keyof ApiContract]: { [M in keyof ApiContract[N]]: Access } }

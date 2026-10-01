@@ -1,5 +1,6 @@
 // Launches the built app and drives it the way a person would, to catch what unit tests cannot: the
-// main process wiring, the windows, the preload bridge and every app's first render.
+// main process wiring, the windows, the preload bridge, every app's first render, the Vault and its
+// backups, and the Stage with the In-class Tools on it.
 //
 //   npx electron-vite build && node scripts/smoke.mjs
 //
@@ -74,6 +75,18 @@ const openApp = async (page, name) => {
     .click()
   await page.waitForFunction((n) => document.querySelectorAll('.window').length > n, before)
 }
+
+/**
+ * Presses a key on the Stage the way a keyboard does. Playwright's own key presses skip Electron's
+ * before-input-event, which is where the Stage handles its keys, so they would prove nothing.
+ */
+const stageKey = (keyCode) =>
+  app.evaluate(({ BrowserWindow }, code) => {
+    const win = BrowserWindow.getAllWindows().find((w) => w.getTitle().endsWith('Stage'))
+    win?.webContents.sendInputEvent({ type: 'keyDown', keyCode: code })
+    // Escape can end the Stage on the way down, closing the window before the key comes up.
+    if (win && !win.isDestroyed()) win.webContents.sendInputEvent({ type: 'keyUp', keyCode: code })
+  }, keyCode)
 
 let current = null
 try {
@@ -156,6 +169,50 @@ try {
   await vault.getByRole('button', { name: 'Lock' }).click()
   await gone
   current = launcher
+
+  log('the Stage opens, and the In-class Tools put a timer, a pick and groups on it')
+  const [stage] = await Promise.all([
+    app.waitForEvent('window'),
+    launcher.evaluate(() => window.api.stage.start())
+  ])
+  watch(stage, 'stage')
+  const tools = launcher.getByRole('navigation', { name: 'Apps' })
+  await tools.getByRole('button', { name: 'In-class Tools', exact: true }).click()
+  await launcher.getByRole('tab', { name: 'Timer' }).click()
+  await launcher.getByRole('button', { name: 'Show on the Stage' }).click()
+  await stage.locator('.stage-timer').waitFor()
+  await launcher.getByRole('button', { name: 'Start', exact: true }).click()
+
+  await launcher.getByRole('tab', { name: 'Groups' }).click()
+  await launcher
+    .getByRole('textbox', { name: /Names, one per line/ })
+    .fill('Ada\nBen\nCy\nDi\nEd\nFlo')
+  await launcher.getByRole('button', { name: 'Make groups' }).click()
+  await launcher.getByRole('button', { name: 'Show on the Stage' }).click()
+  await stage.locator('.stage-group').first().waitFor()
+  const groups = await stage.locator('.stage-group').count()
+  check(groups === 4, `expected 4 groups on the Stage, saw ${groups}`)
+  check((await stage.locator('.stage-timer').count()) === 1, 'the timer left the Stage')
+  await stage.screenshot({ path: join(shots, '04-stage-groups.png') })
+
+  await launcher.getByRole('tab', { name: 'Picker' }).click()
+  await launcher.getByLabel('Show each pick on the Stage').check()
+  await launcher.getByRole('button', { name: 'Pick someone' }).click()
+  await stage.locator('.stage-pick').waitFor()
+  const picked = await stage.locator('.stage-pick').innerText()
+  check(['Ada', 'Ben', 'Cy', 'Di', 'Ed', 'Flo'].includes(picked), `picked ${picked}`)
+  await stageKey('Escape') // puts the pick away, keeps the Stage
+  await stage.locator('.stage-pick').waitFor({ state: 'detached' })
+  check(await launcher.evaluate(() => window.api.stage.state().then((s) => s.active)), 'Esc ended')
+
+  const ended = stage.waitForEvent('close')
+  await stageKey('Escape')
+  await ended
+  const stageAfter = await launcher.evaluate(() => window.api.stage.state())
+  check(
+    !stageAfter.active && !stageAfter.tool && !stageAfter.timer,
+    'the Stage kept tools after ending'
+  )
 
   check(problems.length === 0, `errors while running:\n  ${problems.join('\n  ')}`)
   console.log('Smoke test passed.')

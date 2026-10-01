@@ -153,7 +153,11 @@ never sees a path. Keys (`]` `[` `B` `Esc`, arrows and space except inside a PDF
 through `before-input-event`, so they work while a PDF has focus. The menu accelerator (Cmd/Ctrl+Shift+P)
 starts and ends it. System notifications go through `createNotifier` (`src/main/notifier.ts`), never
 `new Notification`, so they are held while the Stage is showing. Slides and spreadsheets are opened in
-their own app from Files; the Stage does not show them.
+their own app from Files; the Stage does not show them. The In-class Tools can also put a timer in the corner
+and a picked name or groups in place of the file (`stage.setTimer` / `stage.showTool`, only while it is
+showing, cleared when it ends); see [`docs/features/in-class-tools.md`](docs/features/in-class-tools.md).
+Playwright's own key presses skip `before-input-event`, so the smoke test presses Stage keys with
+`webContents.sendInputEvent`.
 
 ## Adding to the data API
 

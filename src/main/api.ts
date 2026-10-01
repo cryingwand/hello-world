@@ -197,6 +197,8 @@ export function createApi(deps: ApiDeps): ApiContract {
       previous: () => stage.previous(),
       goto: (index) => stage.goto(index),
       blank: (on) => stage.blank(on),
+      showTool: (tool) => stage.showTool(tool),
+      setTimer: (timer) => stage.setTimer(timer),
       view: () => stage.view()
     },
     gradebook: {

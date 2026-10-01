@@ -556,3 +556,132 @@ describe('serving files to the stage', () => {
     await expect(t.svc.resolveServed(url('/0'))).rejects.toThrow(PROTECTED_MESSAGE)
   })
 })
+
+describe('In-class Tools on the stage', () => {
+  const groups = [
+    ['Ada', 'Ben'],
+    ['Cy', 'Di']
+  ]
+  const running = (msLeft: number) => ({
+    status: 'running' as const,
+    durationMs: 300_000,
+    remainingMs: 300_000,
+    endsAt: Date.now() + msLeft
+  })
+
+  it('refuses until the stage is showing, so names never wait in main for a later start', async () => {
+    const t = setup()
+    expect(() => t.svc.showTool({ kind: 'picker', name: 'Ada' })).toThrow(/Start the Stage/)
+    expect(() => t.svc.setTimer(running(60_000))).toThrow(/Start the Stage/)
+    expect(t.svc.state()).toMatchObject({ tool: null, timer: false })
+  })
+
+  it('shows a tool full screen in place of the file, and tells the presenter which', async () => {
+    const t = setup()
+    await t.svc.add([t.files.txt])
+    t.svc.start()
+    t.svc.showTool({ kind: 'groups', groups })
+    const v = await t.svc.view()
+    expect(v.content).toBeNull()
+    expect(v.tool).toEqual({ kind: 'groups', groups })
+    expect(t.svc.state()).toMatchObject({ tool: 'groups', timer: false })
+    t.svc.showTool(null)
+    expect((await t.svc.view()).content).toMatchObject({ kind: 'text' })
+  })
+
+  it('floats the timer over the file, and keeps it while moving between files', async () => {
+    const t = setup()
+    await t.svc.add([t.files.txt, t.files.md])
+    t.svc.start()
+    const timer = running(60_000)
+    t.svc.setTimer(timer)
+    t.svc.next()
+    const v = await t.svc.view()
+    expect(v.content).toMatchObject({ name: 'Warmup.md' })
+    expect(v.timer).toEqual(timer)
+    expect(t.svc.state().timer).toBe(true)
+    t.svc.setTimer(null)
+    expect((await t.svc.view()).timer).toBeNull()
+  })
+
+  it('moving to a file puts the tool away', async () => {
+    const t = setup()
+    await t.svc.add([t.files.txt, t.files.md])
+    t.svc.start()
+    for (const move of [() => t.svc.next(), () => t.svc.previous(), () => t.svc.goto(1)]) {
+      t.svc.showTool({ kind: 'picker', name: 'Ada' })
+      move()
+      expect(t.svc.state().tool).toBeNull()
+    }
+  })
+
+  it('Escape puts the tool away first, then ends the stage', async () => {
+    const t = setup()
+    t.svc.start()
+    t.svc.showTool({ kind: 'picker', name: 'Ada' })
+    expect(t.svc.handleKey({ key: 'Escape' })).toBe(true)
+    expect(t.svc.isActive()).toBe(true)
+    expect(t.svc.state().tool).toBeNull()
+    t.svc.handleKey({ key: 'Escape' })
+    expect(t.svc.isActive()).toBe(false)
+  })
+
+  it('Escape ends a blanked stage straight away, even with a tool up behind the blank', () => {
+    const t = setup()
+    t.svc.start()
+    t.svc.showTool({ kind: 'picker', name: 'Ada' })
+    t.svc.blank(true)
+    t.svc.handleKey({ key: 'Escape' })
+    expect(t.svc.isActive()).toBe(false)
+  })
+
+  it('blanking hides the tool and the timer too', async () => {
+    const t = setup()
+    t.svc.start()
+    t.svc.showTool({ kind: 'picker', name: 'Ada' })
+    t.svc.setTimer(running(60_000))
+    t.svc.blank(true)
+    expect(await t.svc.view()).toMatchObject({ content: null, tool: null, timer: null })
+    t.svc.blank(false)
+    expect((await t.svc.view()).tool).toEqual({ kind: 'picker', name: 'Ada' })
+  })
+
+  it('forgets the names and the timer when the stage ends', async () => {
+    const t = setup()
+    t.svc.start()
+    t.svc.showTool({ kind: 'groups', groups })
+    t.svc.setTimer(running(60_000))
+    t.svc.end()
+    t.svc.start()
+    expect(await t.svc.view()).toMatchObject({ tool: null, timer: null })
+  })
+
+  it('checks what it is sent', () => {
+    const t = setup()
+    t.svc.start()
+    const bad: unknown[] = [
+      { kind: 'picker', name: '' },
+      { kind: 'picker', name: 'x'.repeat(81) },
+      { kind: 'picker', name: 42 },
+      { kind: 'groups', groups: [] },
+      { kind: 'groups', groups: [[]] },
+      { kind: 'groups', groups: [['Ada', { toString: () => 'x' }]] },
+      { kind: 'groups', groups: [Array.from({ length: 201 }, (_, i) => `N${i}`)] },
+      { kind: 'seating' },
+      'Ada'
+    ]
+    for (const b of bad) expect(() => t.svc.showTool(b as never), JSON.stringify(b)).toThrow()
+    const badTimers: unknown[] = [
+      { ...running(1000), status: 'exploding' },
+      { ...running(1000), endsAt: null },
+      { ...running(1000), endsAt: Date.now() + 2 * 24 * 3_600_000 },
+      { ...running(1000), durationMs: -1 },
+      { ...running(1000), remainingMs: Number.NaN }
+    ]
+    for (const b of badTimers) expect(() => t.svc.setTimer(b as never), JSON.stringify(b)).toThrow()
+    expect(t.svc.state()).toMatchObject({ tool: null, timer: false })
+    // A paused timer carries no end time, whatever was sent.
+    t.svc.setTimer({ status: 'paused', durationMs: 60_000, remainingMs: 30_000, endsAt: 5 })
+    expect(t.svc.state().timer).toBe(true)
+  })
+})

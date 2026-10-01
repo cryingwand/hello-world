@@ -60,3 +60,10 @@ Use your real setup (the installed app, your own folders) but it is fine to use 
 - [ ] **Load a class** fills the picker with the names of a class in the current term.
 - [ ] Start a 1-minute timer, switch to the picker tab and back. The timer kept running, and it beeps at
       zero.
+- [ ] With the Stage showing on the projector, **Show on the Stage** in the Timer tab puts the timer in
+      the corner, over a PDF. Start, pause and add a minute: the projector follows straight away, and the
+      timer stays while you move to the next file.
+- [ ] Tick **Show each pick on the Stage** and pick someone: only the chosen name appears on the
+      projector, large.
+- [ ] Make groups for a real-sized class and **Show on the Stage**: every name is readable from the back
+      of the room and nothing is cut off. Esc goes back to the file; Esc again ends the Stage.

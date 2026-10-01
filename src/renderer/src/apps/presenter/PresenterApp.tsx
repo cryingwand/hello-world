@@ -162,6 +162,34 @@ export default function PresenterApp(_props: AppProps): React.JSX.Element {
             Stage keys: ] and [ for next and previous, B to blank, Esc to end.
           </span>
         </div>
+        {active && (stage?.tool || stage?.timer) && (
+          <div className="row stage-controls">
+            {stage.tool && (
+              <>
+                <span>
+                  Showing the {stage.tool === 'picker' ? 'picked name' : 'groups'} instead of the
+                  file.
+                </span>
+                <button className="btn" onClick={() => run(window.api.stage.showTool(null))}>
+                  Back to the file
+                </button>
+              </>
+            )}
+            {stage.timer && (
+              <>
+                <span>The timer is in the corner.</span>
+                <button className="btn" onClick={() => run(window.api.stage.setTimer(null))}>
+                  Take it off
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {active && !stage?.tool && !stage?.timer && (
+          <p className="hint">
+            The timer, picked names and groups can go on the Stage from In-class Tools.
+          </p>
+        )}
 
         <h3 className="group">Queue ({items.length})</h3>
         {items.length === 0 ? (

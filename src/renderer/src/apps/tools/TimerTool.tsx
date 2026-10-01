@@ -11,6 +11,7 @@ import {
   timerTick,
   type TimerState
 } from '@shared/tools'
+import { timerOnStage, useStageLink } from './stageLink'
 
 const PRESETS = [1, 2, 3, 5, 10, 15, 20, 30]
 
@@ -43,6 +44,12 @@ export default function TimerTool(): React.JSX.Element {
   const [custom, setCustom] = useState('')
   const [customError, setCustomError] = useState(false)
   const [sound, setSound] = useState(true)
+  const stage = useStageLink()
+
+  // While the timer is on the Stage, every change goes there too; the Stage counts down by itself.
+  useEffect(() => {
+    if (stage.timer) timerOnStage(state).catch(() => undefined)
+  }, [state, stage.timer])
 
   useEffect(() => {
     if (state.status !== 'running') return
@@ -140,6 +147,15 @@ export default function TimerTool(): React.JSX.Element {
           onClick={() => act((s, t) => timerAdd(s, -60_000, t))}
         >
           − 1 min
+        </button>
+        <span className="spacer" />
+        <button
+          className={`btn${stage.timer ? ' btn-primary' : ''}`}
+          disabled={!stage.showing}
+          title={stage.showing ? undefined : 'Start the Stage in the Presenter first'}
+          onClick={() => timerOnStage(stage.timer ? null : state).catch(() => undefined)}
+        >
+          {stage.timer ? 'Take off the Stage' : 'Show on the Stage'}
         </button>
       </div>
 

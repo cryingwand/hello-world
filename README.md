@@ -53,7 +53,9 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   picker** (everyone goes once before anyone repeats), a **group maker** (by number of groups or people per
   group, sizes never differ by more than one) and a **seating chart** (random seats, click two desks to swap,
   resize without moving anyone). The picker, groups and seating chart take names you type or paste, or load a
-  whole class. The names are kept in memory only, never saved by the tool, and are gone when you quit.
+  whole class. The names are kept in memory only, never saved by the tool, and are gone when you quit. While the Stage is showing,
+  the timer can go in its corner (over whatever file is up) and a picked name or the groups can go up full
+  screen in place of the file; Esc or Next goes back to the file.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
@@ -86,6 +88,8 @@ presenting window cannot reach.
   files, click to queue them, then Start the Stage. Keys: `]` and `[` for next and previous, `B` to blank,
   `Esc` to end; arrows and space also move between files, except inside a PDF, where they page through
   it. Open slides and spreadsheets from Files in PowerPoint or Excel instead; the Stage does not show them.
+  From In-class Tools you can add a timer in the corner, or show a picked name or groups instead of the
+  file.
 - **Protected folders**: in the Vault, open Protected Files and choose the folders that hold exams,
   quizzes and answer keys. Outside the Vault those files are missing from search, refused by every preview
   and by the file picker, and cannot be queued on the Stage, whether or not the Vault is locked. Inside the
