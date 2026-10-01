@@ -140,7 +140,11 @@ export function createApi(deps: ApiDeps): ApiContract {
       duplicate: (id, options) => repos().lessons.duplicate(id, options),
       move: (id, unitId) => repos().lessons.move(id, unitId),
       linkQuiz: (id, quizId) => repos().lessons.linkQuiz(id, quizId),
-      unlinkQuiz: (id, quizId) => repos().lessons.unlinkQuiz(id, quizId)
+      unlinkQuiz: (id, quizId) => repos().lessons.unlinkQuiz(id, quizId),
+      linkClass: (id, classId) => repos().lessons.linkClass(id, classId),
+      unlinkClass: (id, classId) => repos().lessons.unlinkClass(id, classId),
+      linkAssignment: (id, assignmentId) => repos().lessons.linkAssignment(id, assignmentId),
+      unlinkAssignment: (id, assignmentId) => repos().lessons.unlinkAssignment(id, assignmentId)
     },
     grading: {
       categories: (classId) => repos().grading.categories(classId),

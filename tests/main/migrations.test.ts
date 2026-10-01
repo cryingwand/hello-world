@@ -32,7 +32,13 @@ const V1_TABLES = [
 ]
 const ADVISING_TABLES = ['action_items', 'advising_meetings', 'external_progress', 'goals']
 const QUIZ_TABLES = ['questions', 'quiz_items', 'quizzes']
-const PLANNER_TABLES = ['lesson_quizzes', 'lessons', 'units']
+const PLANNER_TABLES = [
+  'lesson_assignments',
+  'lesson_classes',
+  'lesson_quizzes',
+  'lessons',
+  'units'
+]
 const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES, ...PLANNER_TABLES].sort()
 
 describe('migrations', () => {
@@ -144,6 +150,23 @@ describe('migrations', () => {
     expect(
       (db.pragma('index_list(file_links)') as { name: string }[]).map((i) => i.name)
     ).toContain('idx_file_links_record')
+  })
+
+  it('add lesson links to a version 4 vault, keeping its units, lessons and quiz links', () => {
+    const db = new Database(':memory:')
+    migrate(db, VAULT_MIGRATIONS.slice(0, 4))
+    db.prepare("INSERT INTO units (title) VALUES ('Ethics')").run()
+    db.prepare("INSERT INTO lessons (unit_id, position, title) VALUES (1, 0, 'Day 1')").run()
+    db.prepare("INSERT INTO quizzes (kind, title) VALUES ('quiz', 'Quiz 1')").run()
+    db.prepare('INSERT INTO lesson_quizzes (lesson_id, quiz_id) VALUES (1, 1)').run()
+    expect(tables(db)).not.toContain('lesson_classes')
+    migrate(db, VAULT_MIGRATIONS)
+    expect(tables(db)).toEqual(VAULT_TABLES)
+    expect(db.prepare('SELECT title FROM lessons').get()).toEqual({ title: 'Day 1' })
+    expect(db.prepare('SELECT lesson_id, quiz_id FROM lesson_quizzes').get()).toEqual({
+      lesson_id: 1,
+      quiz_id: 1
+    })
   })
 
   it('keep the question bank, quizzes and planner out of the public database', () => {

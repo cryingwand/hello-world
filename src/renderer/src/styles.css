@@ -1728,3 +1728,19 @@ td .badge:first-child {
 .pl-upcoming {
   overflow: auto;
 }
+.pl-class {
+  align-items: flex-start;
+}
+.pl-class-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.pl-class-head .pl-path {
+  flex: 1;
+  min-width: 80px;
+}
+.pl-class .adv-list {
+  margin: 6px 0 4px;
+}

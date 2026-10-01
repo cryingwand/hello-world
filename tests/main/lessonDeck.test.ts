@@ -322,3 +322,32 @@ describe('lessonService', () => {
     )
   })
 })
+
+describe('what a deck leaves out', () => {
+  it('never mentions the classes or Gradebook assignments a lesson is linked to', async () => {
+    const env = makeEnv()
+    const term = env.repos.terms.create({ name: 'Fall 2026' })
+    const cls = env.repos.classes.create({
+      termId: term.id,
+      course: 'Secret Section Alpha',
+      gradingMode: 'points'
+    })
+    const hw = env.repos.grading.createAssignment({
+      classId: cls.id,
+      title: 'Hidden Homework Title',
+      pointsPossible: 5
+    })
+    const unit = env.repos.units.create({ title: 'Ethics' })
+    const lesson = env.repos.lessons.create({ unitId: unit.id, title: 'Day 1', plan: 'Discuss' })
+    env.repos.lessons.linkClass(lesson.id, cls.id)
+    env.repos.lessons.linkAssignment(lesson.id, hw.id)
+    const zip = await JSZip.loadAsync(await lessonDeck(env.repos.units.get(unit.id)!, null))
+    let all = ''
+    for (const name of Object.keys(zip.files)) {
+      if (!zip.files[name].dir) all += await zip.files[name].async('string')
+    }
+    expect(all).toContain('Discuss')
+    expect(all).not.toContain('Secret Section Alpha')
+    expect(all).not.toContain('Hidden Homework Title')
+  })
+})

@@ -157,7 +157,9 @@ describe('lessons', () => {
       plan: 'Warm-up\nLecture',
       homework: 'Read ch. 1',
       notes: 'Remember the projector',
-      quizzes: []
+      quizzes: [],
+      classes: [],
+      assignments: []
     })
     expect(two).toMatchObject({ position: 1, date: null, plan: '' })
     expect(lessonTitles(env, unit.id)).toEqual(['Day 1', 'Day 2'])
@@ -671,5 +673,238 @@ describe('moving a lesson to another unit', () => {
     env.events.length = 0
     env.repos.lessons.move(a.id, other.id)
     expect(env.events.map((e) => e.name)).toEqual(['planner.changed'])
+  })
+})
+
+/** A current term with two classes, each with a couple of assignments, and a lesson to link. */
+function classesAndLesson(env: TestEnv) {
+  const term = env.repos.terms.create({ name: 'Fall 2026', isCurrent: true })
+  const old = env.repos.terms.create({ name: 'Fall 2025' })
+  const p3 = env.repos.classes.create({
+    termId: term.id,
+    course: 'PHIL 101',
+    period: '3',
+    gradingMode: 'points'
+  })
+  const p5 = env.repos.classes.create({
+    termId: term.id,
+    course: 'PHIL 101',
+    period: '5',
+    gradingMode: 'points'
+  })
+  const last = env.repos.classes.create({
+    termId: old.id,
+    course: 'PHIL 101',
+    period: '2',
+    gradingMode: 'points'
+  })
+  const hw3 = env.repos.grading.createAssignment({
+    classId: p3.id,
+    title: 'HW 1',
+    pointsPossible: 10
+  })
+  const quiz3 = env.repos.grading.createAssignment({
+    classId: p3.id,
+    title: 'Quiz 1',
+    pointsPossible: 20,
+    dueDate: '2026-10-02'
+  })
+  const hw5 = env.repos.grading.createAssignment({
+    classId: p5.id,
+    title: 'HW 1',
+    pointsPossible: 10
+  })
+  const unit = env.repos.units.create({ title: 'Ethics', course: 'PHIL 101' })
+  const lesson = env.repos.lessons.create({ unitId: unit.id, title: 'Day 1' })
+  env.events.length = 0
+  return { term, p3, p5, last, hw3, quiz3, hw5, unit, lesson }
+}
+
+describe('linking a lesson to classes and Gradebook assignments', () => {
+  it('starts with no links', () => {
+    const env = makeEnv()
+    const { lesson } = classesAndLesson(env)
+    expect(lesson.classes).toEqual([])
+    expect(lesson.assignments).toEqual([])
+  })
+
+  it('links a class and describes it', () => {
+    const env = makeEnv()
+    const { lesson, p3 } = classesAndLesson(env)
+    const linked = env.repos.lessons.linkClass(lesson.id, p3.id)
+    expect(linked.classes).toEqual([
+      { id: p3.id, course: 'PHIL 101', section: '', period: '3', termName: 'Fall 2026' }
+    ])
+    expect(env.events.map((e) => e.name)).toEqual(['planner.changed'])
+  })
+
+  it('lists linked classes with the current term first, then by period', () => {
+    const env = makeEnv()
+    const { lesson, p3, p5, last } = classesAndLesson(env)
+    for (const c of [last, p5, p3]) env.repos.lessons.linkClass(lesson.id, c.id)
+    const classes = env.repos.units.get(lesson.unitId)!.lessons[0].classes
+    expect(classes.map((c) => c.id)).toEqual([p3.id, p5.id, last.id])
+  })
+
+  it('linking a class twice is harmless', () => {
+    const env = makeEnv()
+    const { lesson, p3 } = classesAndLesson(env)
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    expect(env.repos.lessons.linkClass(lesson.id, p3.id).classes).toHaveLength(1)
+  })
+
+  it('links an assignment only once its class is linked', () => {
+    const env = makeEnv()
+    const { lesson, p3, hw3 } = classesAndLesson(env)
+    expect(() => env.repos.lessons.linkAssignment(lesson.id, hw3.id)).toThrow(/Link the lesson to/)
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    const linked = env.repos.lessons.linkAssignment(lesson.id, hw3.id)
+    expect(linked.assignments).toEqual([
+      { id: hw3.id, classId: p3.id, title: 'HW 1', pointsPossible: 10, dueDate: null }
+    ])
+  })
+
+  it('does not accept an assignment from a class that is not linked, even if another is', () => {
+    const env = makeEnv()
+    const { lesson, p3, hw5 } = classesAndLesson(env)
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    expect(() => env.repos.lessons.linkAssignment(lesson.id, hw5.id)).toThrow(/Link the lesson to/)
+    expect(env.repos.units.get(lesson.unitId)!.lessons[0].assignments).toEqual([])
+  })
+
+  it('lists assignments in the Gradebook order, and links twice harmlessly', () => {
+    const env = makeEnv()
+    const { lesson, p3, hw3, quiz3 } = classesAndLesson(env)
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    env.repos.lessons.linkAssignment(lesson.id, quiz3.id)
+    env.repos.lessons.linkAssignment(lesson.id, hw3.id)
+    const again = env.repos.lessons.linkAssignment(lesson.id, hw3.id)
+    expect(again.assignments.map((a) => a.title)).toEqual(['HW 1', 'Quiz 1'])
+  })
+
+  it('shows an assignment’s new title, points and due date straight away', () => {
+    const env = makeEnv()
+    const { lesson, p3, hw3 } = classesAndLesson(env)
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    env.repos.lessons.linkAssignment(lesson.id, hw3.id)
+    env.repos.grading.updateAssignment(hw3.id, {
+      title: 'Homework one',
+      pointsPossible: 12,
+      dueDate: '2026-10-05'
+    })
+    expect(env.repos.units.get(lesson.unitId)!.lessons[0].assignments[0]).toMatchObject({
+      title: 'Homework one',
+      pointsPossible: 12,
+      dueDate: '2026-10-05'
+    })
+  })
+
+  it('unlinking a class also unlinks its assignments, and only its own', () => {
+    const env = makeEnv()
+    const { lesson, p3, p5, hw3, hw5 } = classesAndLesson(env)
+    for (const c of [p3, p5]) env.repos.lessons.linkClass(lesson.id, c.id)
+    env.repos.lessons.linkAssignment(lesson.id, hw3.id)
+    env.repos.lessons.linkAssignment(lesson.id, hw5.id)
+    const after = env.repos.lessons.unlinkClass(lesson.id, p3.id)
+    expect(after.classes.map((c) => c.id)).toEqual([p5.id])
+    expect(after.assignments.map((a) => a.id)).toEqual([hw5.id])
+    // Nothing in the Gradebook was touched.
+    expect(env.repos.grading.assignments(p3.id)).toHaveLength(2)
+  })
+
+  it('unlinks one assignment and leaves the class linked', () => {
+    const env = makeEnv()
+    const { lesson, p3, hw3, quiz3 } = classesAndLesson(env)
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    env.repos.lessons.linkAssignment(lesson.id, hw3.id)
+    env.repos.lessons.linkAssignment(lesson.id, quiz3.id)
+    const after = env.repos.lessons.unlinkAssignment(lesson.id, hw3.id)
+    expect(after.assignments.map((a) => a.id)).toEqual([quiz3.id])
+    expect(after.classes).toHaveLength(1)
+  })
+
+  it('refuses ids that do not exist', () => {
+    const env = makeEnv()
+    const { lesson, p3 } = classesAndLesson(env)
+    expect(() => env.repos.lessons.linkClass(9999, p3.id)).toThrow(/lesson no longer exists/)
+    expect(() => env.repos.lessons.linkClass(lesson.id, 9999)).toThrow(/class no longer exists/)
+    expect(() => env.repos.lessons.linkClass(lesson.id, 'x' as never)).toThrow(/valid id/)
+    expect(() => env.repos.lessons.linkAssignment(lesson.id, 9999)).toThrow(/assignment no longer/)
+    expect(() => env.repos.lessons.unlinkClass(9999, p3.id)).toThrow(/no longer exists/)
+    expect(() => env.repos.lessons.unlinkAssignment(9999, 1)).toThrow(/no longer exists/)
+  })
+
+  describe('when something on either side is deleted', () => {
+    const linked = (env: TestEnv) => {
+      const ctx = classesAndLesson(env)
+      env.repos.lessons.linkClass(ctx.lesson.id, ctx.p3.id)
+      env.repos.lessons.linkAssignment(ctx.lesson.id, ctx.hw3.id)
+      return ctx
+    }
+    const lessonNow = (env: TestEnv, unitId: number) => env.repos.units.get(unitId)!.lessons[0]
+
+    it('deleting the class removes the class and its assignment links, nothing else', () => {
+      const env = makeEnv()
+      const { unit, p3, lesson } = linked(env)
+      env.repos.lessons.update(lesson.id, { notes: 'keep me' })
+      env.repos.classes.delete(p3.id)
+      expect(lessonNow(env, unit.id)).toMatchObject({
+        classes: [],
+        assignments: [],
+        notes: 'keep me'
+      })
+    })
+
+    it('deleting an assignment removes only that link', () => {
+      const env = makeEnv()
+      const { unit, hw3 } = linked(env)
+      env.repos.grading.deleteAssignment(hw3.id)
+      const l = lessonNow(env, unit.id)
+      expect(l.assignments).toEqual([])
+      expect(l.classes).toHaveLength(1)
+    })
+
+    it('deleting the lesson or the unit never touches the Gradebook', () => {
+      const env = makeEnv()
+      const { unit, lesson, p3 } = linked(env)
+      env.repos.lessons.delete(lesson.id)
+      expect(env.repos.grading.assignments(p3.id)).toHaveLength(2)
+      expect(env.repos.classes.get(p3.id)).not.toBeNull()
+      expect(env.db.prepare('SELECT COUNT(*) AS n FROM lesson_classes').get()).toEqual({ n: 0 })
+      expect(env.db.prepare('SELECT COUNT(*) AS n FROM lesson_assignments').get()).toEqual({ n: 0 })
+      const other = env.repos.lessons.create({ unitId: unit.id, title: 'Again' })
+      env.repos.lessons.linkClass(other.id, p3.id)
+      env.repos.units.delete(unit.id)
+      expect(env.db.prepare('SELECT COUNT(*) AS n FROM lesson_classes').get()).toEqual({ n: 0 })
+      expect(env.repos.grading.assignments(p3.id)).toHaveLength(2)
+    })
+  })
+
+  it('go with a lesson that is moved, but not into a copy', () => {
+    const env = makeEnv()
+    const { lesson, p3, hw3, unit } = classesAndLesson(env)
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    env.repos.lessons.linkAssignment(lesson.id, hw3.id)
+    const other = env.repos.units.create({ title: 'Logic' })
+    const moved = env.repos.lessons.move(lesson.id, other.id)
+    expect(moved.classes.map((c) => c.id)).toEqual([p3.id])
+    expect(moved.assignments.map((a) => a.id)).toEqual([hw3.id])
+    // A copy is a plan for a different class or day: it starts with no Gradebook links.
+    const copy = env.repos.lessons.duplicate(lesson.id)
+    expect(copy.classes).toEqual([])
+    expect(copy.assignments).toEqual([])
+    const copiedUnit = env.repos.units.duplicate(other.id)
+    expect(
+      copiedUnit.lessons.every((l) => l.classes.length === 0 && l.assignments.length === 0)
+    ).toBe(true)
+    expect(unit.id).not.toBe(other.id)
+  })
+
+  it('appear on the upcoming list', () => {
+    const env = makeEnv()
+    const { lesson, p3 } = classesAndLesson(env)
+    env.repos.lessons.update(lesson.id, { date: '2999-01-02' })
+    env.repos.lessons.linkClass(lesson.id, p3.id)
+    expect(env.repos.units.upcoming()[0].lesson.classes.map((c) => c.id)).toEqual([p3.id])
   })
 })

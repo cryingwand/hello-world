@@ -147,6 +147,14 @@ CHECK together. `units.upcoming()` is dated lessons from `localToday()` on, capp
 `units.duplicate` copies a unit with its lessons in order, the same quizzes linked (a quiz is shared, never
 copied) and the same files attached, in one transaction; lesson dates are cleared unless the options keep
 them or shift them by whole days (`CopyDates`, `copiedDate` in `src/shared/lesson.ts`, worked in UTC).
+`lesson_classes` and `lesson_assignments` (vault migration 5) link a lesson to the classes it is taught to
+and to the Gradebook assignments that go with it (`lessons.linkClass` / `linkAssignment` and the unlinks):
+an assignment can only be linked once its class is, and unlinking a class drops that class's assignment
+links. They are pointers only: both cascade from every side, deleting a lesson or unit never touches the
+Gradebook, and the planner UI refetches on `classes.changed` and `assignments.changed` instead of the
+Gradebook repositories emitting `planner.changed`. A copy of a lesson or unit starts with no class or
+assignment links (they belong to one class's scores); a moved lesson keeps them. The `open-gradebook`
+intent (handled by the Gradebook) opens a class there. The PowerPoint never mentions classes or assignments.
 `lessons.duplicate` puts a copy right after the original and `lessons.move` appends a lesson to another
 unit (its quizzes and files go with it, the old unit is renumbered). `useAutosave().flush()` returns a
 promise that resolves when every save so far has landed: await it before any action that reads the saved

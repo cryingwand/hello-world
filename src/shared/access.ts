@@ -100,7 +100,11 @@ export const API_ACCESS = {
     duplicate: VAULT,
     move: VAULT,
     linkQuiz: VAULT,
-    unlinkQuiz: VAULT
+    unlinkQuiz: VAULT,
+    linkClass: VAULT,
+    unlinkClass: VAULT,
+    linkAssignment: VAULT,
+    unlinkAssignment: VAULT
   },
   grading: {
     categories: VAULT,

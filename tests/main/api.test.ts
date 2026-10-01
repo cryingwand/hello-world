@@ -199,6 +199,28 @@ describe('api wiring', () => {
     expect((await api.units.upcoming())[0].lesson.id).toBe(lesson.id)
   })
 
+  it('links a lesson to a class and its assignments through the API', async () => {
+    const { api, ready } = env()
+    await ready
+    const term = await api.terms.create({ name: 'T' })
+    const cls = await api.classes.create({ termId: term.id, course: 'Bio', gradingMode: 'points' })
+    const hw = await api.grading.createAssignment({
+      classId: cls.id,
+      title: 'HW',
+      pointsPossible: 5
+    })
+    const unit = await api.units.create({ title: 'Cells' })
+    const lesson = await api.lessons.create({ unitId: unit.id, title: 'Day 1' })
+    await expect(
+      Promise.resolve().then(() => api.lessons.linkAssignment(lesson.id, hw.id))
+    ).rejects.toThrow(/Link the lesson/)
+    await api.lessons.linkClass(lesson.id, cls.id)
+    const linked = await api.lessons.linkAssignment(lesson.id, hw.id)
+    expect(linked.classes.map((c) => c.id)).toEqual([cls.id])
+    expect(linked.assignments.map((a) => a.id)).toEqual([hw.id])
+    expect((await api.lessons.unlinkClass(lesson.id, cls.id)).assignments).toEqual([])
+  })
+
   it('refuses every vault method while the vault is locked', async () => {
     const { api, manager } = env({ unlocked: false })
     expect(manager.isUnlocked()).toBe(false)

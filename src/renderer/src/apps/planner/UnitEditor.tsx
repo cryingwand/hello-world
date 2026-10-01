@@ -36,7 +36,7 @@ export default function UnitEditor({
   const unit = useApiQuery(
     () => window.api.units.get(unitId),
     [unitId],
-    ['planner.changed', 'quizzes.changed']
+    ['planner.changed', 'quizzes.changed', 'classes.changed', 'assignments.changed']
   )
   const u = unit.data
   if (!u) {

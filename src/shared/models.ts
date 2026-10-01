@@ -242,6 +242,24 @@ export interface LinkedQuiz {
   date: string | null
 }
 
+/** A class a lesson is taught to. Just enough to name it. */
+export interface LinkedClass {
+  id: number
+  course: string
+  section: string
+  period: string
+  termName: string
+}
+
+/** A Gradebook assignment that goes with a lesson (its homework or quiz). */
+export interface LinkedAssignment {
+  id: number
+  classId: number
+  title: string
+  pointsPossible: number
+  dueDate: string | null
+}
+
 export interface Lesson {
   id: number
   unitId: number
@@ -258,6 +276,10 @@ export interface Lesson {
   /** For the teacher only: become speaker notes in the PowerPoint. */
   notes: string
   quizzes: LinkedQuiz[]
+  /** The classes it is taught to. */
+  classes: LinkedClass[]
+  /** Gradebook assignments for it. Each is in one of `classes`. */
+  assignments: LinkedAssignment[]
 }
 
 export interface UnitDetail extends Unit {

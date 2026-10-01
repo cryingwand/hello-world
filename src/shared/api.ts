@@ -361,6 +361,13 @@ export interface ApiContract {
     /** Records that the lesson uses a quiz or exam. Linking twice is harmless. */
     linkQuiz(id: number, quizId: number): Lesson
     unlinkQuiz(id: number, quizId: number): Lesson
+    /** Records that the lesson is taught to a class. Linking twice is harmless. */
+    linkClass(id: number, classId: number): Lesson
+    /** Also unlinks the lesson from that class's assignments. */
+    unlinkClass(id: number, classId: number): Lesson
+    /** The assignment's class must already be linked to the lesson. */
+    linkAssignment(id: number, assignmentId: number): Lesson
+    unlinkAssignment(id: number, assignmentId: number): Lesson
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -545,7 +552,19 @@ export const API_METHODS = {
     'upcoming',
     'exportPowerPoint'
   ],
-  lessons: ['create', 'update', 'delete', 'duplicate', 'move', 'linkQuiz', 'unlinkQuiz'],
+  lessons: [
+    'create',
+    'update',
+    'delete',
+    'duplicate',
+    'move',
+    'linkQuiz',
+    'unlinkQuiz',
+    'linkClass',
+    'unlinkClass',
+    'linkAssignment',
+    'unlinkAssignment'
+  ],
   grading: [
     'categories',
     'createCategory',

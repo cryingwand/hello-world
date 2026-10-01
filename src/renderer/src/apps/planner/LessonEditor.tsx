@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Lesson } from '@shared/models'
 import { useApiQuery } from '@renderer/data/hooks'
 import AttachedFiles from './AttachedFiles'
+import ClassLinks from './ClassLinks'
 import QuizLinks from './QuizLinks'
 import { useAutosave } from './useAutosave'
 
@@ -160,6 +161,7 @@ export default function LessonEditor({
         </label>
       </div>
       <QuizLinks lesson={lesson} onError={onError} />
+      <ClassLinks lesson={lesson} onError={onError} />
       <AttachedFiles recordType="lesson" recordId={lesson.id} onError={onError} />
     </div>
   )

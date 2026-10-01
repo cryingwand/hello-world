@@ -253,13 +253,35 @@ const VAULT_V4_SQL = `
       CREATE INDEX idx_file_links_record ON file_links(record_type, record_id);
     `
 
+/**
+ * A lesson is taught to one or more classes and can point at the Gradebook assignments that go with it
+ * (the homework, the quiz). Both links are only that: deleting a class or an assignment removes the link,
+ * and deleting a lesson never touches the Gradebook. They cascade from every side.
+ */
+const VAULT_V5_SQL = `
+      CREATE TABLE lesson_classes (
+        lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        class_id  INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+        PRIMARY KEY (lesson_id, class_id)
+      );
+      CREATE INDEX idx_lesson_classes_class ON lesson_classes(class_id);
+
+      CREATE TABLE lesson_assignments (
+        lesson_id     INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+        PRIMARY KEY (lesson_id, assignment_id)
+      );
+      CREATE INDEX idx_lesson_assignments_assignment ON lesson_assignments(assignment_id);
+    `
+
 export const PUBLIC_MIGRATIONS: Migration[] = [{ version: 1, name: 'settings', sql: SETTINGS_SQL }]
 
 export const VAULT_MIGRATIONS: Migration[] = [
   { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL },
   { version: 2, name: 'advising', sql: VAULT_V2_SQL },
   { version: 3, name: 'questions and quizzes', sql: VAULT_V3_SQL },
-  { version: 4, name: 'units and lessons', sql: VAULT_V4_SQL }
+  { version: 4, name: 'units and lessons', sql: VAULT_V4_SQL },
+  { version: 5, name: 'lessons linked to classes and assignments', sql: VAULT_V5_SQL }
 ]
 
 /**
