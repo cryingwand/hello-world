@@ -128,6 +128,7 @@ export function createApi(deps: ApiDeps): ApiContract {
       create: (input) => repos().units.create(input),
       update: (id, patch) => repos().units.update(id, patch),
       delete: (id) => repos().units.delete(id),
+      duplicate: (id, options) => repos().units.duplicate(id, options),
       reorder: (id, lessonIds) => repos().units.reorder(id, lessonIds),
       upcoming: () => repos().units.upcoming(),
       exportPowerPoint: (id, lessonId) => lessons().exportPowerPoint(id, lessonId)
@@ -136,6 +137,8 @@ export function createApi(deps: ApiDeps): ApiContract {
       create: (input) => repos().lessons.create(input),
       update: (id, patch) => repos().lessons.update(id, patch),
       delete: (id) => repos().lessons.delete(id),
+      duplicate: (id, options) => repos().lessons.duplicate(id, options),
+      move: (id, unitId) => repos().lessons.move(id, unitId),
       linkQuiz: (id, quizId) => repos().lessons.linkQuiz(id, quizId),
       unlinkQuiz: (id, quizId) => repos().lessons.unlinkQuiz(id, quizId)
     },

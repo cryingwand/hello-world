@@ -47,3 +47,33 @@ export function dateSpan(first: string | null, last: string | null): string {
   if (a === '' || b === '') return a || b
   return a === b ? a : `${a} – ${b}`
 }
+
+/** What a copy does with the dates on the lessons it makes. Clearing is the default: a copy is for later. */
+export type CopyDates = { mode: 'keep' } | { mode: 'clear' } | { mode: 'shift'; days: number }
+
+/** Furthest a copy may move its dates: about ten years either way. */
+export const MAX_SHIFT_DAYS = 3660
+
+/** A YYYY-MM-DD date moved by whole days, worked in UTC so a daylight-saving change can never move it. */
+export function shiftDate(date: string | null, days: number): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date ?? '')
+  if (!m) return null
+  const t = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + days))
+  const p = (n: number, width = 2): string => String(n).padStart(width, '0')
+  return `${p(t.getUTCFullYear(), 4)}-${p(t.getUTCMonth() + 1)}-${p(t.getUTCDate())}`
+}
+
+/** A copied lesson's date under the chosen rule. */
+export function copiedDate(date: string | null, dates: CopyDates): string | null {
+  if (dates.mode === 'keep') return date
+  if (dates.mode === 'shift') return shiftDate(date, dates.days)
+  return null
+}
+
+/** "Day 1" -> "Day 1 (copy)", cut so the result still fits in `max` characters. */
+export function copyTitle(title: string, max = 200): string {
+  const suffix = ' (copy)'
+  return title.length + suffix.length <= max
+    ? title + suffix
+    : title.slice(0, max - suffix.length).trimEnd() + suffix
+}

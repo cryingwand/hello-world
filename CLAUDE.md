@@ -144,6 +144,13 @@ quiz. Attached files use `file_links` with record types `unit` and `lesson` (mig
 since SQLite cannot change a CHECK); links are not foreign keys, so the planner clears them with the
 record and emits `fileLinks.changed`. Add a record type to `TABLE` in `fileLinks.ts` and the migration's
 CHECK together. `units.upcoming()` is dated lessons from `localToday()` on, capped at `UPCOMING_LIMIT`.
+`units.duplicate` copies a unit with its lessons in order, the same quizzes linked (a quiz is shared, never
+copied) and the same files attached, in one transaction; lesson dates are cleared unless the options keep
+them or shift them by whole days (`CopyDates`, `copiedDate` in `src/shared/lesson.ts`, worked in UTC).
+`lessons.duplicate` puts a copy right after the original and `lessons.move` appends a lesson to another
+unit (its quizzes and files go with it, the old unit is renumbered). `useAutosave().flush()` returns a
+promise that resolves when every save so far has landed: await it before any action that reads the saved
+text (a copy), because it is otherwise fire-and-forget.
 PowerPoint export is `src/main/lessonDeck.ts` (house style in the comment at the top; pure, returns a
 buffer) behind `lessonService.exportPowerPoint`, which asks for the path through an injected
 `pickSaveFile`, for a whole unit or one lesson. Only quiz titles are written, never questions or answers,

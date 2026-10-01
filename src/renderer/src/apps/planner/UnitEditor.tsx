@@ -4,6 +4,7 @@ import type { UnitDetail } from '@shared/models'
 import ErrorBanner from '@renderer/components/ErrorBanner'
 import { useApiQuery } from '@renderer/data/hooks'
 import AttachedFiles from './AttachedFiles'
+import CopyUnitDialog from './CopyUnitDialog'
 import LessonEditor from './LessonEditor'
 import { useAutosave } from './useAutosave'
 
@@ -14,14 +15,21 @@ export default function UnitEditor({
   unitId,
   lessonId,
   onSelectLesson,
-  onDeleted
+  onDeleted,
+  onCopied,
+  onMoved
 }: {
   unitId: number
   lessonId: number | null
   onSelectLesson: (id: number | null) => void
   onDeleted: () => void
+  /** A copy of the unit was made: show it. */
+  onCopied: (unitId: number) => void
+  /** A lesson was moved to another unit: show it there. */
+  onMoved: (unitId: number, lessonId: number) => void
 }): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
+  const [copying, setCopying] = useState(false)
   const [exporting, setExporting] = useState<'unit' | 'lesson' | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
 
@@ -89,6 +97,9 @@ export default function UnitEditor({
             onClick={() => exportDeck('unit')}
           >
             {exporting === 'unit' ? 'Saving…' : 'PowerPoint for the unit'}
+          </button>
+          <button className="btn" onClick={() => setCopying(true)}>
+            Copy unit…
           </button>
           <button className="btn btn-danger" onClick={remove}>
             Delete
@@ -158,13 +169,27 @@ export default function UnitEditor({
           key={selected.id}
           lesson={selected}
           onError={(m) => setError(m)}
+          unitId={u.id}
           onDeleted={() => onSelectLesson(null)}
+          onCopied={(id) => onSelectLesson(id)}
+          onMoved={(unit) => onMoved(unit, selected.id)}
           onExport={() => exportDeck('lesson')}
           exporting={exporting === 'lesson'}
         />
       )}
 
       <AttachedFiles recordType="unit" recordId={u.id} onError={(m) => setError(m)} />
+
+      {copying && (
+        <CopyUnitDialog
+          unit={u}
+          onClose={() => setCopying(false)}
+          onCopied={(id) => {
+            setCopying(false)
+            onCopied(id)
+          }}
+        />
+      )}
 
       <p className="hint">
         A saved PowerPoint is an ordinary file, with your lesson notes as speaker notes and the

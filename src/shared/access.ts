@@ -88,11 +88,20 @@ export const API_ACCESS = {
     create: VAULT,
     update: VAULT,
     delete: VAULT,
+    duplicate: VAULT,
     reorder: VAULT,
     upcoming: VAULT,
     exportPowerPoint: VAULT
   },
-  lessons: { create: VAULT, update: VAULT, delete: VAULT, linkQuiz: VAULT, unlinkQuiz: VAULT },
+  lessons: {
+    create: VAULT,
+    update: VAULT,
+    delete: VAULT,
+    duplicate: VAULT,
+    move: VAULT,
+    linkQuiz: VAULT,
+    unlinkQuiz: VAULT
+  },
   grading: {
     categories: VAULT,
     createCategory: VAULT,

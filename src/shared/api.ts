@@ -11,6 +11,7 @@ import type {
 } from './files'
 import type { QuizVersion } from './quiz'
 import type { QuizForm } from './quizForms'
+import type { CopyDates } from './lesson'
 import type { StageState, StageView } from './stage'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
@@ -204,6 +205,17 @@ export interface LessonInput {
   notes?: string
 }
 
+export interface UnitCopyInput {
+  /** Defaults to the original's title with "(copy)". */
+  title?: string
+  /** Defaults to clearing them. */
+  dates?: CopyDates
+}
+
+export interface LessonCopyInput {
+  dates?: CopyDates
+}
+
 export interface SystemInfo {
   dataDir: string
   dbPath: string
@@ -322,6 +334,11 @@ export interface ApiContract {
     update(id: number, patch: Patch<UnitInput>): UnitDetail
     /** Takes its lessons, and their attached-file links, with it. Quizzes are untouched. */
     delete(id: number): void
+    /**
+     * A new unit with copies of its lessons, in order, with the same quizzes linked and the same
+     * files attached. Lesson dates are cleared unless the options keep or shift them.
+     */
+    duplicate(id: number, options?: UnitCopyInput): UnitDetail
     /** Every lesson in the unit, in the new order. */
     reorder(id: number, lessonIds: number[]): UnitDetail
     /** Lessons dated today or later, soonest first. */
@@ -337,6 +354,10 @@ export interface ApiContract {
     create(input: LessonInput): Lesson
     update(id: number, patch: Patch<Omit<LessonInput, 'unitId'>>): Lesson
     delete(id: number): void
+    /** Copies a lesson (quizzes and files too) to just after the original, with its date cleared by default. */
+    duplicate(id: number, options?: LessonCopyInput): Lesson
+    /** Moves a lesson to the end of another unit. Its quizzes and files go with it. */
+    move(id: number, unitId: number): Lesson
     /** Records that the lesson uses a quiz or exam. Linking twice is harmless. */
     linkQuiz(id: number, quizId: number): Lesson
     unlinkQuiz(id: number, quizId: number): Lesson
@@ -513,8 +534,18 @@ export const API_METHODS = {
     'createAssignment',
     'exportWord'
   ],
-  units: ['list', 'get', 'create', 'update', 'delete', 'reorder', 'upcoming', 'exportPowerPoint'],
-  lessons: ['create', 'update', 'delete', 'linkQuiz', 'unlinkQuiz'],
+  units: [
+    'list',
+    'get',
+    'create',
+    'update',
+    'delete',
+    'duplicate',
+    'reorder',
+    'upcoming',
+    'exportPowerPoint'
+  ],
+  lessons: ['create', 'update', 'delete', 'duplicate', 'move', 'linkQuiz', 'unlinkQuiz'],
   grading: [
     'categories',
     'createCategory',

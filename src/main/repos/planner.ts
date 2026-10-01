@@ -1,6 +1,13 @@
 import { localToday } from '@shared/advising'
-import type { LessonInput, UnitInput } from '@shared/api'
-import { MAX_LESSONS, UPCOMING_LIMIT } from '@shared/lesson'
+import type { LessonCopyInput, LessonInput, UnitCopyInput, UnitInput } from '@shared/api'
+import {
+  MAX_LESSONS,
+  MAX_SHIFT_DAYS,
+  UPCOMING_LIMIT,
+  copiedDate,
+  copyTitle,
+  type CopyDates
+} from '@shared/lesson'
 import type {
   Lesson,
   LinkedQuiz,
@@ -53,6 +60,21 @@ const toUnit = (r: UnitRow): Unit => ({
 // A lesson's plan can run to a page of steps; the rest are short.
 const MAX_PLAN = 20000
 const MAX_TEXT = 10000
+
+/** The date rule for a copy. Nothing given means clear them: a copy is for later. */
+function copyDates(value: unknown): CopyDates {
+  if (value == null) return { mode: 'clear' }
+  const d = value as { mode?: unknown; days?: unknown }
+  const mode = v.oneOf(d.mode, ['keep', 'clear', 'shift'] as const, 'Dates')
+  if (mode !== 'shift') return { mode }
+  const days = v.num(d.days, 'Days', -MAX_SHIFT_DAYS)
+  if (!Number.isInteger(days) || days > MAX_SHIFT_DAYS) {
+    throw new v.ValidationError(
+      `Move the dates by a whole number of days, up to ${MAX_SHIFT_DAYS} either way`
+    )
+  }
+  return { mode, days }
+}
 
 /** Units, the lessons in them and the quizzes a lesson uses. One repository, two API namespaces. */
 export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday) {
@@ -132,6 +154,56 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
       )
       .run(...params).changes
 
+  /**
+   * Copies one lesson row into a unit at a position, with the same quizzes linked and the same files
+   * attached (a quiz is shared, not copied). Returns the new lesson and how many file links were made.
+   */
+  const copyLesson = (
+    row: LessonRow,
+    unitId: number,
+    position: number,
+    title: string,
+    dates: CopyDates
+  ): { id: number; links: number } => {
+    const res = db
+      .prepare(
+        `INSERT INTO lessons (unit_id, position, title, lesson_date, objectives, plan, homework, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        unitId,
+        position,
+        title,
+        copiedDate(row.lesson_date, dates),
+        row.objectives,
+        row.plan,
+        row.homework,
+        row.notes
+      )
+    const newId = Number(res.lastInsertRowid)
+    db.prepare(
+      'INSERT INTO lesson_quizzes (lesson_id, quiz_id) SELECT ?, quiz_id FROM lesson_quizzes WHERE lesson_id = ?'
+    ).run(newId, row.id)
+    const links = db
+      .prepare(
+        `INSERT OR IGNORE INTO file_links (path, record_type, record_id)
+         SELECT path, 'lesson', ? FROM file_links WHERE record_type = 'lesson' AND record_id = ?`
+      )
+      .run(newId, row.id).changes
+    return { id: newId, links }
+  }
+  const lessonRow = (id: number): LessonRow => {
+    const r = db.prepare('SELECT * FROM lessons WHERE id = ?').get(id) as LessonRow | undefined
+    if (!r) throw new v.ValidationError('That lesson no longer exists')
+    return r
+  }
+  const lessonCount = (unitId: number): number =>
+    (
+      db.prepare('SELECT COUNT(*) AS n FROM lessons WHERE unit_id = ?').get(unitId) as {
+        n: number
+      }
+    ).n
+
   return {
     units: {
       list(): UnitSummary[] {
@@ -204,6 +276,39 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         })()
         emit('planner.changed')
         if (cleared > 0) emit('fileLinks.changed')
+      },
+
+      /** A new unit with its lessons copied in order, for planning the same course again. */
+      duplicate(rawId: number, options?: UnitCopyInput): UnitDetail {
+        const id = v.id(rawId)
+        const source = mustUnit(id)
+        const title =
+          options?.title !== undefined
+            ? v.reqStr(options.title, 'Title', 200)
+            : copyTitle(source.title)
+        const dates = copyDates(options?.dates)
+        const { newId, linked } = db.transaction(() => {
+          const res = db
+            .prepare('INSERT INTO units (title, course, summary) VALUES (?, ?, ?)')
+            .run(title, source.course, source.summary)
+          const made = Number(res.lastInsertRowid)
+          let links = db
+            .prepare(
+              `INSERT OR IGNORE INTO file_links (path, record_type, record_id)
+               SELECT path, 'unit', ? FROM file_links WHERE record_type = 'unit' AND record_id = ?`
+            )
+            .run(made, id).changes
+          const lessons = db
+            .prepare('SELECT * FROM lessons WHERE unit_id = ? ORDER BY position, id')
+            .all(id) as LessonRow[]
+          lessons.forEach((l, i) => {
+            links += copyLesson(l, made, i, l.title, dates).links
+          })
+          return { newId: made, linked: links }
+        })()
+        emit('planner.changed')
+        if (linked > 0) emit('fileLinks.changed')
+        return detail(newId)
       },
 
       reorder(rawId: number, rawLessonIds: number[]): UnitDetail {
@@ -316,6 +421,57 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         })()
         emit('planner.changed')
         if (cleared > 0) emit('fileLinks.changed')
+      },
+
+      /** Copied to just after the original; its quizzes and files come too, its date does not by default. */
+      duplicate(rawId: number, options?: LessonCopyInput): Lesson {
+        const id = v.id(rawId)
+        const source = lessonRow(id)
+        const dates = copyDates(options?.dates)
+        if (lessonCount(source.unit_id) >= MAX_LESSONS) {
+          throw new v.ValidationError('That unit has too many lessons')
+        }
+        const { newId, linked } = db.transaction(() => {
+          db.prepare(
+            'UPDATE lessons SET position = position + 1 WHERE unit_id = ? AND position > ?'
+          ).run(source.unit_id, source.position)
+          const copy = copyLesson(
+            source,
+            source.unit_id,
+            source.position + 1,
+            copyTitle(source.title),
+            dates
+          )
+          renumber(source.unit_id)
+          return { newId: copy.id, linked: copy.links }
+        })()
+        emit('planner.changed')
+        if (linked > 0) emit('fileLinks.changed')
+        return mustLesson(newId)
+      },
+
+      /** To the end of another unit. Its quizzes and attached files stay with it. */
+      move(rawId: number, rawUnitId: number): Lesson {
+        const id = v.id(rawId)
+        const unitId = v.id(rawUnitId, 'Unit')
+        const source = lessonRow(id)
+        mustUnit(unitId)
+        if (unitId === source.unit_id) {
+          throw new v.ValidationError('That lesson is already in this unit')
+        }
+        if (lessonCount(unitId) >= MAX_LESSONS) {
+          throw new v.ValidationError('That unit has too many lessons')
+        }
+        db.transaction(() => {
+          db.prepare(
+            `UPDATE lessons SET unit_id = ?,
+               position = (SELECT COALESCE(MAX(position), -1) + 1 FROM lessons WHERE unit_id = ?)
+             WHERE id = ?`
+          ).run(unitId, unitId, id)
+          renumber(source.unit_id)
+        })()
+        emit('planner.changed')
+        return mustLesson(id)
       },
 
       /** Quizzes can be used by more than one lesson (a review, say). Linking twice is harmless. */

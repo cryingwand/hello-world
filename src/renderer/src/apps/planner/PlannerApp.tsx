@@ -102,6 +102,14 @@ export default function PlannerApp(): React.JSX.Element {
                     setUnitId(null)
                     setLessonId(null)
                   }}
+                  onCopied={(id) => {
+                    setUnitId(id)
+                    setLessonId(null)
+                  }}
+                  onMoved={(unit, lesson) => {
+                    setUnitId(unit)
+                    setLessonId(lesson)
+                  }}
                 />
               ) : (
                 <div className="placeholder">

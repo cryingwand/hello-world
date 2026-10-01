@@ -14,7 +14,8 @@ export function useAutosave<T extends Record<string, string>>(
 ): {
   draft: T
   set: (field: keyof T, value: string) => void
-  flush: () => void
+  /** Saves what has not been saved. Resolves once that save, and any already on its way, has landed. */
+  flush: () => Promise<void>
 } {
   const [draft, setDraft] = useState<T>(saved)
   const draftRef = useRef(draft)
@@ -22,24 +23,31 @@ export function useAutosave<T extends Record<string, string>>(
   const saveRef = useRef(save)
   const errorRef = useRef(onError)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const inflight = useRef<Promise<void>>(Promise.resolve())
   useEffect(() => {
     savedRef.current = saved
     saveRef.current = save
     errorRef.current = onError
   })
 
-  const flush = useCallback(() => {
+  const flush = useCallback((): Promise<void> => {
     clearTimeout(timer.current)
     const patch: Partial<T> = {}
     for (const key of Object.keys(draftRef.current) as (keyof T)[]) {
       if (draftRef.current[key] !== savedRef.current[key]) patch[key] = draftRef.current[key]
     }
-    if (Object.keys(patch).length === 0) return
-    saveRef.current(patch).catch((e: unknown) => {
-      errorRef.current(e)
-      draftRef.current = savedRef.current
-      setDraft(savedRef.current)
-    })
+    if (Object.keys(patch).length === 0) return inflight.current
+    const sent = saveRef.current(patch).then(
+      () => undefined,
+      (e: unknown) => {
+        errorRef.current(e)
+        draftRef.current = savedRef.current
+        setDraft(savedRef.current)
+      }
+    )
+    // Anything that waits on this waits for the saves before it too, so a copy never misses an edit.
+    inflight.current = Promise.all([inflight.current, sent]).then(() => undefined)
+    return inflight.current
   }, [])
 
   const set = useCallback(
@@ -53,7 +61,7 @@ export function useAutosave<T extends Record<string, string>>(
     [delay, flush]
   )
 
-  useEffect(() => flush, [flush])
+  useEffect(() => () => void flush(), [flush])
 
   return { draft, set, flush }
 }

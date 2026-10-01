@@ -41,7 +41,9 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   dated lessons from today on. Export a **PowerPoint** for the whole unit (title, overview, lesson list,
   then each lesson's objectives, plan, homework and quizzes) or for a single lesson, in Palatino Linotype
   to match your Word files. Long lists continue on another slide, and your private notes become speaker
-  notes. Only the titles of linked quizzes go in the deck, never their questions. It lives in the Vault.
+  notes. Only the titles of linked quizzes go in the deck, never their questions. **Copy a unit** for next
+  term (its lessons, linked quizzes and attached files, with the dates cleared, kept or moved by a number
+  of weeks), copy a single lesson, or move a lesson to another unit. It lives in the Vault.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only

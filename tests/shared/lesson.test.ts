@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chunkBullets, linesOf } from '@shared/lesson'
+import { chunkBullets, copiedDate, copyTitle, linesOf, shiftDate } from '@shared/lesson'
 
 describe('linesOf', () => {
   it('keeps one entry per non-blank line, trimmed', () => {
@@ -61,5 +61,51 @@ describe('chunkBullets', () => {
 
   it('has no slides for no bullets', () => {
     expect(chunkBullets([])).toEqual([])
+  })
+})
+
+describe('shiftDate', () => {
+  it('moves a date by whole days in either direction', () => {
+    expect(shiftDate('2026-10-01', 7)).toBe('2026-10-08')
+    expect(shiftDate('2026-10-01', 364)).toBe('2027-09-30')
+    expect(shiftDate('2026-10-01', -1)).toBe('2026-09-30')
+    expect(shiftDate('2026-10-01', 0)).toBe('2026-10-01')
+  })
+  it('crosses month, year and leap-day boundaries', () => {
+    expect(shiftDate('2026-12-31', 1)).toBe('2027-01-01')
+    expect(shiftDate('2027-01-01', -1)).toBe('2026-12-31')
+    expect(shiftDate('2027-02-28', 1)).toBe('2027-03-01')
+    expect(shiftDate('2028-02-28', 1)).toBe('2028-02-29')
+  })
+  it('does not move a day across a daylight-saving change', () => {
+    expect(shiftDate('2026-03-07', 1)).toBe('2026-03-08')
+    expect(shiftDate('2026-03-08', 1)).toBe('2026-03-09')
+    expect(shiftDate('2026-11-01', 1)).toBe('2026-11-02')
+  })
+  it('gives null for no date or something that is not one', () => {
+    expect(shiftDate(null, 3)).toBeNull()
+    expect(shiftDate('soon', 3)).toBeNull()
+  })
+})
+
+describe('copiedDate', () => {
+  it('keeps, clears or shifts', () => {
+    expect(copiedDate('2026-10-01', { mode: 'keep' })).toBe('2026-10-01')
+    expect(copiedDate('2026-10-01', { mode: 'clear' })).toBeNull()
+    expect(copiedDate('2026-10-01', { mode: 'shift', days: 14 })).toBe('2026-10-15')
+    expect(copiedDate(null, { mode: 'shift', days: 14 })).toBeNull()
+    expect(copiedDate(null, { mode: 'keep' })).toBeNull()
+  })
+})
+
+describe('copyTitle', () => {
+  it('adds (copy)', () => {
+    expect(copyTitle('Day 1')).toBe('Day 1 (copy)')
+  })
+  it('cuts a long title so the copy still fits', () => {
+    const t = copyTitle('x'.repeat(200))
+    expect(t).toHaveLength(200)
+    expect(t.endsWith('x (copy)')).toBe(true)
+    expect(copyTitle('a'.repeat(193))).toHaveLength(200)
   })
 })
