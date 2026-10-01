@@ -335,3 +335,18 @@ Decided while building it (to revisit with the teacher):
 
 Not built: templates of whole sessions, a week or calendar view, reminders or notifications for tasks,
 tasks with their own due dates, and a to-do list outside the Vault.
+
+## Amendment: the Mac as the backend
+
+Requested: "I want this to function as a virtual OS that uses my macOS and its data as the backend."
+Decided with the teacher:
+
+| Topic | Decision |
+|---|---|
+| Which Mac data | **Files and folders**, and **Calendar**. Not (yet) Reminders, Mail, Contacts or launching other apps |
+| The desktop | Not a mirror of `~/Desktop`: "a desktop arrangement that works better for my workflow at school". Files and folders pinned to the everyday canvas, grouped in labelled, coloured areas; a pinned folder shows its contents live |
+| Changing files | **Full, with Trash**: create folders, rename, move, Move to Trash (never a permanent delete). Built-in limits: only inside the home folder, never a protected file or a folder holding one, never over an existing file |
+| Calendar's place | **The everyday window too**, knowing event titles can name students. Read and write through EventKit; the planner can add a lesson |
+
+Not built: Reminders sync for the to-do list, a two-way link between lessons and calendar events, launching
+any app from the dock, dropping files from Finder onto the canvas, copying files, and a Desktop mirror.

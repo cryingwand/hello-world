@@ -1,6 +1,6 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { useShell } from './ShellContext'
-import { viewport, windowsBounds, type Rect } from './windowManager'
+import { unionRects, viewport, windowsBounds, type Rect } from './windowManager'
 
 const MAP_W = 180
 const MAP_H = 112
@@ -19,9 +19,9 @@ function union(a: Rect, b: Rect | null): Rect {
  * drag on it to look somewhere else.
  */
 function Minimap(): React.JSX.Element | null {
-  const { state, focused, dispatch, registry } = useShell()
+  const { state, focused, dispatch, registry, canvasExtras } = useShell()
   const dragging = useRef(false)
-  const bounds = windowsBounds(state.windows)
+  const bounds = unionRects([windowsBounds(state.windows), ...canvasExtras])
   if (!bounds) return null
   const view = viewport(state)
   const world = union(view, bounds)
@@ -63,6 +63,9 @@ function Minimap(): React.JSX.Element | null {
       onPointerUp={() => (dragging.current = false)}
       onPointerCancel={() => (dragging.current = false)}
     >
+      {canvasExtras.map((r, i) => (
+        <span key={`x${i}`} className="minimap-extra" style={at(r)} />
+      ))}
       {state.windows
         .filter((w) => !w.minimized && !w.maximized && !w.snapped)
         .map((w) => (
@@ -80,7 +83,7 @@ function Minimap(): React.JSX.Element | null {
 
 /** Zoom out, the zoom level (click for 100%), zoom in, and fit every window on screen. */
 export default function CanvasControls(): React.JSX.Element {
-  const { state, dispatch } = useShell()
+  const { state, dispatch, fitAll } = useShell()
   const zoom = state.camera.zoom
   return (
     <div className="canvas-corner">
@@ -110,9 +113,9 @@ export default function CanvasControls(): React.JSX.Element {
         </button>
         <button
           className="canvas-fit"
-          onClick={() => dispatch({ type: 'fitAll' })}
-          aria-label="Show all windows"
-          title="Show all windows (or double-click the canvas)"
+          onClick={fitAll}
+          aria-label="Show everything"
+          title="Show everything (or double-click the canvas)"
         >
           Fit
         </button>

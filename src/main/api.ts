@@ -43,6 +43,10 @@ export interface ApiDeps {
   gate: VaultGate<unknown>
   stage: StageService
   files: ApiContract['files']
+  /** The Mac's folders, as this window may see them. */
+  folders: ApiContract['folders']
+  desk: ApiContract['desk']
+  calendar: ApiContract['calendar']
   env: ApiEnv
 }
 
@@ -216,6 +220,28 @@ export function createApi(deps: ApiDeps): ApiContract {
       exportClass: (classId, format) => scores().exportClass(classId, format)
     },
     files: deps.files,
+    folders: {
+      places: () => deps.folders.places(),
+      list: (dir) => deps.folders.list(dir),
+      createFolder: (dir, name) => deps.folders.createFolder(dir, name),
+      rename: (path, name) => deps.folders.rename(path, name),
+      move: (paths, dir) => deps.folders.move(paths, dir),
+      trash: (paths) => deps.folders.trash(paths)
+    },
+    desk: {
+      items: () => deps.desk.items(),
+      pin: (input) => deps.desk.pin(input),
+      addArea: (input) => deps.desk.addArea(input),
+      arrange: (changes) => deps.desk.arrange(changes),
+      remove: (id) => deps.desk.remove(id)
+    },
+    calendar: {
+      status: () => deps.calendar.status(),
+      calendars: () => deps.calendar.calendars(),
+      events: (from, to) => deps.calendar.events(from, to),
+      create: (input) => deps.calendar.create(input),
+      delete: (id, start) => deps.calendar.delete(id, start)
+    },
     protection: {
       folders: () => deps.protection.folders(),
       chooseAndAdd: () => deps.protection.chooseAndAdd(),

@@ -183,6 +183,7 @@ export default function UnitEditor({
           lesson={selected}
           onError={(m) => setError(m)}
           unitId={u.id}
+          course={u.course}
           onDeleted={() => onSelectLesson(null)}
           onCopied={(id) => onSelectLesson(id)}
           onMoved={(unit) => onMoved(unit, selected.id)}

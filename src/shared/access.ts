@@ -160,6 +160,25 @@ export const API_ACCESS = {
     restoreLayout: EVERYDAY,
     pickFile: EVERYDAY
   },
+  // The Mac's folders. Protected files stay out of the everyday window through its file guard.
+  folders: {
+    places: EVERYDAY,
+    list: EVERYDAY,
+    createFolder: EVERYDAY,
+    rename: EVERYDAY,
+    move: EVERYDAY,
+    trash: EVERYDAY
+  },
+  // The everyday desktop's arrangement lives in the everyday window only.
+  desk: { items: LAUNCHER, pin: LAUNCHER, addArea: LAUNCHER, arrange: LAUNCHER, remove: LAUNCHER },
+  // The teacher chose to have the calendar in the everyday window too; the Vault's planner adds lessons.
+  calendar: {
+    status: EVERYDAY,
+    calendars: EVERYDAY,
+    events: EVERYDAY,
+    create: EVERYDAY,
+    delete: EVERYDAY
+  },
   // The names-only roster copy: read-only, for the everyday window, and available while the Vault is locked.
   directory: { classes: LAUNCHER, students: LAUNCHER },
   settings: { get: EVERYDAY, update: EVERYDAY },

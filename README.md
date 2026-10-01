@@ -22,6 +22,13 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   the screen, and the layout and view are restored on relaunch.
 - **Classes & Rosters**: terms, classes and students; Excel/CSV roster import with column mapping and a
   preview; roster export.
+- **Your Mac as the backend**: the everyday desktop holds your own arrangement: pin files and folders
+  from your Mac onto the canvas, group them in labelled, coloured areas (dragging an area brings what is
+  on it), and a pinned folder shows what is in it, live. Files has a **Browse** tab that works like
+  Finder: places, folders, preview, new folder, rename, drag onto a folder to move, Move to Trash (always
+  the Mac's Trash, never a permanent delete; only inside your home folder, never in a protected folder).
+  **Calendar** shows your Mac's calendars (iCloud, Exchange, Google) as a week, repeating classes
+  included, and adds or deletes events; a lesson can be added to it from the planner.
 - **Files**: Spotlight search with your teaching folders ranked first; built-in viewers for PDF, images,
   text and Markdown (editable), Word and Excel (read-only); open in Preview, TextEdit, Word, Excel or
   PowerPoint and snap the app beside the launcher; attach files to a class or student.

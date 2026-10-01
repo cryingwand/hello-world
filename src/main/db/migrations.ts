@@ -10,7 +10,7 @@ export interface Migration {
  * Two databases, two histories. Append-only in each: never edit a shipped migration; add a new one
  * with the next version.
  *
- * - `data.sqlite` (public) holds only settings.
+ * - `data.sqlite` (public) holds settings, the names-only roster copy and the desktop arrangement.
  * - `vault.sqlite` holds everything about students, classes and grades, plus file links. A new table
  *   belongs in the vault unless there is a deliberate decision that it is safe to show anywhere.
  */
@@ -338,9 +338,31 @@ const ROSTER_COPY_SQL = `
       );
     `
 
+/**
+ * The everyday desktop's own arrangement: files and folders pinned to the canvas, and the labelled
+ * areas that group them. A deliberate decision that this is safe outside the Vault: it holds paths of
+ * files the everyday window can already see (a pin is refused for a protected file, and one that
+ * becomes protected later is not shown) and the labels the teacher types. No student data.
+ */
+const DESK_SQL = `
+      CREATE TABLE desk_items (
+        id    INTEGER PRIMARY KEY,
+        kind  TEXT NOT NULL CHECK (kind IN ('file', 'folder', 'area')),
+        path  TEXT,
+        label TEXT NOT NULL DEFAULT '',
+        color TEXT NOT NULL DEFAULT '',
+        x     REAL NOT NULL,
+        y     REAL NOT NULL,
+        w     REAL NOT NULL,
+        h     REAL NOT NULL,
+        CHECK ((kind = 'area') = (path IS NULL))
+      );
+    `
+
 export const PUBLIC_MIGRATIONS: Migration[] = [
   { version: 1, name: 'settings', sql: SETTINGS_SQL },
-  { version: 2, name: 'names-only roster copy', sql: ROSTER_COPY_SQL }
+  { version: 2, name: 'names-only roster copy', sql: ROSTER_COPY_SQL },
+  { version: 3, name: 'desktop arrangement', sql: DESK_SQL }
 ]
 
 export const VAULT_MIGRATIONS: Migration[] = [

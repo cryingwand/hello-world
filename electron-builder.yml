@@ -21,3 +21,7 @@ mac:
   extendInfo:
     NSAppleEventsUsageDescription: Teaching OS positions Preview, TextEdit and Office windows beside itself.
     NSDocumentsFolderUsageDescription: Teaching OS reads your teaching folders.
+    NSDesktopFolderUsageDescription: Teaching OS shows and arranges the files on your Desktop.
+    NSDownloadsFolderUsageDescription: Teaching OS shows and files away your downloads.
+    NSCalendarsUsageDescription: Teaching OS shows your calendar and adds your lessons to it.
+    NSCalendarsFullAccessUsageDescription: Teaching OS shows your calendar and adds your lessons to it.

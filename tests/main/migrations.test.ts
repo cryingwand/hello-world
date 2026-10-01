@@ -44,11 +44,13 @@ const PLANNER_TABLES = [
 const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES, ...PLANNER_TABLES].sort()
 
 describe('migrations', () => {
-  it('build a public database that holds settings and the names-only roster copy, nothing else', () => {
+  it('build a public database that holds settings, the names-only roster copy and the desktop arrangement, nothing else', () => {
     const db = new Database(':memory:')
     const res = migrate(db, PUBLIC_MIGRATIONS)
     expect(res).toEqual({ from: 0, to: latestVersion(PUBLIC_MIGRATIONS) })
-    expect(tables(db)).toEqual([...Object.keys(PUBLIC_ROSTER_COLUMNS), 'settings'].sort())
+    expect(tables(db)).toEqual(
+      [...Object.keys(PUBLIC_ROSTER_COLUMNS), 'desk_items', 'settings'].sort()
+    )
     // Exactly the allowlisted columns: no email, notes, tags or grades.
     for (const [table, cols] of Object.entries(PUBLIC_ROSTER_COLUMNS)) {
       const real = (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name)

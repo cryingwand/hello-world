@@ -250,6 +250,19 @@ describe('the canvas camera', () => {
     expect(one.camera.zoom).toBe(1)
   })
 
+  it('also frames the other things on the canvas it is told about', () => {
+    let s = open(initialState(desktop), 'a')
+    const pinned = { x: -3000, y: -2000, w: 200, h: 100 }
+    s = wmReducer(s, { type: 'fitAll', extra: [pinned] })
+    const view = viewport(s)
+    expect(view.x).toBeLessThanOrEqual(pinned.x)
+    expect(view.y).toBeLessThanOrEqual(pinned.y)
+    expect(view.x + view.w).toBeGreaterThanOrEqual(s.windows[0].x + s.windows[0].w)
+    // With no windows at all, the pinned things alone are framed.
+    const only = wmReducer(initialState(desktop), { type: 'fitAll', extra: [pinned] })
+    expect(viewport(only).x).toBeLessThanOrEqual(pinned.x)
+  })
+
   it('brings an off-screen window into view when its app is opened again', () => {
     let s = open(initialState(desktop), 'a')
     const id = s.windows[0].id

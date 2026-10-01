@@ -14,6 +14,7 @@ import {
   shell,
   systemPreferences
 } from 'electron'
+import { watch } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { pathToFileURL } from 'node:url'
@@ -23,7 +24,10 @@ import { FILE_SCHEME } from '@shared/files'
 import { STAGE_VIEW_CHANNEL } from '@shared/stage'
 import { VAULT_STATUS_CHANNEL } from '@shared/vault'
 import { createApi } from './api'
+import { createDeskService } from './deskService'
 import { createFilesApi } from './filesApi'
+import { createFolders } from './folders'
+import { createCalendar } from './mac/calendar'
 import { resolveServedPath } from './files'
 import { defaultExec, isMac } from './mac/exec'
 import { createLauncherSnap } from './mac/launcherSnap'
@@ -345,6 +349,30 @@ void app.whenReady().then(() => {
       }
     })
 
+  // The Mac's folders, one view per role (each sees protected files as its guard allows).
+  const foldersFor = (role: Role) =>
+    createFolders({
+      home: homedir(),
+      teachingFolders: () => publicRepos.settings.get().teachingFolders,
+      guard: guardFor(role),
+      trash: (path) => shell.trashItem(path),
+      changed: () => broadcast('folders.changed'),
+      // A pinned file that is renamed or moved here stays pinned.
+      moved: (from, to) => publicRepos.desk.repath(from, to),
+      watch: (dir, onChange) => watch(dir, { persistent: false }, onChange)
+    })
+  const folders = {
+    launcher: foldersFor('launcher'),
+    vault: foldersFor('vault'),
+    stage: foldersFor('stage')
+  }
+  const desk = createDeskService(publicRepos.desk, guardFor('launcher'))
+  const calendar = createCalendar({
+    exec: defaultExec,
+    isMac,
+    changed: () => broadcast('calendar.changed')
+  })
+
   const filesApiFor = (role: Role) =>
     createFilesApi({
       settings: () => publicRepos.settings.get(),
@@ -424,6 +452,9 @@ void app.whenReady().then(() => {
       gate,
       stage,
       files: filesApiFor(role),
+      folders: folders[role],
+      desk,
+      calendar,
       env
     })
   registerIpc({
@@ -452,6 +483,7 @@ void app.whenReady().then(() => {
   app.on('will-quit', () => {
     stage.dispose()
     manager.dispose()
+    for (const f of Object.values(folders)) f.dispose()
   })
 
   openLauncher()

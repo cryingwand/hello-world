@@ -14,7 +14,10 @@ export const CHANGE_NAMES = [
   'planner.changed',
   'settings.changed',
   'protection.changed',
-  'directory.changed'
+  'directory.changed',
+  'folders.changed',
+  'desk.changed',
+  'calendar.changed'
 ] as const
 
 export type ChangeName = (typeof CHANGE_NAMES)[number]
@@ -55,5 +58,10 @@ export const CHANGE_AUDIENCE: Record<ChangeName, readonly ('launcher' | 'vault' 
   // Which folders are protected is itself not shown outside the vault.
   'protection.changed': ['vault'],
   // The names-only roster copy is for the everyday window; the Vault has the real thing.
-  'directory.changed': ['launcher']
+  'directory.changed': ['launcher'],
+  // Something changed in a folder on the Mac. No path travels with it.
+  'folders.changed': ['launcher', 'vault'],
+  // The everyday desktop's pinned files and areas exist only in the everyday window.
+  'desk.changed': ['launcher'],
+  'calendar.changed': ['launcher', 'vault']
 }

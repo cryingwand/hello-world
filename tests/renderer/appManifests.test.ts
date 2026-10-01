@@ -15,7 +15,8 @@ const INTENTS: IntentType[] = [
   'open-gradebook',
   'attach-file',
   'record-score',
-  'search-files'
+  'search-files',
+  'open-path'
 ]
 
 let registryFor: (space: Space) => Registry
@@ -50,8 +51,10 @@ describe('app manifests', () => {
   it('never route an intent about students or classes in the launcher', () => {
     const launcher = registryFor('launcher')
     for (const type of INTENTS) {
-      if (type === 'search-files') continue
+      if (type === 'search-files' || type === 'open-path') continue
       expect(launcher.handlerFor(type), type).toBeUndefined()
     }
+    // Files on the Mac (never records) are opened in the everyday Files app.
+    expect(launcher.handlerFor('open-path')?.id).toBe('library')
   })
 })

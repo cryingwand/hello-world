@@ -1,6 +1,13 @@
+import type { CalendarEvent, CalendarEventInput, CalendarInfo, CalendarStatus } from './calendar'
 import type {
+  DeskArea,
+  DeskItem,
+  DeskPatch,
+  DeskPin,
   FileInfo,
   FileSearchQuery,
+  FolderListing,
+  FolderPlace,
   FileSearchResponse,
   OpenRequest,
   OpenResult,
@@ -524,6 +531,41 @@ export interface ApiContract {
     add(input: FileLinkInput): FileLink
     remove(id: number): void
   }
+  folders: {
+    /** Home, Desktop, Documents, Downloads, iCloud Drive and the teaching folders that exist. */
+    places(): Awaitable<FolderPlace[]>
+    /** One folder's contents, folders first. Protected files are left out outside the Vault. */
+    list(dir: string): Awaitable<FolderListing>
+    /** Returns the new folder's path. */
+    createFolder(dir: string, name: string): Awaitable<string>
+    /** Returns the new path. Never replaces an existing file. */
+    rename(path: string, name: string): Awaitable<string>
+    /** Into a folder; returns the new paths. Never replaces an existing file. */
+    move(paths: string[], dir: string): Awaitable<string[]>
+    /** To the Mac's Trash, where they can be put back from. Nothing is deleted outright. */
+    trash(paths: string[]): Awaitable<void>
+  }
+  desk: {
+    /** Everything on the everyday desktop: areas first, then pinned files and folders. */
+    items(): Awaitable<DeskItem[]>
+    /** Pins a file or folder at a place on the canvas. The file itself stays where it is. */
+    pin(input: DeskPin): Awaitable<DeskItem>
+    addArea(input: DeskArea): Awaitable<DeskItem>
+    /** Moves or resizes several items at once (an area and what is on it), or relabels an area. */
+    arrange(changes: { id: number; patch: DeskPatch }[]): Awaitable<DeskItem[]>
+    /** Takes it off the desktop; a pinned file or folder is not touched. */
+    remove(id: number): Awaitable<void>
+  }
+  calendar: {
+    /** Whether the Mac's calendars can be used. The first call shows macOS's permission prompt. */
+    status(): Awaitable<CalendarStatus>
+    calendars(): Awaitable<CalendarInfo[]>
+    /** Events from `from` to `to` (milliseconds), repeating ones expanded. At most 62 days. */
+    events(from: number, to: number): Awaitable<CalendarEvent[]>
+    create(input: CalendarEventInput): Awaitable<CalendarEvent>
+    /** One occurrence of an event: the one starting at `start`. */
+    delete(id: string, start: number): Awaitable<void>
+  }
   directory: {
     /** The classes in the names-only roster copy, current term first. Works while the Vault is locked. */
     classes(): DirectoryClass[]
@@ -681,6 +723,9 @@ export const API_METHODS = {
   ],
   protection: ['folders', 'chooseAndAdd', 'remove', 'browse'],
   fileLinks: ['list', 'add', 'remove'],
+  folders: ['places', 'list', 'createFolder', 'rename', 'move', 'trash'],
+  desk: ['items', 'pin', 'addArea', 'arrange', 'remove'],
+  calendar: ['status', 'calendars', 'events', 'create', 'delete'],
   directory: ['classes', 'students'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],

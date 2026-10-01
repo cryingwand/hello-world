@@ -46,7 +46,11 @@ you are done.
    quizzes and lesson plans. It is there to keep student information off the projector: it locks when a
    display connects, when you start the Stage, when the Mac sleeps or the screen locks, and after 10
    idle minutes.
-3. In the Vault, open **Protected Files** and add the folders that hold exams and answer keys. Their files
+3. Open **Calendar** from the dock and allow access to your calendars when macOS asks. Open **Files**,
+   **Browse**, and allow access to Desktop, Documents and Downloads when asked. Then arrange the desktop
+   your way: drag folders and files out of Files onto it, and right-click empty space for **New area
+   here** to group them (one per course, "To grade", "This week").
+4. In the Vault, open **Protected Files** and add the folders that hold exams and answer keys. Their files
    then appear only inside the Vault, and anything you export from the Vault is saved there by default.
 
 ## 4. Bring in what you keep in Excel now

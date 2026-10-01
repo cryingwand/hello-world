@@ -21,6 +21,7 @@ import {
   focusedId,
   initialState,
   wmReducer,
+  type Rect,
   type WmAction,
   type WmState
 } from './windowManager'
@@ -49,6 +50,11 @@ interface ShellApi {
   setCurrentClassId: (id: number | null) => void
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
+  /** Things on the canvas besides windows (pinned files, areas), so Fit and the map include them. */
+  canvasExtras: Rect[]
+  setCanvasExtras: (rects: Rect[]) => void
+  /** Frames the windows and everything else on the canvas. */
+  fitAll: () => void
 }
 
 const CLASS_KEY = 'teachingos.currentClass.v1'
@@ -84,6 +90,11 @@ export function ShellProvider({
   const [stage, setStage] = useState<StageState | null>(null)
   const presenting = stage?.active ?? false
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [canvasExtras, setCanvasExtras] = useState<Rect[]>([])
+  const fitAll = useCallback(
+    () => dispatch({ type: 'fitAll', extra: canvasExtras }),
+    [canvasExtras]
+  )
   const [offer, setOffer] = useState<DisplayOffer | null>(null)
   // Once the Stage is showing, any pending offer is moot; clear it so it cannot resurface when it ends.
   if (presenting && offer) setOffer(null)
@@ -196,7 +207,10 @@ export function ShellProvider({
       currentClassId,
       setCurrentClassId,
       settingsOpen,
-      setSettingsOpen
+      setSettingsOpen,
+      canvasExtras,
+      setCanvasExtras,
+      fitAll
     }),
     [
       space,
@@ -210,7 +224,9 @@ export function ShellProvider({
       offer,
       currentClassId,
       setCurrentClassId,
-      settingsOpen
+      settingsOpen,
+      canvasExtras,
+      fitAll
     ]
   )
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>

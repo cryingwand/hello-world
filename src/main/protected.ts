@@ -20,6 +20,8 @@ export interface ProtectedSnapshot {
   lexical(path: string): boolean
   /** The strong check: also follows symlinks and `..` to where the path really points. */
   has(path: string): Promise<boolean>
+  /** Is a protected folder this path, or inside it? Moving or trashing it would move that folder too. */
+  encloses(path: string): Promise<boolean>
 }
 
 const isMissing = (err: unknown): boolean => {
@@ -92,6 +94,15 @@ export function createProtectedPaths(deps: ProtectedPathsDeps) {
           return roots.some((r) => inside(real, r))
         } catch {
           return true // cannot examine it, so do not show it
+        }
+      },
+      async encloses(path: string): Promise<boolean> {
+        if (roots.length === 0) return false
+        try {
+          const forms = [fold(resolve(path)), fold(await canonical(path))]
+          return roots.some((r) => forms.some((p) => inside(r, p)))
+        } catch {
+          return true
         }
       }
     }

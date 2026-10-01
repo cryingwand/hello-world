@@ -210,3 +210,81 @@ export function splitWorkArea(area: Rect): { left: Rect; right: Rect } {
     right: { x: area.x + half, y: area.y, width: area.width - half, height: area.height }
   }
 }
+
+/** A place in the folder browser's sidebar. */
+export interface FolderPlace {
+  path: string
+  name: string
+  kind: 'home' | 'desktop' | 'documents' | 'downloads' | 'icloud' | 'teaching'
+}
+
+/** A file or folder in a folder listing. */
+export interface FolderEntry {
+  path: string
+  name: string
+  isDir: boolean
+  /** For a folder, `other`. */
+  kind: FileKind
+  size: number
+  mtime: number
+}
+
+/** One folder's contents, folders first. Protected files are left out outside the Vault. */
+export interface FolderListing {
+  path: string
+  name: string
+  /** The folder above, or null at the top of the disk. */
+  parent: string | null
+  entries: FolderEntry[]
+  /** More entries exist than were listed. */
+  truncated: boolean
+  /** Files can be created, renamed, moved and trashed here (inside your home folder, not protected). */
+  writable: boolean
+}
+
+/** Something placed on the everyday desktop: a pinned file or folder, or a labelled area. */
+export interface DeskItem {
+  id: number
+  kind: 'file' | 'folder' | 'area'
+  /** Null for an area. */
+  path: string | null
+  /** The file's name, or the area's label. */
+  label: string
+  /** An area's colour, one of `AREA_COLORS`. */
+  color: string
+  x: number
+  y: number
+  w: number
+  h: number
+  /** For a file, how it is shown and opened. */
+  fileKind: FileKind
+  /** The file or folder has been moved, renamed or deleted elsewhere. */
+  missing: boolean
+}
+
+export const AREA_COLORS = ['blue', 'green', 'orange', 'purple', 'pink', 'grey'] as const
+
+export interface DeskPin {
+  kind: 'file' | 'folder'
+  path: string
+  x: number
+  y: number
+}
+
+export interface DeskArea {
+  label: string
+  x: number
+  y: number
+  w: number
+  h: number
+  color?: string
+}
+
+export interface DeskPatch {
+  x?: number
+  y?: number
+  w?: number
+  h?: number
+  label?: string
+  color?: string
+}

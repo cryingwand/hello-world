@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { baseName, type FileSearchResponse, type FileSearchResult } from '@shared/files'
+import { baseName, dirName, type FileSearchResponse, type FileSearchResult } from '@shared/files'
 import type { AppProps } from '@apps/types'
 import ErrorBanner from '@renderer/components/ErrorBanner'
 import Icon from '@renderer/components/Icon'
@@ -8,6 +8,7 @@ import { useShell } from '@renderer/shell/ShellContext'
 import AttachDialog from './AttachDialog'
 import AttachedTab from './AttachedTab'
 import FileDetail from './FileDetail'
+import FolderBrowser from './FolderBrowser'
 import { shortDir, when } from './format'
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
@@ -25,7 +26,8 @@ export default function FilesApp({
 }: AppProps & { scope: FilesScope }): React.JSX.Element {
   const inVault = scope === 'vault'
   const { setSettingsOpen } = useShell()
-  const [tab, setTab] = useState<'search' | 'attached'>('search')
+  const [tab, setTab] = useState<'browse' | 'search' | 'attached'>('browse')
+  const [browseTo, setBrowseTo] = useState<{ path: string; nonce: number } | null>(null)
   const [query, setQuery] = useState('')
   const [teachingOnly, setTeachingOnly] = useState(false)
   const [includeContents, setIncludeContents] = useState(false)
@@ -47,6 +49,16 @@ export default function FilesApp({
     setHandledNonce(intentNonce)
     setQuery(intent.query)
     setTab('search')
+  }
+  // An `open-path` intent: a folder (or a file's folder) pinned on the desktop.
+  if (intent?.type === 'open-path' && intentNonce !== handledNonce) {
+    setHandledNonce(intentNonce)
+    setTab('browse')
+    setBrowseTo({
+      path: intent.isDir ? intent.path : dirName(intent.path),
+      nonce: (browseTo?.nonce ?? 0) + 1
+    })
+    if (!intent.isDir) setSelected(intent.path)
   }
 
   // An `attach-file` intent from another app.
@@ -130,28 +142,33 @@ export default function FilesApp({
   return (
     <div className="split">
       <aside className="files-side" aria-label="Find files">
-        {inVault && (
-          <div className="tabs" role="tablist">
+        <div className="tabs" role="tablist">
+          {(inVault
+            ? (['browse', 'search', 'attached'] as const)
+            : (['browse', 'search'] as const)
+          ).map((k) => (
             <button
+              key={k}
               role="tab"
-              aria-selected={tab === 'search'}
-              className={tab === 'search' ? 'tab tab-on' : 'tab'}
-              onClick={() => setTab('search')}
+              aria-selected={tab === k}
+              className={tab === k ? 'tab tab-on' : 'tab'}
+              onClick={() => setTab(k)}
             >
-              Search
+              {k === 'browse' ? 'Browse' : k === 'search' ? 'Search' : 'Attached'}
             </button>
-            <button
-              role="tab"
-              aria-selected={tab === 'attached'}
-              className={tab === 'attached' ? 'tab tab-on' : 'tab'}
-              onClick={() => setTab('attached')}
-            >
-              Attached
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
 
-        {tab === 'search' || !inVault ? (
+        {tab === 'browse' ? (
+          <FolderBrowser
+            goTo={browseTo?.path ?? null}
+            goToNonce={browseTo?.nonce ?? 0}
+            selected={selected}
+            onSelectFile={select}
+            onError={setError}
+            canPin={!inVault}
+          />
+        ) : tab === 'search' ? (
           <>
             <input
               className="search"

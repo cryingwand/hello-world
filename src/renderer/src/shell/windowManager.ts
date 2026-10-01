@@ -82,8 +82,11 @@ export type WmAction =
   | { type: 'zoom'; zoom: number; anchor?: { x: number; y: number } }
   /** The same, by a factor of the zoom it is at. */
   | { type: 'zoomBy'; factor: number; anchor?: { x: number; y: number } }
-  /** Frames every open window, or zooms back to 100% where they are when there are none. */
-  | { type: 'fitAll' }
+  /**
+   * Frames every open window, and anything else on the canvas the shell is told about (the pinned
+   * files and areas), or zooms back to 100% where it is when there is nothing.
+   */
+  | { type: 'fitAll'; extra?: Rect[] }
   /** Pans just enough to bring a window into view. */
   | { type: 'reveal'; id: string }
   | { type: 'setCamera'; camera: Camera }
@@ -157,6 +160,17 @@ export function revealCamera(rect: Rect, state: Pick<WmState, 'desktop' | 'camer
     x: axis(rect.x, rect.w, view.x, view.w),
     y: axis(rect.y, rect.h, view.y, view.h)
   }
+}
+
+/** The box around all the rects given (nulls skipped), or null when there are none. */
+export function unionRects(rects: (Rect | null)[]): Rect | null {
+  const all = rects.filter((r): r is Rect => r !== null)
+  if (all.length === 0) return null
+  const x = Math.min(...all.map((r) => r.x))
+  const y = Math.min(...all.map((r) => r.y))
+  const r = Math.max(...all.map((b) => b.x + b.w))
+  const b = Math.max(...all.map((b) => b.y + b.h))
+  return { x, y, w: r - x, h: b - y }
 }
 
 /** The box around every visible free window, or null when there is none. */
@@ -386,7 +400,7 @@ export function wmReducer(state: WmState, action: WmAction): WmState {
         anchor: action.anchor
       })
     case 'fitAll': {
-      const bounds = windowsBounds(state.windows)
+      const bounds = unionRects([windowsBounds(state.windows), ...(action.extra ?? [])])
       if (!bounds) return wmReducer(state, { type: 'zoom', zoom: 1 })
       return { ...state, camera: frameCamera(bounds, state.desktop) }
     }

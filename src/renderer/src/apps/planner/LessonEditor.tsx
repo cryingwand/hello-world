@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import { localTime } from '@shared/calendar'
+import { agendaLine } from '@shared/lessonBlocks'
 import type { Lesson } from '@shared/models'
+import EventForm from '@apps/calendar/EventForm'
 import { useApiQuery } from '@renderer/data/hooks'
 import AttachedFiles from './AttachedFiles'
 import ClassLinks from './ClassLinks'
@@ -14,6 +17,7 @@ const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 export default function LessonEditor({
   lesson,
   unitId,
+  course,
   onError,
   onDeleted,
   onCopied,
@@ -23,6 +27,8 @@ export default function LessonEditor({
 }: {
   lesson: Lesson
   unitId: number
+  /** The unit's course, for the calendar event's title. */
+  course: string
   onError: (message: string) => void
   onDeleted: () => void
   /** The lesson was copied: show the copy. */
@@ -56,6 +62,8 @@ export default function LessonEditor({
   )
 
   const [removing, setRemoving] = useState(false)
+  const [toCalendar, setToCalendar] = useState(false)
+  const [added, setAdded] = useState(false)
   const [busy, setBusy] = useState(false)
   const units = useApiQuery(() => window.api.units.list(), [], ['planner.changed'])
   const others = (units.data ?? []).filter((u) => u.id !== unitId)
@@ -112,6 +120,19 @@ export default function LessonEditor({
         <div className="actions">
           <button className="btn" disabled={exporting} onClick={onExport}>
             {exporting ? 'Saving…' : 'PowerPoint for this lesson'}
+          </button>
+          <button
+            className="btn"
+            disabled={!draft.date}
+            title={
+              draft.date ? 'Add this lesson to your Mac calendar' : 'Give the lesson a date first'
+            }
+            onClick={() => {
+              setAdded(false)
+              setToCalendar(true)
+            }}
+          >
+            {added ? 'Added to Calendar' : 'Add to Calendar…'}
           </button>
           <button className="btn" disabled={busy} onClick={() => void copy()}>
             Copy lesson
@@ -181,6 +202,23 @@ export default function LessonEditor({
           </span>
         </label>
       </div>
+      {toCalendar && draft.date && (
+        <EventForm
+          heading="Add the lesson to your calendar"
+          draft={{
+            title: [course, draft.title].filter((p) => p.trim() !== '').join(': '),
+            start: localTime(draft.date, '09:00'),
+            minutes: Number(draft.classMinutes) || lesson.classMinutes || 60,
+            // The agenda goes in the event's notes; the lesson's own notes stay here.
+            notes: lesson.blocks.map(agendaLine).join('\n')
+          }}
+          onClose={() => setToCalendar(false)}
+          onSaved={() => {
+            setToCalendar(false)
+            setAdded(true)
+          }}
+        />
+      )}
       <QuizLinks lesson={lesson} onError={onError} />
       <ClassLinks lesson={lesson} onError={onError} />
       <AttachedFiles recordType="lesson" recordId={lesson.id} onError={onError} />
