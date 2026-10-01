@@ -2,21 +2,30 @@ import { useState } from 'react'
 import { formatDate } from '@shared/advising'
 import type { UnitSummary } from '@shared/models'
 import { useApiQuery } from '@renderer/data/hooks'
+import SemesterView from './SemesterView'
+import TodoView from './TodoView'
 import UnitEditor from './UnitEditor'
 import UnitForm from './UnitForm'
 import UpcomingList from './UpcomingList'
 
-type Tab = 'units' | 'upcoming'
+type Tab = 'units' | 'semester' | 'todo' | 'upcoming'
 
 export default function PlannerApp(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('units')
   const [unitId, setUnitId] = useState<number | null>(null)
   const [lessonId, setLessonId] = useState<number | null>(null)
-  const [creating, setCreating] = useState(false)
+  /** Creating a unit: in this semester (or none), or false when not. */
+  const [creating, setCreating] = useState<{ termId: number | null } | false>(false)
 
   const units = useApiQuery(() => window.api.units.list(), [], ['planner.changed'])
   const list = units.data ?? []
   const current = list.find((u) => u.id === unitId)
+
+  const openLesson = (unit: number, lesson: number | null): void => {
+    setUnitId(unit)
+    setLessonId(lesson)
+    setTab('units')
+  }
 
   const tabButton = (k: Tab, label: string): React.JSX.Element => (
     <button
@@ -41,22 +50,22 @@ export default function PlannerApp(): React.JSX.Element {
     <div className="quiz-app">
       <div className="tabs quiz-tabs" role="tablist">
         {tabButton('units', 'Units')}
+        {tabButton('semester', 'Semester')}
+        {tabButton('todo', 'To-do')}
         {tabButton('upcoming', 'Coming up')}
       </div>
       <div className="quiz-body">
         {tab === 'upcoming' ? (
-          <UpcomingList
-            onOpen={(u, l) => {
-              setUnitId(u)
-              setLessonId(l)
-              setTab('units')
-            }}
-          />
+          <UpcomingList onOpen={openLesson} />
+        ) : tab === 'semester' ? (
+          <SemesterView onOpen={openLesson} onNewUnit={(termId) => setCreating({ termId })} />
+        ) : tab === 'todo' ? (
+          <TodoView onOpen={openLesson} />
         ) : (
           <div className="split">
             <aside className="sidebar" aria-label="Units">
               <div className="sidebar-actions">
-                <button className="btn btn-primary" onClick={() => setCreating(true)}>
+                <button className="btn btn-primary" onClick={() => setCreating({ termId: null })}>
                   + Unit
                 </button>
               </div>
@@ -129,6 +138,7 @@ export default function PlannerApp(): React.JSX.Element {
       {creating && (
         <UnitForm
           defaultCourse={current?.course ?? list[0]?.course ?? ''}
+          defaultTermId={creating.termId}
           onClose={() => setCreating(false)}
           onCreated={(id) => {
             setCreating(false)

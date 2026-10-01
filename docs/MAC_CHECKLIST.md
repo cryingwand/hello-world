@@ -7,6 +7,35 @@ expected, what happened, and what you did just before, and give that to Claude C
 
 Use your real setup (the installed app, your own folders) but it is fine to use a fake class.
 
+## The canvas desktop
+
+- [ ] Two-finger scroll on empty canvas moves around it; inside a window it scrolls the window.
+- [ ] Pinch on the trackpad zooms the canvas around the pointer, and the page itself does not zoom.
+- [ ] Dragging empty canvas moves it; dragging a title bar moves the window, at any zoom.
+- [ ] Zoomed out to about 50%, text in a window is still readable and clicks land where you point.
+- [ ] Open a PDF in Files while zoomed out. It shows, and scrolls, inside the window.
+
+## Your files and folders
+
+- [ ] Files, **Browse**: Desktop, Documents and Downloads open (macOS may ask to allow access to each;
+      allow it).
+- [ ] Make a folder, rename a file, drag a file onto a folder. Finder shows the same.
+- [ ] Rename a file in Finder. Teaching OS shows the new name within a second or two.
+- [ ] **Move to Trash** puts the file in the Mac's Trash, and **Put Back** in Finder restores it.
+- [ ] A protected folder does not appear in Browse, and its parent folder cannot be renamed or moved.
+- [ ] Drag a file and a folder from Browse onto the desktop. Quick Look previews show on the file card,
+      and the folder card lists what is in it.
+- [ ] Right-click the desktop, **New area here**, name it, put pins on it and drag the area: they move
+      with it. Quit and reopen: the arrangement is as you left it.
+
+## Calendar
+
+- [ ] In the **installed** app, open Calendar. macOS asks for access to your calendars; allow full access.
+- [ ] This week's events show, including a repeating class on each of its days, and all-day events.
+- [ ] Add an event; it appears in Apple Calendar (and on your phone). Delete it; it goes from both.
+- [ ] Delete one occurrence of a repeating event: only that day's goes.
+- [ ] In the Lesson Planner, **Add to Calendar…** on a dated lesson adds it with the agenda in its notes.
+
 ## Files and search
 
 - [ ] Search for a file name you know. Results in your teaching folders come first.
@@ -54,6 +83,11 @@ Use your real setup (the installed app, your own folders) but it is fine to use 
 - [ ] In the Vault, delete a test student, then restore the backup from just before (Settings, Restore
       the Vault). The Vault closes; reopen it and the student is back.
 - [ ] Quit and reopen the app. Your windows, data and settings are as you left them.
+
+## Lesson builder
+
+- [ ] Drag a block from the panel into the middle of a lesson, and drag a block to a new place.
+- [ ] Each block's prep shows in the To-do tab; ticking it there ticks it in the lesson.
 
 ## In-class Tools
 

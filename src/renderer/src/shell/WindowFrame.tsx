@@ -1,8 +1,17 @@
-import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import Icon from '@renderer/components/Icon'
-import type { AppManifest } from '@apps/types'
+import type { AppManifest, AppProps } from '@apps/types'
+import type { Intent } from '@shared/intents'
 import { useShell } from './ShellContext'
-import { effectiveRect, unsnapRect, TOPBAR_H, type Rect, type WindowState } from './windowManager'
+import {
+  TOPBAR_H,
+  effectiveRect,
+  placement,
+  toCanvas,
+  unsnapRect,
+  type Rect,
+  type WindowState
+} from './windowManager'
 
 type Edge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 const DRAG_THRESHOLD = 4
@@ -29,6 +38,24 @@ function resized(
   return { x, y, w, h }
 }
 
+/**
+ * The app inside a window only re-renders when its own inputs change, not on every pan, zoom or
+ * drag of the canvas around it.
+ */
+const AppBody = memo(function AppBody({
+  component: Body,
+  windowId,
+  intent,
+  intentNonce
+}: {
+  component: React.ComponentType<AppProps>
+  windowId: string
+  intent?: Intent
+  intentNonce?: number
+}): React.JSX.Element {
+  return <Body windowId={windowId} intent={intent} intentNonce={intentNonce} />
+})
+
 export default function WindowFrame({
   win,
   app,
@@ -47,8 +74,8 @@ export default function WindowFrame({
     /** Snapped or maximized windows only leave that state once the pointer really drags. */
     pendingUnsnap: boolean
   } | null>(null)
-  const rect = effectiveRect(win, state.desktop)
-  const Body = app.component
+  const place = placement(win, state)
+  const zoom = state.camera.zoom
   const hidden = win.minimized
 
   const onTitleDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
@@ -69,12 +96,18 @@ export default function WindowFrame({
     if (d.pendingUnsnap) {
       if (Math.hypot(e.clientX - d.px, e.clientY - d.py) < DRAG_THRESHOLD) return
       const pointer = { x: e.clientX, y: e.clientY - TOPBAR_H }
-      const r = unsnapRect(win, pointer, state.desktop)
+      const r = unsnapRect(win, pointer, state.camera)
       dispatch({ type: 'unsnap', id: win.id, pointer })
       drag.current = { px: e.clientX, py: e.clientY, ox: r.x, oy: r.y, pendingUnsnap: false }
       return
     }
-    dispatch({ type: 'move', id: win.id, x: d.ox + e.clientX - d.px, y: d.oy + e.clientY - d.py })
+    // The pointer moves in screen pixels; the window lives on the canvas.
+    dispatch({
+      type: 'move',
+      id: win.id,
+      x: d.ox + (e.clientX - d.px) / zoom,
+      y: d.oy + (e.clientY - d.py) / zoom
+    })
   }
   const onTitleUp = (e: ReactPointerEvent<HTMLDivElement>): void => {
     drag.current = null
@@ -86,7 +119,13 @@ export default function WindowFrame({
     if (e.button !== 0) return
     e.stopPropagation()
     dispatch({ type: 'focus', id: win.id })
-    const start = effectiveRect(win, state.desktop)
+    // In canvas units. A pinned window starts from where it is on screen, seen through the camera.
+    const pinned = effectiveRect(win, state.desktop)
+    const corner = toCanvas(pinned, state.camera)
+    const start =
+      win.maximized || win.snapped
+        ? { ...corner, w: pinned.w / zoom, h: pinned.h / zoom }
+        : effectiveRect(win, state.desktop)
     const sx = e.clientX
     const sy = e.clientY
     const target = e.currentTarget
@@ -95,7 +134,7 @@ export default function WindowFrame({
       dispatch({
         type: 'resize',
         id: win.id,
-        rect: resized(start, edge, ev.clientX - sx, ev.clientY - sy, win.minSize)
+        rect: resized(start, edge, (ev.clientX - sx) / zoom, (ev.clientY - sy) / zoom, win.minSize)
       })
     const up = (ev: PointerEvent): void => {
       target.releasePointerCapture(ev.pointerId)
@@ -110,11 +149,12 @@ export default function WindowFrame({
     <section
       className={`window${focused ? ' window-focused' : ''}${win.maximized ? ' window-max' : ''}`}
       style={{
-        left: rect.x,
-        top: rect.y,
-        width: rect.w,
-        height: rect.h,
+        left: place.x,
+        top: place.y,
+        width: place.w,
+        height: place.h,
         zIndex: win.z,
+        transform: place.scale !== 1 ? `scale(${place.scale})` : undefined,
         display: hidden ? 'none' : undefined
       }}
       data-app={app.id}
@@ -174,7 +214,12 @@ export default function WindowFrame({
         </div>
       </div>
       <div className="window-body">
-        <Body windowId={win.id} intent={win.intent} intentNonce={win.intentNonce} />
+        <AppBody
+          component={app.component}
+          windowId={win.id}
+          intent={win.intent}
+          intentNonce={win.intentNonce}
+        />
       </div>
       {!win.maximized &&
         EDGES.map((edge) => (

@@ -32,7 +32,8 @@ const DOCK_ORDER = [
   'planner',
   'vault-files',
   'protected',
-  'library'
+  'library',
+  'calendar'
 ]
 
 export function sortForDock(manifests: AppManifest[]): AppManifest[] {

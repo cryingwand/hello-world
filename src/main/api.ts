@@ -43,6 +43,10 @@ export interface ApiDeps {
   gate: VaultGate<unknown>
   stage: StageService
   files: ApiContract['files']
+  /** The Mac's folders, as this window may see them. */
+  folders: ApiContract['folders']
+  desk: ApiContract['desk']
+  calendar: ApiContract['calendar']
   env: ApiEnv
 }
 
@@ -134,6 +138,8 @@ export function createApi(deps: ApiDeps): ApiContract {
       duplicate: (id, options) => repos().units.duplicate(id, options),
       reorder: (id, lessonIds) => repos().units.reorder(id, lessonIds),
       upcoming: () => repos().units.upcoming(),
+      roadmap: (termId) => repos().units.roadmap(termId),
+      todo: (includeDone) => repos().units.todo(includeDone),
       exportPowerPoint: (id, lessonId) => lessons().exportPowerPoint(id, lessonId)
     },
     lessons: {
@@ -147,7 +153,14 @@ export function createApi(deps: ApiDeps): ApiContract {
       linkClass: (id, classId) => repos().lessons.linkClass(id, classId),
       unlinkClass: (id, classId) => repos().lessons.unlinkClass(id, classId),
       linkAssignment: (id, assignmentId) => repos().lessons.linkAssignment(id, assignmentId),
-      unlinkAssignment: (id, assignmentId) => repos().lessons.unlinkAssignment(id, assignmentId)
+      unlinkAssignment: (id, assignmentId) => repos().lessons.unlinkAssignment(id, assignmentId),
+      addBlock: (id, input) => repos().lessons.addBlock(id, input),
+      updateBlock: (blockId, patch) => repos().lessons.updateBlock(blockId, patch),
+      deleteBlock: (blockId) => repos().lessons.deleteBlock(blockId),
+      reorderBlocks: (id, blockIds) => repos().lessons.reorderBlocks(id, blockIds),
+      addTask: (id, input) => repos().lessons.addTask(id, input),
+      updateTask: (taskId, patch) => repos().lessons.updateTask(taskId, patch),
+      deleteTask: (taskId) => repos().lessons.deleteTask(taskId)
     },
     grading: {
       categories: (classId) => repos().grading.categories(classId),
@@ -207,6 +220,28 @@ export function createApi(deps: ApiDeps): ApiContract {
       exportClass: (classId, format) => scores().exportClass(classId, format)
     },
     files: deps.files,
+    folders: {
+      places: () => deps.folders.places(),
+      list: (dir) => deps.folders.list(dir),
+      createFolder: (dir, name) => deps.folders.createFolder(dir, name),
+      rename: (path, name) => deps.folders.rename(path, name),
+      move: (paths, dir) => deps.folders.move(paths, dir),
+      trash: (paths) => deps.folders.trash(paths)
+    },
+    desk: {
+      items: () => deps.desk.items(),
+      pin: (input) => deps.desk.pin(input),
+      addArea: (input) => deps.desk.addArea(input),
+      arrange: (changes) => deps.desk.arrange(changes),
+      remove: (id) => deps.desk.remove(id)
+    },
+    calendar: {
+      status: () => deps.calendar.status(),
+      calendars: () => deps.calendar.calendars(),
+      events: (from, to) => deps.calendar.events(from, to),
+      create: (input) => deps.calendar.create(input),
+      delete: (id, start) => deps.calendar.delete(id, start)
+    },
     protection: {
       folders: () => deps.protection.folders(),
       chooseAndAdd: () => deps.protection.chooseAndAdd(),

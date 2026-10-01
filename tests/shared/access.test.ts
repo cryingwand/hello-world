@@ -137,9 +137,17 @@ describe('access policy', () => {
 describe('change audiences', () => {
   it('names an audience for every change, and keeps vault data changes out of other windows', () => {
     for (const name of CHANGE_NAMES) expect(CHANGE_AUDIENCE[name], name).toBeDefined()
-    // The two that are not vault-only are each a deliberate decision: settings are public, and the
-    // names-only roster copy exists to be read by the everyday window.
-    const notVaultOnly = ['settings.changed', 'directory.changed']
+    // The ones that are not vault-only are each a deliberate decision: settings are public, the
+    // names-only roster copy exists to be read by the everyday window, a folder change carries no
+    // path, the desktop arrangement is the everyday window's own, and the teacher chose to have the
+    // calendar there too.
+    const notVaultOnly = [
+      'settings.changed',
+      'directory.changed',
+      'folders.changed',
+      'desk.changed',
+      'calendar.changed'
+    ]
     for (const name of CHANGE_NAMES) {
       if (notVaultOnly.includes(name)) continue
       expect(CHANGE_AUDIENCE[name], name).toEqual(['vault'])
@@ -147,6 +155,16 @@ describe('change audiences', () => {
     expect(CHANGE_AUDIENCE['settings.changed']).toContain('launcher')
     expect(CHANGE_AUDIENCE['settings.changed']).not.toContain('stage')
     expect(CHANGE_AUDIENCE['directory.changed']).toEqual(['launcher'])
+    expect(CHANGE_AUDIENCE['desk.changed']).toEqual(['launcher'])
+    for (const name of notVaultOnly)
+      expect(CHANGE_AUDIENCE[name as 'desk.changed']).not.toContain('stage')
+  })
+
+  it('keeps the desktop arrangement in the everyday window and the stage away from the Mac', () => {
+    expect(methodsFor('vault').desk).toBeUndefined()
+    expect(methodsFor('stage').desk).toBeUndefined()
+    expect(methodsFor('stage').folders).toBeUndefined()
+    expect(methodsFor('stage').calendar).toBeUndefined()
   })
 
   it('lets the launcher read the names-only roster copy and nothing more, even with the Vault locked', () => {

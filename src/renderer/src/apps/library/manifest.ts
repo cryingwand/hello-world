@@ -9,7 +9,7 @@ const manifest: AppManifest = {
   component: LibraryApp,
   defaultSize: { w: 1120, h: 700 },
   minSize: { w: 720, h: 460 },
-  handles: ['search-files']
+  handles: ['search-files', 'open-path']
 }
 
 export default manifest

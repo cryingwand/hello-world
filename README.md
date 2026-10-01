@@ -15,9 +15,20 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   Rosters, Gradebook, Advising, Quizzes & Exams, Lesson Planner, Files with attachments, Protected Files). They are separate windows with separate
   data; see [The Vault and the Stage](#the-vault-and-the-stage).
 - **Shell**: top bar (clock, file search, current-class picker in the Vault, Present and Lock buttons), a
-  dock, and movable, resizable, snappable windows whose layout is restored on relaunch.
+  floating dock, and a desktop that is an endless canvas, like a whiteboard: windows are cards on it.
+  Drag empty space or scroll with two fingers to move around, pinch (or ⌘ and scroll) to zoom, and use
+  the map and zoom buttons in the corner (**Fit**, or double-clicking the canvas, shows every window).
+  New windows open beside the others. Windows can still be resized, maximized and snapped to a half of
+  the screen, and the layout and view are restored on relaunch.
 - **Classes & Rosters**: terms, classes and students; Excel/CSV roster import with column mapping and a
   preview; roster export.
+- **Your Mac as the backend**: the everyday desktop holds your own arrangement: pin files and folders
+  from your Mac onto the canvas, group them in labelled, coloured areas (dragging an area brings what is
+  on it), and a pinned folder shows what is in it, live. Files has a **Browse** tab that works like
+  Finder: places, folders, preview, new folder, rename, drag onto a folder to move, Move to Trash (always
+  the Mac's Trash, never a permanent delete; only inside your home folder, never in a protected folder).
+  **Calendar** shows your Mac's calendars (iCloud, Exchange, Google) as a week, repeating classes
+  included, and adds or deletes events; a lesson can be added to it from the planner.
 - **Files**: Spotlight search with your teaching folders ranked first; built-in viewers for PDF, images,
   text and Markdown (editable), Word and Excel (read-only); open in Preview, TextEdit, Word, Excel or
   PowerPoint and snap the app beside the launcher; attach files to a class or student.
@@ -46,8 +57,13 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   notes. Only the titles of linked quizzes go in the deck, never their questions. **Copy a unit** for next
   term (its lessons, linked quizzes and attached files, with the dates cleared, kept or moved by a number
   of weeks), copy a single lesson, or move a lesson to another unit. A lesson can be linked to the classes it
-  is taught to and to the Gradebook assignments that go with it, and opens the class in the Gradebook. It
-  lives in the Vault.
+  is taught to and to the Gradebook assignments that go with it, and opens the class in the Gradebook.
+  **Build a session** from a panel of blocks (lecture, discussion, writing, reading, group work, activity,
+  video, quiz or check, presentations, review, break): click one or drag it into place, set its length,
+  and the session roadmap shows the time against the class length. Each block adds its prep (write the
+  prompt, choose the reading…) to a **To-do** list, due on the lesson's day; the deck gets an agenda
+  slide. A unit can belong to a semester, and the **Semester** roadmap shows each unit as a lane of
+  lessons with their blocks and the mix of time across the term. It lives in the Vault.
 - **In-class Tools** (Phase 5): a **timer** (presets or "7", "1:30", "90s", "1h 15m"; pause, add or take off a
   minute; it counts down from the clock, so it stays accurate; flashes and beeps at zero), a **random
   picker** (everyone goes once before anyone repeats), a **group maker** (by number of groups or people per

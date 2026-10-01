@@ -11,13 +11,13 @@ Output is CommonJS (no `"type": "module"`) so the sandboxed preload script works
 ## Layout
 
 ```
-src/main/        Electron main process: DB, IPC, vault, stage, file guard, macOS integration, backups
+src/main/        Electron main process: DB, IPC, vault, stage, file guard, folders, desk, macOS integration, backups
   vault/         Passcode, lock lifecycle (manager), unlock rules (gate), legacy single-DB import
-  mac/           Spotlight, open-and-snap, launcher snap (all take injected dependencies)
+  mac/           Spotlight, open-and-snap, launcher snap, Calendar (all take injected dependencies)
 src/preload/     contextBridge that exposes `window.api`, built from the caller's role
 src/shared/      Types and pure logic used by both sides (IPC contract, access map, grade math, stage)
 src/renderer/src/
-  shell/         Top bar, dock, window manager (launcher and vault windows)
+  shell/         Top bar, dock, canvas desktop and window manager (launcher and vault windows)
   vault/         Lock screen, first-run passcode, vault settings
   stage/         The projector window
   apps/<id>/     One folder per app module (manifest.ts + component)
@@ -36,7 +36,7 @@ process from the window's own `webContents` id (nothing the renderer says about 
 
 | Role       | Shows                                                            | Can reach                                                                       |
 | ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `launcher` | Files (library), the Presenter and In-class Tools                | Public data: settings, non-protected files, backups, the names-only roster copy |
+| `launcher` | Files, Calendar, the Presenter, In-class Tools, the desktop      | Public data: settings, non-protected files, backups, the names-only roster copy |
 | `vault`    | Classes, Gradebook, Advising, Quizzes, Planner, Files, Protected | Everything, only while the vault is unlocked                                    |
 | `stage`    | What is being presented                                          | One method: `stage.view()`                                                      |
 
@@ -59,6 +59,33 @@ call if it cannot. `access.test.ts` fails if a `delete*`/`commit*` method is not
 Main broadcasts change events through `CHANGE_AUDIENCE` (`src/shared/events.ts`): vault data events go to
 vault windows only. Give every new event an audience.
 
+## The canvas desktop
+
+Each window's desktop is an endless canvas (`src/renderer/src/shell/`). A free window's `x`/`y` are canvas
+coordinates and the camera (`WmState.camera`: the canvas point at the desktop's top-left, and a zoom
+between `MIN_ZOOM` and `MAX_ZOOM`) decides where it is drawn; `placement()` turns one into the other, and a
+zoomed window is the same layout box scaled with a CSS transform, so apps never see the zoom. Maximized
+and snapped windows are pinned to the screen and ignore the camera. All of it is pure reducer logic in
+`windowManager.ts` (tested in `tests/renderer/windowManager.test.ts`); pointer code divides screen
+distances by the zoom. New windows open beside the others and the camera pans to them (`reveal`).
+`.desktop` uses `overflow: clip` so a focused field or `scrollIntoView` inside a window can never scroll the
+canvas. Anything an app shows with `position: fixed` must be portaled to `<body>` (as `Modal` and
+`ContextMenu` are), since a scaled window would otherwise contain it. React still passes a portal's events
+up to the desktop, so the desktop acts on a pointer event only when its target is really inside it on the
+page (`inDesktop` in `Desktop.tsx`); a canvas handler that forgets this swallows dialog clicks. In the
+everyday window the canvas also holds the teacher's own arrangement (`DeskLayer`: pinned files and folders,
+labelled areas), which Fit and the map include through `ShellContext.canvasExtras`.
+
+## The Mac as the backend
+
+Teaching OS works on the Mac's own data rather than copies: files and folders (`folders.*`, the Files app's
+Browse tab and the desktop) and the calendar (`calendar.*`, through EventKit). Notes:
+[`docs/features/files-and-desktop.md`](docs/features/files-and-desktop.md) and
+[`docs/features/calendar.md`](docs/features/calendar.md). The rules that matter everywhere: changes to files
+are made only inside the home folder, never to a protected file or a folder that holds one, never over an
+existing file, and a delete is always a move to the Trash (`shell.trashItem`). A new way to change files
+must go through `createFolders` or follow the same rules.
+
 ## App module contract
 
 Every app lives in `src/renderer/src/apps/<id>/` and exports a manifest from `manifest.ts`:
@@ -73,11 +100,13 @@ in-process React modules, not iframes, and talk to data only through `window.api
 
 ## The Vault
 
-- `data.sqlite` holds settings, the protected folder list and a names-only copy of the class rosters (see
-  below). `vault.sqlite` (in `vault/`) holds terms,
+- `data.sqlite` holds settings, the protected folder list, a names-only copy of the class rosters (see
+  below) and the everyday desktop's arrangement (`desk_items`, see
+  [`docs/features/files-and-desktop.md`](docs/features/files-and-desktop.md)). `vault.sqlite` (in `vault/`) holds terms,
   classes, students, enrollments, categories, assignments, scores, file links and the advising tables
   (`advising_meetings`, `goals`, `action_items`, `external_progress`) and the quiz tables (`questions`,
-  `quizzes`, `quiz_items`) and the planner tables (`units`, `lessons`, `lesson_quizzes`). **A new table goes in
+  `quizzes`, `quiz_items`) and the planner tables (`units`, `lessons`, `lesson_quizzes`, `lesson_blocks`,
+  `lesson_tasks`). **A new table goes in
   the vault** unless there is a deliberate decision that it is safe to show anywhere.
 - **The public roster copy** is a deliberate exception to "student data stays in the vault": `roster_classes`
   and `roster_members` (public migration 2) hold each class's label and its students' names, so the
@@ -123,8 +152,10 @@ that app**, and update it in the same commit:
 
 - Advising: [`docs/features/advising.md`](docs/features/advising.md)
 - Quizzes & Exams: [`docs/features/quizzes.md`](docs/features/quizzes.md)
-- Lesson & Unit Planner: [`docs/features/planner.md`](docs/features/planner.md)
+- Lesson & Unit Planner (with the lesson builder and to-do list): [`docs/features/planner.md`](docs/features/planner.md)
 - In-class Tools: [`docs/features/in-class-tools.md`](docs/features/in-class-tools.md)
+- Files, folders and the everyday desktop: [`docs/features/files-and-desktop.md`](docs/features/files-and-desktop.md)
+- Calendar: [`docs/features/calendar.md`](docs/features/calendar.md)
 
 Write a new note in `docs/features/` for a new app, and link it here.
 
@@ -193,6 +224,8 @@ non-Mac machine these environment variables stand in for the real thing:
 
 - `TEACHING_OS_FORCE_MAC=1` treats the machine as macOS for gating.
 - `TEACHING_OS_BIN_MDFIND`, `TEACHING_OS_BIN_OPEN`, `TEACHING_OS_BIN_OSASCRIPT` replace those executables.
+- `scripts/fake-osascript.mjs` (as `TEACHING_OS_BIN_OSASCRIPT`) answers the Calendar script from the JSON
+  file named by `TOS_FAKE_CALENDAR`. The smoke test uses it, and a pretend `HOME`, on every platform.
 
 PDFs and images reach a window through the `tos-file://` scheme (`resolveServedPath` allows only existing
 PDFs and images, and each role adds its own policy). The renderer's CSP blocks `fetch()` to it on purpose.
@@ -212,7 +245,7 @@ PDFs and images, and each role adds its own policy). The renderer's CSP blocks `
   code paths and native packaging run for real; a failure there is never "only CI".
 - `npm run install:mac` builds and installs the app in `/Applications` (the teacher's install and update
   path, `docs/START_HERE.md`).
-- What only a person can check (Spotlight, snapping, Touch ID, displays, sleep) is in
+- What only a person can check (Spotlight, snapping, Touch ID, displays, sleep, Calendar) is in
   `docs/MAC_CHECKLIST.md`. Add a line there when a change needs one.
 - Cloud sessions install dependencies at start (`scripts/session-start.sh`, `.claude/settings.json`).
 

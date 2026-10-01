@@ -1,4 +1,4 @@
-import type { WindowState } from './windowManager'
+import { clampZoom, type Camera, type WindowState } from './windowManager'
 
 const key = (space: string): string => `teachingos.layout.v1.${space}`
 
@@ -6,6 +6,8 @@ export interface SavedLayout {
   windows: WindowState[]
   nextZ: number
   nextId: number
+  /** Where the canvas was looking. Layouts saved before the canvas have none. */
+  camera?: Camera
 }
 
 /** Drop anything malformed or belonging to an app that no longer exists. */
@@ -39,7 +41,10 @@ export function sanitizeLayout(raw: unknown, knownAppIds: Set<string>): SavedLay
       minimized: !!w.minimized
     })),
     nextZ: Math.max(num(r.nextZ) ? r.nextZ : 1, maxZ + 1),
-    nextId: Math.max(num(r.nextId) ? r.nextId : 1, maxId + 1)
+    nextId: Math.max(num(r.nextId) ? r.nextId : 1, maxId + 1),
+    ...(r.camera && num(r.camera.x) && num(r.camera.y) && num(r.camera.zoom)
+      ? { camera: { x: r.camera.x, y: r.camera.y, zoom: clampZoom(r.camera.zoom) } }
+      : {})
   }
 }
 

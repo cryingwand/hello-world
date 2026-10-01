@@ -1,6 +1,6 @@
 // Launches the built app and drives it the way a person would, to catch what unit tests cannot: the
-// main process wiring, the windows, the preload bridge, every app's first render, the Vault and its
-// backups, and the Stage with the In-class Tools on it.
+// main process wiring, the windows, the preload bridge, every app's first render, the canvas desktop,
+// the Vault and its backups, the lesson builder, and the Stage with the In-class Tools on it.
 //
 //   npx electron-vite build && node scripts/smoke.mjs
 //
@@ -11,7 +11,7 @@
 // Contents/MacOS/Teaching OS), which also proves the native SQLite module was packaged correctly.
 /* global window, document -- the functions passed to evaluate() run inside the app's windows */
 import { _electron as electron } from 'playwright-core'
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -20,7 +20,14 @@ const data = mkdtempSync(join(tmpdir(), 'tos-smoke-'))
 const shots = process.env.SMOKE_SHOTS ?? join(data, 'shots')
 mkdirSync(shots, { recursive: true })
 const PASSCODE = 'smoke test passcode'
-const LAUNCHER_APPS = ['Files', 'In-class Tools', 'Presenter']
+const LAUNCHER_APPS = ['Files', 'Calendar', 'In-class Tools', 'Presenter']
+
+// A pretend home folder, so the folder browser and the desktop never touch real files.
+const home = join(data, 'home')
+for (const d of ['Desktop', 'Documents/PHIL 101/Week 1', 'Downloads'])
+  mkdirSync(join(home, d), { recursive: true })
+for (const f of ['Documents/PHIL 101/syllabus.pdf', 'Documents/PHIL 101/notes.md'])
+  writeFileSync(join(home, f), 'smoke')
 const VAULT_APPS = [
   'Classes & Rosters',
   'Gradebook',
@@ -57,7 +64,15 @@ const packaged = process.env.SMOKE_APP_BINARY
 const app = await electron.launch({
   executablePath: packaged ?? electronBin,
   args: [...(process.platform === 'linux' ? ['--no-sandbox'] : []), ...(packaged ? [] : [APP])],
-  env: { ...process.env, TEACHING_OS_DATA_DIR: data },
+  env: {
+    ...process.env,
+    HOME: home,
+    TEACHING_OS_DATA_DIR: data,
+    // Calendar goes through osascript; a stand-in answers instead, so no permission prompt can block.
+    TEACHING_OS_FORCE_MAC: '1',
+    TEACHING_OS_BIN_OSASCRIPT: join(APP, 'scripts/fake-osascript.mjs'),
+    TOS_FAKE_CALENDAR: join(data, 'calendar.json')
+  },
   timeout: 60_000
 })
 app.process().stderr.on('data', (d) => {
@@ -100,6 +115,70 @@ try {
   for (const name of LAUNCHER_APPS) await openApp(launcher, name)
   await launcher.screenshot({ path: join(shots, '01-launcher.png') })
 
+  log('the desktop canvas zooms out, frames every window and back to 100%')
+  const zoomLabel = launcher.getByRole('button', { name: 'Actual size' })
+  await launcher.getByRole('button', { name: 'Zoom out' }).click()
+  check((await zoomLabel.innerText()) === '80%', `zoomed to ${await zoomLabel.innerText()}`)
+  await launcher.getByRole('button', { name: 'Show everything' }).click()
+  const framed = await launcher.evaluate(() => {
+    const desk = document.querySelector('.desktop').getBoundingClientRect()
+    return [...document.querySelectorAll('.window')].every((w) => {
+      const r = w.getBoundingClientRect()
+      return r.left >= desk.left - 1 && r.right <= desk.right + 1 && r.top >= desk.top - 1
+    })
+  })
+  check(framed, 'Fit left a window off screen')
+  await zoomLabel.click()
+  check((await zoomLabel.innerText()) === '100%', 'did not go back to 100%')
+
+  log('Files browses folders and moves a file by dragging it onto a folder')
+  const files = launcher.locator('.window[data-app=library]')
+  await launcher
+    .getByRole('navigation', { name: 'Apps' })
+    .getByRole('button', { name: 'Files', exact: true })
+    .click()
+  await files.locator('.place', { hasText: 'Documents' }).click()
+  await files.locator('.result-main', { hasText: 'PHIL 101' }).dblclick()
+  await files
+    .locator('.result-main', { hasText: 'notes.md' })
+    .dragTo(files.locator('.result-main', { hasText: 'Week 1' }))
+  await files.locator('.result-main', { hasText: 'notes.md' }).waitFor({ state: 'detached' })
+  check(existsSync(join(home, 'Documents/PHIL 101/Week 1/notes.md')), 'notes.md did not move')
+
+  log('a file is pinned to the desktop, and an area is made on the canvas')
+  await files.locator('.result-main', { hasText: 'syllabus.pdf' }).click({ button: 'right' })
+  await launcher.getByRole('menuitem', { name: 'Pin to desktop' }).click()
+  await launcher.locator('.desk-file', { hasText: 'syllabus.pdf' }).waitFor()
+  const deskBox = await launcher.locator('.desktop').boundingBox()
+  await launcher.mouse.click(deskBox.x + 20, deskBox.y + deskBox.height - 40, { button: 'right' })
+  await launcher.getByRole('menuitem', { name: 'New area here' }).click()
+  await launcher.getByRole('textbox', { name: 'Area name' }).fill('Monday')
+  await launcher.keyboard.press('Enter')
+  await launcher.locator('.desk-area-label', { hasText: 'Monday' }).waitFor()
+  await launcher.getByRole('button', { name: 'Show everything' }).click()
+  await launcher.screenshot({ path: join(shots, '01b-desk.png') })
+
+  log('Calendar shows the week and adds an event through a dialog')
+  await launcher
+    .getByRole('navigation', { name: 'Apps' })
+    .getByRole('button', { name: 'Calendar', exact: true })
+    .click()
+  const cal = launcher.locator('.window[data-app=calendar]')
+  await cal.getByRole('button', { name: '+ Event' }).click()
+  await launcher.getByRole('textbox', { name: 'Title' }).fill('Smoke office hours')
+  const today = await launcher.evaluate(() => {
+    const d = new Date()
+    const p = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  })
+  const form = launcher.getByRole('dialog', { name: 'New event' })
+  await form.getByLabel('Date', { exact: true }).fill(today)
+  await form.getByLabel('From', { exact: true }).fill('10:00')
+  await form.getByLabel('To', { exact: true }).fill('11:00')
+  // A real click: a dialog's buttons must work inside a window on the canvas.
+  await launcher.getByRole('button', { name: 'Add', exact: true }).click()
+  await cal.locator('.cal-event', { hasText: 'Smoke office hours' }).waitFor()
+
   log('the Vault opens and a passcode is chosen')
   const openVault = async () => {
     const [win] = await Promise.all([
@@ -119,6 +198,37 @@ try {
   log('each Vault app opens')
   for (const name of VAULT_APPS) await openApp(vault, name)
   await vault.screenshot({ path: join(shots, '02-vault.png') })
+
+  log('a lesson built from blocks fills the to-do list')
+  // Already open: the dock brings it to the front and into view.
+  await vault
+    .getByRole('navigation', { name: 'Apps' })
+    .getByRole('button', { name: 'Lesson Planner', exact: true })
+    .click()
+  const planner = vault.locator('.window[data-app=planner]')
+  await planner.locator('.titlebar').dblclick() // maximized, so nothing is off the edge of the canvas
+  // Through the dialog, with a real click: buttons in a dialog over the canvas must work.
+  await planner.getByRole('button', { name: '+ Unit' }).click()
+  await vault.getByRole('textbox', { name: 'Title' }).fill('Smoke unit')
+  await vault.getByRole('button', { name: 'Create', exact: true }).click()
+  await planner.locator('.side-item', { hasText: 'Smoke unit' }).waitFor()
+  await vault.evaluate(async () => {
+    const unit = (await window.api.units.list()).find((u) => u.title === 'Smoke unit')
+    await window.api.lessons.create({ unitId: unit.id, title: 'Smoke lesson', classMinutes: 50 })
+  })
+  await planner.locator('.side-item', { hasText: 'Smoke unit' }).click()
+  await planner.locator('.pl-open', { hasText: 'Smoke lesson' }).click()
+  await planner.getByRole('button', { name: /^Lecture/ }).click()
+  await planner.getByRole('button', { name: /^Reading/ }).click()
+  await planner.locator('.block-card').nth(1).waitFor()
+  await planner.getByRole('tab', { name: 'To-do' }).click()
+  await planner.getByText('Choose the reading').waitFor()
+  check(
+    (await planner.locator('.todo .task-row').count()) === 3,
+    'the to-do list does not hold the prep for a lecture and a reading'
+  )
+  await vault.screenshot({ path: join(shots, '02-planner-todo.png') })
+  await planner.getByRole('tab', { name: 'Units' }).click()
 
   log('a class made in the Vault reaches the everyday roster copy, names only')
   const classId = await vault.evaluate(async () => {

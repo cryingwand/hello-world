@@ -1,17 +1,23 @@
 import { useState } from 'react'
+import { localTime } from '@shared/calendar'
+import { agendaLine } from '@shared/lessonBlocks'
 import type { Lesson } from '@shared/models'
+import EventForm from '@apps/calendar/EventForm'
 import { useApiQuery } from '@renderer/data/hooks'
 import AttachedFiles from './AttachedFiles'
 import ClassLinks from './ClassLinks'
+import LessonBuilder from './LessonBuilder'
+import LessonTasks from './LessonTasks'
 import QuizLinks from './QuizLinks'
 import { useAutosave } from './useAutosave'
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
-/** One lesson: its fields save as you type, then its quizzes and files. */
+/** One lesson: its fields save as you type, its blocks and prep, then its quizzes and files. */
 export default function LessonEditor({
   lesson,
   unitId,
+  course,
   onError,
   onDeleted,
   onCopied,
@@ -21,6 +27,8 @@ export default function LessonEditor({
 }: {
   lesson: Lesson
   unitId: number
+  /** The unit's course, for the calendar event's title. */
+  course: string
   onError: (message: string) => void
   onDeleted: () => void
   /** The lesson was copied: show the copy. */
@@ -37,19 +45,25 @@ export default function LessonEditor({
       objectives: lesson.objectives,
       plan: lesson.plan,
       homework: lesson.homework,
-      notes: lesson.notes
+      notes: lesson.notes,
+      classMinutes: lesson.classMinutes === null ? '' : String(lesson.classMinutes)
     },
     (patch) => {
-      const { date, ...rest } = patch
+      const { date, classMinutes, ...rest } = patch
       return window.api.lessons.update(lesson.id, {
         ...rest,
-        ...(date !== undefined ? { date: date || null } : {})
+        ...(date !== undefined ? { date: date || null } : {}),
+        ...(classMinutes !== undefined
+          ? { classMinutes: classMinutes === '' ? null : Number(classMinutes) }
+          : {})
       })
     },
     (e) => onError(msg(e))
   )
 
   const [removing, setRemoving] = useState(false)
+  const [toCalendar, setToCalendar] = useState(false)
+  const [added, setAdded] = useState(false)
   const [busy, setBusy] = useState(false)
   const units = useApiQuery(() => window.api.units.list(), [], ['planner.changed'])
   const others = (units.data ?? []).filter((u) => u.id !== unitId)
@@ -107,6 +121,19 @@ export default function LessonEditor({
           <button className="btn" disabled={exporting} onClick={onExport}>
             {exporting ? 'Saving…' : 'PowerPoint for this lesson'}
           </button>
+          <button
+            className="btn"
+            disabled={!draft.date}
+            title={
+              draft.date ? 'Add this lesson to your Mac calendar' : 'Give the lesson a date first'
+            }
+            onClick={() => {
+              setAdded(false)
+              setToCalendar(true)
+            }}
+          >
+            {added ? 'Added to Calendar' : 'Add to Calendar…'}
+          </button>
           <button className="btn" disabled={busy} onClick={() => void copy()}>
             Copy lesson
           </button>
@@ -139,7 +166,22 @@ export default function LessonEditor({
             Date
             <input type="date" {...bind('date')} />
           </label>
+          <label>
+            Class length (min)
+            <input
+              type="number"
+              min={1}
+              max={600}
+              step={5}
+              placeholder="75"
+              {...bind('classMinutes')}
+            />
+          </label>
         </div>
+      </div>
+      <LessonBuilder lesson={lesson} onError={onError} />
+      <LessonTasks lesson={lesson} onError={onError} />
+      <div className="form">
         <label>
           Objectives (one per line)
           <textarea rows={3} {...bind('objectives')} />
@@ -160,6 +202,23 @@ export default function LessonEditor({
           </span>
         </label>
       </div>
+      {toCalendar && draft.date && (
+        <EventForm
+          heading="Add the lesson to your calendar"
+          draft={{
+            title: [course, draft.title].filter((p) => p.trim() !== '').join(': '),
+            start: localTime(draft.date, '09:00'),
+            minutes: Number(draft.classMinutes) || lesson.classMinutes || 60,
+            // The agenda goes in the event's notes; the lesson's own notes stay here.
+            notes: lesson.blocks.map(agendaLine).join('\n')
+          }}
+          onClose={() => setToCalendar(false)}
+          onSaved={() => {
+            setToCalendar(false)
+            setAdded(true)
+          }}
+        />
+      )}
       <QuizLinks lesson={lesson} onError={onError} />
       <ClassLinks lesson={lesson} onError={onError} />
       <AttachedFiles recordType="lesson" recordId={lesson.id} onError={onError} />

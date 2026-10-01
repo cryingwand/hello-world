@@ -15,7 +15,8 @@ export default function FileDetail({
   onAttach?: () => void
   onDirtyChange: (dirty: boolean) => void
 }): React.JSX.Element {
-  const info = useApiQuery(() => window.api.files.info(path), [path])
+  // A file moved or trashed from the folder browser (or Finder) shows as gone.
+  const info = useApiQuery(() => window.api.files.info(path), [path], ['folders.changed'])
 
   if (info.data === null && !info.loading) {
     return (

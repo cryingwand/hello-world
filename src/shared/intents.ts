@@ -10,5 +10,7 @@ export type Intent =
   | { type: 'attach-file'; path: string; recordType: RecordType; recordId: number }
   | { type: 'record-score'; assignmentId: number; studentId: number; classId?: number }
   | { type: 'search-files'; query: string }
+  /** Show a folder, or a file in its folder, in Files. The path came from the main process. */
+  | { type: 'open-path'; path: string; isDir: boolean }
 
 export type IntentType = Intent['type']

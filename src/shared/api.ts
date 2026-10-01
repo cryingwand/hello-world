@@ -1,6 +1,13 @@
+import type { CalendarEvent, CalendarEventInput, CalendarInfo, CalendarStatus } from './calendar'
 import type {
+  DeskArea,
+  DeskItem,
+  DeskPatch,
+  DeskPin,
   FileInfo,
   FileSearchQuery,
+  FolderListing,
+  FolderPlace,
   FileSearchResponse,
   OpenRequest,
   OpenResult,
@@ -51,6 +58,7 @@ import type {
   Student,
   Term,
   Lesson,
+  TodoItem,
   UnitDetail,
   UnitSummary,
   UpcomingLesson
@@ -192,6 +200,8 @@ export interface UnitInput {
   title: string
   course?: string
   summary?: string
+  /** The semester it is taught in. */
+  termId?: number | null
 }
 
 export interface LessonInput {
@@ -206,6 +216,25 @@ export interface LessonInput {
   homework?: string
   /** Teacher only: speaker notes in the PowerPoint. */
   notes?: string
+  /** How long the class meets. */
+  classMinutes?: number | null
+}
+
+export interface BlockInput {
+  /** One of `BLOCK_KINDS`. */
+  kind: string
+  /** Defaults to the kind's name. */
+  title?: string
+  /** Defaults to the kind's usual length. */
+  minutes?: number | null
+  details?: string
+  /** 0-based place among the lesson's blocks; the end if not given. */
+  position?: number
+}
+
+export interface TaskInput {
+  text: string
+  done?: boolean
 }
 
 export interface UnitCopyInput {
@@ -346,6 +375,10 @@ export interface ApiContract {
     reorder(id: number, lessonIds: number[]): UnitDetail
     /** Lessons dated today or later, soonest first. */
     upcoming(): UpcomingLesson[]
+    /** Every unit in a semester (or with none, for null), in the order they are taught, with their lessons. */
+    roadmap(termId: number | null): UnitDetail[]
+    /** Prep tasks still to do, soonest lesson first, and the done ones too if asked. */
+    todo(includeDone?: boolean): TodoItem[]
     /**
      * Asks where to save, then writes a PowerPoint for the unit, or for one of its lessons. Only quiz
      * titles go in it, never questions. Null if cancelled.
@@ -371,6 +404,16 @@ export interface ApiContract {
     /** The assignment's class must already be linked to the lesson. */
     linkAssignment(id: number, assignmentId: number): Lesson
     unlinkAssignment(id: number, assignmentId: number): Lesson
+    /** Adds a block, and the prep it needs to the to-do list. */
+    addBlock(id: number, input: BlockInput): Lesson
+    updateBlock(blockId: number, patch: Patch<Omit<BlockInput, 'kind' | 'position'>>): Lesson
+    /** Its prep tasks go with it. */
+    deleteBlock(blockId: number): Lesson
+    /** Every block in the lesson, in the new order. */
+    reorderBlocks(id: number, blockIds: number[]): Lesson
+    addTask(id: number, input: TaskInput): Lesson
+    updateTask(taskId: number, patch: Patch<TaskInput>): Lesson
+    deleteTask(taskId: number): Lesson
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -488,6 +531,41 @@ export interface ApiContract {
     add(input: FileLinkInput): FileLink
     remove(id: number): void
   }
+  folders: {
+    /** Home, Desktop, Documents, Downloads, iCloud Drive and the teaching folders that exist. */
+    places(): Awaitable<FolderPlace[]>
+    /** One folder's contents, folders first. Protected files are left out outside the Vault. */
+    list(dir: string): Awaitable<FolderListing>
+    /** Returns the new folder's path. */
+    createFolder(dir: string, name: string): Awaitable<string>
+    /** Returns the new path. Never replaces an existing file. */
+    rename(path: string, name: string): Awaitable<string>
+    /** Into a folder; returns the new paths. Never replaces an existing file. */
+    move(paths: string[], dir: string): Awaitable<string[]>
+    /** To the Mac's Trash, where they can be put back from. Nothing is deleted outright. */
+    trash(paths: string[]): Awaitable<void>
+  }
+  desk: {
+    /** Everything on the everyday desktop: areas first, then pinned files and folders. */
+    items(): Awaitable<DeskItem[]>
+    /** Pins a file or folder at a place on the canvas. The file itself stays where it is. */
+    pin(input: DeskPin): Awaitable<DeskItem>
+    addArea(input: DeskArea): Awaitable<DeskItem>
+    /** Moves or resizes several items at once (an area and what is on it), or relabels an area. */
+    arrange(changes: { id: number; patch: DeskPatch }[]): Awaitable<DeskItem[]>
+    /** Takes it off the desktop; a pinned file or folder is not touched. */
+    remove(id: number): Awaitable<void>
+  }
+  calendar: {
+    /** Whether the Mac's calendars can be used. The first call shows macOS's permission prompt. */
+    status(): Awaitable<CalendarStatus>
+    calendars(): Awaitable<CalendarInfo[]>
+    /** Events from `from` to `to` (milliseconds), repeating ones expanded. At most 62 days. */
+    events(from: number, to: number): Awaitable<CalendarEvent[]>
+    create(input: CalendarEventInput): Awaitable<CalendarEvent>
+    /** One occurrence of an event: the one starting at `start`. */
+    delete(id: string, start: number): Awaitable<void>
+  }
   directory: {
     /** The classes in the names-only roster copy, current term first. Works while the Vault is locked. */
     classes(): DirectoryClass[]
@@ -573,6 +651,8 @@ export const API_METHODS = {
     'duplicate',
     'reorder',
     'upcoming',
+    'roadmap',
+    'todo',
     'exportPowerPoint'
   ],
   lessons: [
@@ -586,7 +666,14 @@ export const API_METHODS = {
     'linkClass',
     'unlinkClass',
     'linkAssignment',
-    'unlinkAssignment'
+    'unlinkAssignment',
+    'addBlock',
+    'updateBlock',
+    'deleteBlock',
+    'reorderBlocks',
+    'addTask',
+    'updateTask',
+    'deleteTask'
   ],
   grading: [
     'categories',
@@ -636,6 +723,9 @@ export const API_METHODS = {
   ],
   protection: ['folders', 'chooseAndAdd', 'remove', 'browse'],
   fileLinks: ['list', 'add', 'remove'],
+  folders: ['places', 'list', 'createFolder', 'rename', 'move', 'trash'],
+  desk: ['items', 'pin', 'addArea', 'arrange', 'remove'],
+  calendar: ['status', 'calendars', 'events', 'create', 'delete'],
   directory: ['classes', 'students'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],

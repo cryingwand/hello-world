@@ -144,7 +144,8 @@ describe('lessons', () => {
       objectives: 'Define ethics',
       plan: 'Warm-up\nLecture',
       homework: 'Read ch. 1',
-      notes: 'Remember the projector'
+      notes: 'Remember the projector',
+      classMinutes: 75
     })
     const two = env.repos.lessons.create({ unitId: unit.id, title: 'Day 2' })
     expect(one).toEqual({
@@ -159,9 +160,12 @@ describe('lessons', () => {
       notes: 'Remember the projector',
       quizzes: [],
       classes: [],
-      assignments: []
+      assignments: [],
+      classMinutes: 75,
+      blocks: [],
+      tasks: []
     })
-    expect(two).toMatchObject({ position: 1, date: null, plan: '' })
+    expect(two).toMatchObject({ position: 1, date: null, plan: '', classMinutes: null })
     expect(lessonTitles(env, unit.id)).toEqual(['Day 1', 'Day 2'])
   })
 
@@ -906,5 +910,223 @@ describe('linking a lesson to classes and Gradebook assignments', () => {
     env.repos.lessons.update(lesson.id, { date: '2999-01-02' })
     env.repos.lessons.linkClass(lesson.id, p3.id)
     expect(env.repos.units.upcoming()[0].lesson.classes.map((c) => c.id)).toEqual([p3.id])
+  })
+})
+
+describe('lesson blocks and prep tasks', () => {
+  it('adds a block with its kind’s name, length and prep tasks', () => {
+    const env = makeEnv()
+    const { a } = unitWithLessons(env)
+    const lesson = env.repos.lessons.addBlock(a.id, { kind: 'reading' })
+    expect(lesson.blocks).toEqual([
+      {
+        id: lesson.blocks[0].id,
+        lessonId: a.id,
+        position: 0,
+        kind: 'reading',
+        title: 'Reading',
+        minutes: 15,
+        details: ''
+      }
+    ])
+    expect(lesson.tasks.map((t) => [t.text, t.blockId, t.done])).toEqual([
+      ['Choose the reading', lesson.blocks[0].id, false],
+      ['Share the reading with the class', lesson.blocks[0].id, false]
+    ])
+    expect(env.events).toContainEqual({ name: 'planner.changed' })
+  })
+
+  it('puts a block where it was dropped and keeps the order whole', () => {
+    const env = makeEnv()
+    const { a } = unitWithLessons(env)
+    env.repos.lessons.addBlock(a.id, { kind: 'lecture' })
+    env.repos.lessons.addBlock(a.id, { kind: 'discussion' })
+    const l = env.repos.lessons.addBlock(a.id, {
+      kind: 'writing',
+      title: 'Exit ticket',
+      position: 1
+    })
+    expect(l.blocks.map((b) => [b.position, b.title])).toEqual([
+      [0, 'Lecture'],
+      [1, 'Exit ticket'],
+      [2, 'Discussion']
+    ])
+    const far = env.repos.lessons.addBlock(a.id, { kind: 'break', position: 99, minutes: null })
+    expect(far.blocks.at(-1)).toMatchObject({ kind: 'break', position: 3, minutes: null })
+  })
+
+  it('refuses an unknown kind, odd lengths and a missing lesson', () => {
+    const env = makeEnv()
+    const { a } = unitWithLessons(env)
+    expect(() => env.repos.lessons.addBlock(a.id, { kind: 'nap' })).toThrow(/Kind/)
+    expect(() => env.repos.lessons.addBlock(a.id, { kind: 'lecture', minutes: 2.5 })).toThrow(
+      /whole minutes/
+    )
+    expect(() => env.repos.lessons.addBlock(a.id, { kind: 'lecture', minutes: 601 })).toThrow(
+      /whole minutes/
+    )
+    expect(() => env.repos.lessons.addBlock(a.id, { kind: 'lecture', minutes: -5 })).toThrow()
+    expect(() => env.repos.lessons.addBlock(9999, { kind: 'lecture' })).toThrow(/no longer exists/)
+    expect(() => env.repos.lessons.update(a.id, { classMinutes: 0 })).toThrow()
+    expect(env.repos.units.get(a.unitId)!.lessons[0].blocks).toEqual([])
+  })
+
+  it('edits, reorders and deletes blocks; a deleted block takes its tasks', () => {
+    const env = makeEnv()
+    const { a } = unitWithLessons(env)
+    env.repos.lessons.addBlock(a.id, { kind: 'lecture' })
+    let l = env.repos.lessons.addBlock(a.id, { kind: 'group' })
+    const [lecture, group] = l.blocks
+    env.repos.lessons.addTask(a.id, { text: 'Book the room' })
+    l = env.repos.lessons.updateBlock(lecture.id, { title: 'Kant', minutes: 25, details: 'Duty' })
+    expect(l.blocks[0]).toMatchObject({ title: 'Kant', minutes: 25, details: 'Duty' })
+    l = env.repos.lessons.reorderBlocks(a.id, [group.id, lecture.id])
+    expect(l.blocks.map((b) => b.id)).toEqual([group.id, lecture.id])
+    expect(() => env.repos.lessons.reorderBlocks(a.id, [group.id])).toThrow(/each part/)
+    expect(() => env.repos.lessons.reorderBlocks(a.id, [group.id, group.id])).toThrow(/each part/)
+    l = env.repos.lessons.deleteBlock(group.id)
+    expect(l.blocks.map((b) => [b.id, b.position])).toEqual([[lecture.id, 0]])
+    expect(l.tasks.map((t) => [t.text, t.position])).toEqual([
+      ['Prepare the slides or notes', 0],
+      ['Book the room', 1]
+    ])
+    expect(() => env.repos.lessons.deleteBlock(group.id)).toThrow(/no longer exists/)
+  })
+
+  it('adds, ticks off, renames and deletes tasks', () => {
+    const env = makeEnv()
+    const { a } = unitWithLessons(env)
+    let l = env.repos.lessons.addTask(a.id, { text: '  Print handouts ' })
+    const task = l.tasks[0]
+    expect(task).toMatchObject({ text: 'Print handouts', blockId: null, done: false })
+    l = env.repos.lessons.updateTask(task.id, { done: true })
+    expect(l.tasks[0].done).toBe(true)
+    l = env.repos.lessons.updateTask(task.id, { text: 'Print 30 handouts' })
+    expect(l.tasks[0]).toMatchObject({ text: 'Print 30 handouts', done: true })
+    expect(() => env.repos.lessons.updateTask(task.id, { text: ' ' })).toThrow(/required/)
+    expect(() =>
+      env.repos.lessons.updateTask(task.id, { done: 'yes' as unknown as boolean })
+    ).toThrow(/true or false/)
+    l = env.repos.lessons.deleteTask(task.id)
+    expect(l.tasks).toEqual([])
+  })
+
+  it('goes with its lesson, and a deleted unit leaves nothing behind', () => {
+    const env = makeEnv()
+    const { unit, a, b } = unitWithLessons(env)
+    env.repos.lessons.addBlock(a.id, { kind: 'lecture' })
+    env.repos.lessons.addBlock(b.id, { kind: 'video' })
+    env.repos.lessons.delete(a.id)
+    const count = (table: string): unknown =>
+      env.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get()
+    expect(count('lesson_blocks')).toEqual({ n: 1 })
+    expect(count('lesson_tasks')).toEqual({ n: 1 })
+    env.repos.units.delete(unit.id)
+    expect(count('lesson_blocks')).toEqual({ n: 0 })
+    expect(count('lesson_tasks')).toEqual({ n: 0 })
+  })
+
+  it('copies blocks and tasks with a lesson or unit, with every task still to do', () => {
+    const env = makeEnv()
+    const { unit, a } = unitWithLessons(env)
+    env.repos.lessons.update(a.id, { classMinutes: 50 })
+    env.repos.lessons.addBlock(a.id, { kind: 'discussion', title: 'Trolleys' })
+    const l = env.repos.lessons.addTask(a.id, { text: 'Bring markers' })
+    env.repos.lessons.updateTask(l.tasks[0].id, { done: true })
+
+    const copy = env.repos.lessons.duplicate(a.id)
+    expect(copy.classMinutes).toBe(50)
+    expect(copy.blocks).toHaveLength(1)
+    expect(copy.blocks[0]).toMatchObject({ kind: 'discussion', title: 'Trolleys' })
+    expect(copy.blocks[0].id).not.toBe(l.blocks[0].id)
+    expect(copy.tasks.map((t) => [t.text, t.blockId, t.done])).toEqual([
+      ['Write the discussion questions', copy.blocks[0].id, false],
+      ['Bring markers', null, false]
+    ])
+
+    const unitCopy = env.repos.units.duplicate(unit.id)
+    const first = unitCopy.lessons[0]
+    expect(first.blocks[0]).toMatchObject({ title: 'Trolleys' })
+    expect(first.tasks.every((t) => !t.done)).toBe(true)
+    expect(first.tasks[0].blockId).toBe(first.blocks[0].id)
+  })
+})
+
+describe('semesters and the to-do list', () => {
+  const term = (env: TestEnv, name = 'Fall 2026') =>
+    env.repos.terms.create({ name, startDate: '2026-08-24', endDate: '2026-12-11' })
+
+  it('puts a unit in a semester, and clears it when the semester is deleted', () => {
+    const env = makeEnv()
+    const fall = term(env)
+    const unit = env.repos.units.create({ title: 'Ethics', termId: fall.id })
+    expect(unit.termId).toBe(fall.id)
+    expect(env.repos.units.update(unit.id, { title: 'Ethics I' }).termId).toBe(fall.id)
+    expect(() => env.repos.units.create({ title: 'X', termId: 9999 })).toThrow(/no longer exists/)
+    expect(env.repos.units.update(unit.id, { termId: null }).termId).toBeNull()
+    env.repos.units.update(unit.id, { termId: fall.id })
+    env.repos.terms.delete(fall.id)
+    expect(env.repos.units.get(unit.id)!.termId).toBeNull()
+  })
+
+  it('a copied unit starts with no semester', () => {
+    const env = makeEnv()
+    const fall = term(env)
+    const unit = env.repos.units.create({ title: 'Ethics', termId: fall.id })
+    expect(env.repos.units.duplicate(unit.id).termId).toBeNull()
+  })
+
+  it('lays out a semester’s units in the order they are taught, with their lessons and blocks', () => {
+    const env = makeEnv()
+    const fall = term(env)
+    const spring = term(env, 'Spring 2027')
+    const late = env.repos.units.create({ title: 'Late', termId: fall.id })
+    const early = env.repos.units.create({ title: 'Early', termId: fall.id })
+    const undated = env.repos.units.create({ title: 'Undated', termId: fall.id })
+    env.repos.units.create({ title: 'Elsewhere', termId: spring.id })
+    env.repos.units.create({ title: 'Loose' })
+    const l1 = env.repos.lessons.create({ unitId: late.id, title: 'L', date: '2026-11-02' })
+    env.repos.lessons.create({ unitId: early.id, title: 'E', date: '2026-09-01' })
+    env.repos.lessons.addBlock(l1.id, { kind: 'lecture' })
+    const map = env.repos.units.roadmap(fall.id)
+    expect(map.map((u) => u.title)).toEqual(['Early', 'Late', 'Undated'])
+    expect(map[1].lessons[0].blocks).toHaveLength(1)
+    expect(map[2].lessons).toEqual([])
+    expect(undated.termId).toBe(fall.id)
+    expect(env.repos.units.roadmap(null).map((u) => u.title)).toEqual(['Loose'])
+    expect(env.repos.units.roadmap(9999)).toEqual([])
+  })
+
+  it('lists prep soonest lesson first, undated last, and done tasks only when asked', () => {
+    const env = makeEnv()
+    const unit = env.repos.units.create({ title: 'Ethics', course: 'PHIL 101' })
+    const later = env.repos.lessons.create({ unitId: unit.id, title: 'Later', date: '2026-10-20' })
+    const soon = env.repos.lessons.create({ unitId: unit.id, title: 'Soon', date: '2026-10-05' })
+    const someday = env.repos.lessons.create({ unitId: unit.id, title: 'Someday' })
+    env.repos.lessons.addBlock(later.id, { kind: 'video', title: 'Clip' })
+    env.repos.lessons.addTask(someday.id, { text: 'Find a guest' })
+    const s = env.repos.lessons.addBlock(soon.id, { kind: 'writing' })
+    env.repos.lessons.updateTask(s.tasks[0].id, { done: true })
+    env.repos.lessons.addTask(soon.id, { text: 'Photocopy' })
+
+    const todo = env.repos.units.todo()
+    expect(todo.map((t) => [t.lessonTitle, t.text])).toEqual([
+      ['Soon', 'Photocopy'],
+      ['Later', 'Find the clip and check it plays'],
+      ['Someday', 'Find a guest']
+    ])
+    expect(todo[1]).toMatchObject({
+      lessonDate: '2026-10-20',
+      unitId: unit.id,
+      unitTitle: 'Ethics',
+      course: 'PHIL 101',
+      blockKind: 'video',
+      blockTitle: 'Clip',
+      done: false
+    })
+    expect(todo[2]).toMatchObject({ blockKind: null, blockTitle: null })
+    const all = env.repos.units.todo(true)
+    expect(all).toHaveLength(4)
+    expect(all.at(-1)).toMatchObject({ text: 'Write the prompt', done: true })
   })
 })

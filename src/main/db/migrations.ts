@@ -10,7 +10,7 @@ export interface Migration {
  * Two databases, two histories. Append-only in each: never edit a shipped migration; add a new one
  * with the next version.
  *
- * - `data.sqlite` (public) holds only settings.
+ * - `data.sqlite` (public) holds settings, the names-only roster copy and the desktop arrangement.
  * - `vault.sqlite` holds everything about students, classes and grades, plus file links. A new table
  *   belongs in the vault unless there is a deliberate decision that it is safe to show anywhere.
  */
@@ -275,6 +275,41 @@ const VAULT_V5_SQL = `
     `
 
 /**
+ * The lesson builder. A lesson is made of blocks (a lecture, a discussion, a reading) in order, each
+ * with a rough length, measured against how long the class meets. Adding a block adds the prep it needs
+ * to the lesson's tasks, which make the to-do list; a task added by hand has no block. Both go with
+ * their lesson, and a block's tasks go with the block. A unit can belong to a semester (a term) for the
+ * semester roadmap; deleting the term only clears that.
+ */
+const VAULT_V6_SQL = `
+      CREATE TABLE lesson_blocks (
+        id        INTEGER PRIMARY KEY,
+        lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        position  INTEGER NOT NULL DEFAULT 0,
+        kind      TEXT NOT NULL,
+        title     TEXT NOT NULL DEFAULT '',
+        minutes   INTEGER CHECK (minutes IS NULL OR minutes >= 0),
+        details   TEXT NOT NULL DEFAULT ''
+      );
+      CREATE INDEX idx_lesson_blocks_lesson ON lesson_blocks(lesson_id, position);
+
+      CREATE TABLE lesson_tasks (
+        id        INTEGER PRIMARY KEY,
+        lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        block_id  INTEGER REFERENCES lesson_blocks(id) ON DELETE CASCADE,
+        position  INTEGER NOT NULL DEFAULT 0,
+        text      TEXT NOT NULL,
+        done      INTEGER NOT NULL DEFAULT 0 CHECK (done IN (0, 1))
+      );
+      CREATE INDEX idx_lesson_tasks_lesson ON lesson_tasks(lesson_id, position);
+      CREATE INDEX idx_lesson_tasks_block ON lesson_tasks(block_id);
+
+      ALTER TABLE lessons ADD COLUMN class_minutes INTEGER CHECK (class_minutes IS NULL OR class_minutes > 0);
+      ALTER TABLE units ADD COLUMN term_id INTEGER REFERENCES terms(id) ON DELETE SET NULL;
+      CREATE INDEX idx_units_term ON units(term_id);
+    `
+
+/**
  * A names-only copy of the class rosters, kept in the everyday database so the launcher can use a
  * roster (for the picker, groups and seating chart) while the Vault is locked or a presentation is
  * running. The Vault stays the only place a roster is edited: the copy is rewritten from it whenever it
@@ -303,9 +338,31 @@ const ROSTER_COPY_SQL = `
       );
     `
 
+/**
+ * The everyday desktop's own arrangement: files and folders pinned to the canvas, and the labelled
+ * areas that group them. A deliberate decision that this is safe outside the Vault: it holds paths of
+ * files the everyday window can already see (a pin is refused for a protected file, and one that
+ * becomes protected later is not shown) and the labels the teacher types. No student data.
+ */
+const DESK_SQL = `
+      CREATE TABLE desk_items (
+        id    INTEGER PRIMARY KEY,
+        kind  TEXT NOT NULL CHECK (kind IN ('file', 'folder', 'area')),
+        path  TEXT,
+        label TEXT NOT NULL DEFAULT '',
+        color TEXT NOT NULL DEFAULT '',
+        x     REAL NOT NULL,
+        y     REAL NOT NULL,
+        w     REAL NOT NULL,
+        h     REAL NOT NULL,
+        CHECK ((kind = 'area') = (path IS NULL))
+      );
+    `
+
 export const PUBLIC_MIGRATIONS: Migration[] = [
   { version: 1, name: 'settings', sql: SETTINGS_SQL },
-  { version: 2, name: 'names-only roster copy', sql: ROSTER_COPY_SQL }
+  { version: 2, name: 'names-only roster copy', sql: ROSTER_COPY_SQL },
+  { version: 3, name: 'desktop arrangement', sql: DESK_SQL }
 ]
 
 export const VAULT_MIGRATIONS: Migration[] = [
@@ -313,7 +370,8 @@ export const VAULT_MIGRATIONS: Migration[] = [
   { version: 2, name: 'advising', sql: VAULT_V2_SQL },
   { version: 3, name: 'questions and quizzes', sql: VAULT_V3_SQL },
   { version: 4, name: 'units and lessons', sql: VAULT_V4_SQL },
-  { version: 5, name: 'lessons linked to classes and assignments', sql: VAULT_V5_SQL }
+  { version: 5, name: 'lessons linked to classes and assignments', sql: VAULT_V5_SQL },
+  { version: 6, name: 'lesson blocks, prep tasks and semesters', sql: VAULT_V6_SQL }
 ]
 
 /**

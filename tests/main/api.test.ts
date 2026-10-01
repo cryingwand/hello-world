@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { API_METHODS, type ApiContract } from '@shared/api'
 import { CHANGE_NAMES } from '@shared/events'
 import { createApi } from '../../src/main/api'
+import { createDeskService } from '../../src/main/deskService'
+import { createFolders } from '../../src/main/folders'
+import { createCalendar } from '../../src/main/mac/calendar'
 import { createBackupService } from '../../src/main/backupService'
 import { openVaultDatabase } from '../../src/main/db/connection'
 import { createFilesApi } from '../../src/main/filesApi'
@@ -104,6 +107,11 @@ function env(opts: { unlocked?: boolean } = {}) {
     stagingPath: `${manager.paths.db}.restoring`,
     replace: (staged) => manager.replaceDatabase(staged)
   })
+  const launcherGuard = createFileGuard({
+    paths: createProtectedPaths({ folders: () => [] }),
+    allowProtected: () => false,
+    externalDisplays: () => 0
+  })
   const api = createApi({
     vault: {
       repos: () => manager.session().repos,
@@ -139,6 +147,19 @@ function env(opts: { unlocked?: boolean } = {}) {
         allowProtected: () => false,
         externalDisplays: () => 0
       })
+    }),
+    folders: createFolders({
+      home: '/Users/t',
+      teachingFolders: () => [],
+      guard: launcherGuard,
+      trash: async () => undefined,
+      changed: () => undefined
+    }),
+    desk: createDeskService(pub.repos.desk, launcherGuard),
+    calendar: createCalendar({
+      exec: async () => ({ stdout: '{"ok":true}', stderr: '' }),
+      isMac: () => false,
+      changed: () => undefined
     }),
     env: {
       dataDir: '/data',

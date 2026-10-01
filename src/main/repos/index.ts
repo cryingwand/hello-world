@@ -1,5 +1,6 @@
 import { advisingRepo } from './advising'
 import { classesRepo } from './classes'
+import { deskRepo } from './desk'
 import { directoryRepo } from './directory'
 import { fileLinksRepo } from './fileLinks'
 import { gradingRepo } from './grading'
@@ -81,7 +82,8 @@ export function createPublicRepositories(db: Db, emit: Emit) {
   return {
     settings: settingsRepo(db, emit),
     protection: protectionRepo(db, emit),
-    directory: directoryRepo(db, emit)
+    directory: directoryRepo(db, emit),
+    desk: deskRepo(db, emit)
   }
 }
 

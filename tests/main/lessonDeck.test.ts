@@ -131,6 +131,26 @@ describe('lessonDeck', () => {
     for (const x of xml) expect(runsOf(x)).toContain('PHIL 101 • Ethics')
   })
 
+  it('lists the blocks as an agenda before the plan, keeping their notes off the slides', async () => {
+    const env = makeEnv()
+    const { unit, day1 } = fixture(env)
+    env.repos.lessons.addBlock(day1.id, { kind: 'lecture', minutes: 20 })
+    env.repos.lessons.addBlock(day1.id, {
+      kind: 'discussion',
+      title: 'Trolleys',
+      details: 'PRIVATE BLOCK NOTE'
+    })
+    const { slides, xml } = await open(env.repos.units.get(unit.id)!, day1.id)
+    expect(slides[1]).toEqual([
+      'Day 1',
+      'Agenda',
+      'Lecture (20 min)',
+      'Discussion: Trolleys (15 min)'
+    ])
+    expect(slides[2][1]).toBe('Plan')
+    for (const x of xml) expect(x).not.toContain('PRIVATE BLOCK NOTE')
+  })
+
   it('refuses a lesson that is not in the unit', async () => {
     const env = makeEnv()
     const { unit } = fixture(env)

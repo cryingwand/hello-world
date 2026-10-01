@@ -34,19 +34,23 @@ const ADVISING_TABLES = ['action_items', 'advising_meetings', 'external_progress
 const QUIZ_TABLES = ['questions', 'quiz_items', 'quizzes']
 const PLANNER_TABLES = [
   'lesson_assignments',
+  'lesson_blocks',
   'lesson_classes',
   'lesson_quizzes',
+  'lesson_tasks',
   'lessons',
   'units'
 ]
 const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES, ...PLANNER_TABLES].sort()
 
 describe('migrations', () => {
-  it('build a public database that holds settings and the names-only roster copy, nothing else', () => {
+  it('build a public database that holds settings, the names-only roster copy and the desktop arrangement, nothing else', () => {
     const db = new Database(':memory:')
     const res = migrate(db, PUBLIC_MIGRATIONS)
     expect(res).toEqual({ from: 0, to: latestVersion(PUBLIC_MIGRATIONS) })
-    expect(tables(db)).toEqual([...Object.keys(PUBLIC_ROSTER_COLUMNS), 'settings'].sort())
+    expect(tables(db)).toEqual(
+      [...Object.keys(PUBLIC_ROSTER_COLUMNS), 'desk_items', 'settings'].sort()
+    )
     // Exactly the allowlisted columns: no email, notes, tags or grades.
     for (const [table, cols] of Object.entries(PUBLIC_ROSTER_COLUMNS)) {
       const real = (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name)
@@ -184,6 +188,23 @@ describe('migrations', () => {
     expect(db.prepare('SELECT lesson_id, quiz_id FROM lesson_quizzes').get()).toEqual({
       lesson_id: 1,
       quiz_id: 1
+    })
+  })
+
+  it('add lesson blocks and tasks to a version 5 vault, keeping its lessons and units', () => {
+    const db = new Database(':memory:')
+    migrate(db, VAULT_MIGRATIONS.slice(0, 5))
+    db.prepare("INSERT INTO units (title) VALUES ('Ethics')").run()
+    db.prepare("INSERT INTO lessons (unit_id, position, title) VALUES (1, 0, 'Day 1')").run()
+    migrate(db, VAULT_MIGRATIONS)
+    expect(tables(db)).toEqual(VAULT_TABLES)
+    expect(db.prepare('SELECT title, class_minutes FROM lessons').get()).toEqual({
+      title: 'Day 1',
+      class_minutes: null
+    })
+    expect(db.prepare('SELECT title, term_id FROM units').get()).toEqual({
+      title: 'Ethics',
+      term_id: null
     })
   })
 
