@@ -8,6 +8,7 @@ export default function StudentForm({
   student,
   enrollInClassId,
   onOpenGradebook,
+  onOpenAdvising,
   onClose,
   onSaved
 }: {
@@ -16,6 +17,8 @@ export default function StudentForm({
   enrollInClassId?: number | null
   /** Opens this student in the Gradebook (the `open-student` intent). */
   onOpenGradebook?: (studentId: number) => void
+  /** Opens this student in Advising (the `open-advisee` intent); offered to advisees only. */
+  onOpenAdvising?: (studentId: number) => void
   onClose: () => void
   onSaved: (s: Student) => void
 }): React.JSX.Element {
@@ -88,6 +91,11 @@ export default function StudentForm({
             </button>
           )}
           <span className="spacer" />
+          {student && onOpenAdvising && student.tags.includes('advisee') && (
+            <button type="button" className="btn" onClick={() => onOpenAdvising(student.id)}>
+              Open in Advising
+            </button>
+          )}
           {student && onOpenGradebook && (
             <button type="button" className="btn" onClick={() => onOpenGradebook(student.id)}>
               Open in Gradebook

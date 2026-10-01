@@ -32,11 +32,11 @@ Path aliases: `@shared/*`, `@renderer/*`, `@apps/*`.
 Sensitive data is kept out of reach instead of hidden. Every window has one role, recorded by the main
 process from the window's own `webContents` id (nothing the renderer says about itself is trusted):
 
-| Role       | Shows                                          | Can reach                                           |
-| ---------- | ---------------------------------------------- | --------------------------------------------------- |
-| `launcher` | Files (library) and the Presenter              | Public data: settings, non-protected files, backups |
-| `vault`    | Classes & Rosters, Gradebook, Files, Protected | Everything, only while the vault is unlocked        |
-| `stage`    | What is being presented                        | One method: `stage.view()`                          |
+| Role       | Shows                                                    | Can reach                                           |
+| ---------- | -------------------------------------------------------- | --------------------------------------------------- |
+| `launcher` | Files (library) and the Presenter                        | Public data: settings, non-protected files, backups |
+| `vault`    | Classes & Rosters, Gradebook, Advising, Files, Protected | Everything, only while the vault is unlocked        |
+| `stage`    | What is being presented                                  | One method: `stage.view()`                          |
 
 Each role has its own storage partition (`persist:teachingos-<role>`), its own `window.api` (the preload
 exposes only the methods the role may call) and its own `tos-file://` handler. Main refuses a call from
@@ -69,7 +69,8 @@ in-process React modules, not iframes, and talk to data only through `window.api
 ## The Vault
 
 - `data.sqlite` holds settings and the protected folder list. `vault.sqlite` (in `vault/`) holds terms,
-  classes, students, enrollments, categories, assignments, scores and file links. **A new table goes in
+  classes, students, enrollments, categories, assignments, scores, file links and the advising tables
+  (`advising_meetings`, `goals`, `action_items`, `external_progress`). **A new table goes in
   the vault** unless there is a deliberate decision that it is safe to show anywhere.
 - Migrations are versioned and append-only, separately for each database (`PUBLIC_MIGRATIONS`,
   `VAULT_MIGRATIONS`). Never edit a shipped migration; add a new one.
@@ -84,6 +85,17 @@ in-process React modules, not iframes, and talk to data only through `window.api
 - Vault backups are taken even while it is locked, from main.
 - Fields holding student PII are tagged `sensitive` in `src/shared/sensitive.ts`. Nothing sends them
   anywhere; the tag is the seam for a future `src/main/ai/` service.
+
+## Advising
+
+`src/main/repos/advising.ts` and the `advising.*` API. An advisee is a student tagged `advisee`: one record
+serves the class and advising roles, and the tag is the only thing that decides who is listed
+(`advisees()`, `openActions()`). Removing the tag keeps the history. Everything cascades from the student;
+deleting a meeting or goal leaves its follow-ups, unlinked. A follow-up may only point at a meeting or goal
+of the same student. Dates are `YYYY-MM-DD` text; "today" is `localToday()` in `src/shared/advising.ts`
+(also holds the overdue rule and the copy-ready meeting summary). The app (`apps/advising/`) handles the
+`open-advisee` intent and offers "Open in Gradebook" (`open-student`); meeting mode autosaves with a
+debounce and flushes on leaving. Grades earned elsewhere are manual entry only; there is no import yet.
 
 ## Protected folders
 

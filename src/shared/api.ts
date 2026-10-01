@@ -14,12 +14,19 @@ import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
+  ActionItem,
+  ActionOwner,
+  AdviseeSummary,
+  AdvisingGoal,
+  AdvisingMeeting,
   AppSettings,
   Assignment,
   BackupInfo,
   ClassRecord,
   ClassSummary,
+  ExternalProgress,
   FileLink,
+  GoalStatus,
   GradeCategory,
   GradingMode,
   LinkRecordType,
@@ -90,6 +97,43 @@ export interface FileLinkInput {
   recordId: number
 }
 
+export interface MeetingInput {
+  studentId: number
+  /** YYYY-MM-DD */
+  metOn: string
+  topic?: string
+  notes?: string
+  summary?: string
+}
+
+export interface GoalInput {
+  studentId: number
+  title: string
+  details?: string
+  targetDate?: string | null
+  status?: GoalStatus
+}
+
+export interface ActionInput {
+  studentId: number
+  meetingId?: number | null
+  goalId?: number | null
+  title: string
+  dueDate?: string | null
+  owner?: ActionOwner
+  /** Mark done (today's date is recorded) or open again. */
+  done?: boolean
+}
+
+export interface ProgressInput {
+  studentId: number
+  course: string
+  term?: string
+  grade?: string
+  source?: string
+  recordedOn?: string | null
+}
+
 export interface SystemInfo {
   dataDir: string
   dbPath: string
@@ -133,6 +177,30 @@ export interface ApiContract {
     unenroll(classId: number, studentId: number): void
     /** Classes a student is enrolled in. */
     forStudent(studentId: number): ClassSummary[]
+  }
+  advising: {
+    /** Students tagged `advisee`, with what needs attention. */
+    advisees(): AdviseeSummary[]
+    /** Newest first. */
+    meetings(studentId: number): AdvisingMeeting[]
+    createMeeting(input: MeetingInput): AdvisingMeeting
+    updateMeeting(id: number, patch: Patch<Omit<MeetingInput, 'studentId'>>): AdvisingMeeting
+    deleteMeeting(id: number): void
+    goals(studentId: number): AdvisingGoal[]
+    createGoal(input: GoalInput): AdvisingGoal
+    updateGoal(id: number, patch: Patch<Omit<GoalInput, 'studentId'>>): AdvisingGoal
+    deleteGoal(id: number): void
+    /** One advisee's follow-ups, open ones first. */
+    actions(studentId: number): ActionItem[]
+    /** Every open follow-up for every advisee, earliest due first. */
+    openActions(): ActionItem[]
+    createAction(input: ActionInput): ActionItem
+    updateAction(id: number, patch: Patch<Omit<ActionInput, 'studentId'>>): ActionItem
+    deleteAction(id: number): void
+    progress(studentId: number): ExternalProgress[]
+    createProgress(input: ProgressInput): ExternalProgress
+    updateProgress(id: number, patch: Patch<Omit<ProgressInput, 'studentId'>>): ExternalProgress
+    deleteProgress(id: number): void
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -267,6 +335,26 @@ export const API_METHODS = {
     'enroll',
     'unenroll',
     'forStudent'
+  ],
+  advising: [
+    'advisees',
+    'meetings',
+    'createMeeting',
+    'updateMeeting',
+    'deleteMeeting',
+    'goals',
+    'createGoal',
+    'updateGoal',
+    'deleteGoal',
+    'actions',
+    'openActions',
+    'createAction',
+    'updateAction',
+    'deleteAction',
+    'progress',
+    'createProgress',
+    'updateProgress',
+    'deleteProgress'
   ],
   grading: [
     'categories',

@@ -1,16 +1,16 @@
 # Teaching OS
 
 A desktop-style teaching suite for one teacher on one Mac: a full-screen shell with a top bar, dock and
-movable windows, where apps (Classes & Rosters, Files, Gradebook, and later Advising, Quiz Builder and
+movable windows, where apps (Classes & Rosters, Files, Gradebook, Advising, and later Quiz Builder and
 so on) share local SQLite data. Student data never leaves the machine, and it is kept in a separate,
 passcode-locked **Vault** so that nothing you present can reach it.
 
 Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
 
-## What is in Phase 1
+## What is in Phases 1 and 2
 
 - **Two spaces**: the everyday window (Files and the Presenter) and the **Vault** window (Classes &
-  Rosters, Gradebook, Files with attachments, Protected Files). They are separate windows with separate
+  Rosters, Gradebook, Advising, Files with attachments, Protected Files). They are separate windows with separate
   data; see [The Vault and the Stage](#the-vault-and-the-stage).
 - **Shell**: top bar (clock, file search, current-class picker in the Vault, Present and Lock buttons), a
   dock, and movable, resizable, snappable windows whose layout is restored on relaunch.
@@ -21,6 +21,10 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   PowerPoint and snap the app beside the launcher; attach files to a class or student.
 - **Gradebook**: per-class weighted or total-points grading, a keyboard score grid with missing, excused
   and late flags, averages, a per-student view, and Excel/CSV import and export of scores.
+- **Advising** (Phase 2): students tagged `advisee` get a profile with goals, follow-ups (yours or the
+  student's, with due dates and an overdue flag), a meeting history and grades earned elsewhere (entered
+  by hand). Start meeting opens meeting mode: last time's summary, what is still open and the goals beside
+  this meeting's notes, saved as you type, with a copy-ready summary. It lives in the Vault.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only

@@ -170,3 +170,16 @@ protected folders; Stage and Presenter; removal of the masks and this documentat
 Known limits, documented in the README: no encryption at rest, no screenshot prevention, Word and Preview
 keep their own Recent Files lists, hard links and Finder aliases are not seen by protected folders, and a
 mirrored projector may not be detected as a second display.
+
+## Phase 2: Advising
+
+Phase 2 is the first item on the "later phases" list: **Advising**. Built as a vault app (everything in it is
+about a student). Included: advisee profiles (students tagged `advisee`), goals, follow-ups with owner
+(student or me), due dates and an overdue flag, a meeting history, meeting mode (previous summary, open
+follow-ups, goals and outside grades beside this meeting's autosaved notes), a copy-ready summary, and
+`external_progress` entered by hand. Tables `advising_meetings`, `goals`, `action_items` and
+`external_progress` are vault migration 2. New intent: `open-advisee`.
+
+Not built: Excel/CSV import of outside grades (still in the Phase 1 decisions table), Word export of a
+meeting summary, and the other later phases (Quiz & Exam Builder, Lesson Planner, In-class Tools, legacy
+rebuilds).

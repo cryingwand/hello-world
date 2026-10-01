@@ -62,6 +62,26 @@ export function createApi(deps: ApiDeps): ApiContract {
       unenroll: (classId, studentId) => repos().classes.unenroll(classId, studentId),
       forStudent: (studentId) => repos().classes.forStudent(studentId)
     },
+    advising: {
+      advisees: () => repos().advising.advisees(),
+      meetings: (studentId) => repos().advising.meetings(studentId),
+      createMeeting: (input) => repos().advising.createMeeting(input),
+      updateMeeting: (id, patch) => repos().advising.updateMeeting(id, patch),
+      deleteMeeting: (id) => repos().advising.deleteMeeting(id),
+      goals: (studentId) => repos().advising.goals(studentId),
+      createGoal: (input) => repos().advising.createGoal(input),
+      updateGoal: (id, patch) => repos().advising.updateGoal(id, patch),
+      deleteGoal: (id) => repos().advising.deleteGoal(id),
+      actions: (studentId) => repos().advising.actions(studentId),
+      openActions: () => repos().advising.openActions(),
+      createAction: (input) => repos().advising.createAction(input),
+      updateAction: (id, patch) => repos().advising.updateAction(id, patch),
+      deleteAction: (id) => repos().advising.deleteAction(id),
+      progress: (studentId) => repos().advising.progress(studentId),
+      createProgress: (input) => repos().advising.createProgress(input),
+      updateProgress: (id, patch) => repos().advising.updateProgress(id, patch),
+      deleteProgress: (id) => repos().advising.deleteProgress(id)
+    },
     grading: {
       categories: (classId) => repos().grading.categories(classId),
       createCategory: (input) => repos().grading.createCategory(input),

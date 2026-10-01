@@ -67,6 +67,66 @@ export interface Score {
   comment: string
 }
 
+export type GoalStatus = 'active' | 'achieved' | 'dropped'
+/** Whose follow-up it is: the advisee's, or the teacher's own. */
+export type ActionOwner = 'student' | 'me'
+
+export interface AdvisingMeeting {
+  id: number
+  studentId: number
+  /** YYYY-MM-DD */
+  metOn: string
+  topic: string
+  /** Working notes taken during the meeting. */
+  notes: string
+  /** The tidy version written afterwards, the one that is shared or copied out. */
+  summary: string
+}
+
+export interface AdvisingGoal {
+  id: number
+  studentId: number
+  title: string
+  details: string
+  targetDate: string | null
+  status: GoalStatus
+}
+
+export interface ActionItem {
+  id: number
+  studentId: number
+  /** The meeting it came out of, if any. */
+  meetingId: number | null
+  goalId: number | null
+  title: string
+  dueDate: string | null
+  owner: ActionOwner
+  /** Set (YYYY-MM-DD) when done; null while open. */
+  completedOn: string | null
+}
+
+/** A grade the advisee earned somewhere else (another school, an online course). Entered by hand. */
+export interface ExternalProgress {
+  id: number
+  studentId: number
+  course: string
+  term: string
+  /** Free text: "B+", "87", "In progress". */
+  grade: string
+  source: string
+  recordedOn: string | null
+}
+
+/** One row of the Advising roster. */
+export interface AdviseeSummary {
+  student: Student
+  lastMeetingOn: string | null
+  activeGoals: number
+  openActions: number
+  /** The earliest due date among open follow-ups, so the roster can flag the overdue ones. */
+  nextDue: string | null
+}
+
 export interface FileLink {
   id: number
   path: string

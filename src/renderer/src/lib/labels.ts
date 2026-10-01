@@ -12,6 +12,11 @@ export function studentName(s: Pick<Student, 'firstName' | 'lastName' | 'preferr
   return s.preferredName ? `${base} "${s.preferredName}"` : base
 }
 
+/** "First Last", using the preferred name when set. For text written to someone, not for sorting. */
+export function fullName(s: Pick<Student, 'firstName' | 'lastName' | 'preferredName'>): string {
+  return [s.preferredName || s.firstName, s.lastName].filter(Boolean).join(' ')
+}
+
 /** Spreadsheet-style column letters: 0 -> A, 26 -> AA. */
 export function columnLetter(i: number): string {
   let n = i
