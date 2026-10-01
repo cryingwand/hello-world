@@ -10,6 +10,7 @@ import type {
   TextFile
 } from './files'
 import type { QuizVersion } from './quiz'
+import type { QuizForm } from './quizForms'
 import type { StageState, StageView } from './stage'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
@@ -303,8 +304,15 @@ export interface ApiContract {
     assignments(id: number): Assignment[]
     /** Creates the assignment in a class, worth the quiz's total points. One per class. */
     createAssignment(input: QuizAssignmentInput): Assignment
-    /** Asks where to save, then writes a Word copy: for students, or the answer key. Null if cancelled. */
-    exportWord(id: number, version: QuizVersion): Awaitable<{ path: string } | null>
+    /**
+     * Asks where to save, then writes a Word copy: for students, or the answer key. Form B has the
+     * questions and choices shuffled (the same shuffle for the copy and its key). Null if cancelled.
+     */
+    exportWord(
+      id: number,
+      version: QuizVersion,
+      form?: QuizForm | null
+    ): Awaitable<{ path: string } | null>
   }
   units: {
     /** By course, then by when the unit starts. */

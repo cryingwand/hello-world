@@ -30,7 +30,8 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   tags, search and a model answer for the key) and quizzes built from it, in order, with points that can
   differ per quiz. Export a **student copy** or an **answer key** as a Word file in your house style:
   Palatino Linotype 12pt, a centered Course • Title • Date line, numbered questions with lettered choices
-  kept together on a page, Part headings when a quiz mixes kinds, ruled lines for written answers. **Add to
+  kept together on a page, Part headings when a quiz mixes kinds, ruled lines for written answers. Export a
+  shuffled **Form B** (questions within each part, and the choices) with a matching answer key. **Add to
   Gradebook** creates the assignment in a class (one per class, worth the quiz's total points) and flags it
   if the quiz's points change later. It lives in the Vault, so the question bank is never reachable from
   the presenting window. A question that is in a quiz cannot be deleted until it is taken out.

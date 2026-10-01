@@ -120,7 +120,7 @@ export function createApi(deps: ApiDeps): ApiContract {
       setPoints: (id, questionId, points) => repos().quizzes.setPoints(id, questionId, points),
       assignments: (id) => repos().quizzes.assignments(id),
       createAssignment: (input) => repos().quizzes.createAssignment(input),
-      exportWord: (id, version) => quizzes().exportWord(id, version)
+      exportWord: (id, version, form) => quizzes().exportWord(id, version, form)
     },
     units: {
       list: () => repos().units.list(),

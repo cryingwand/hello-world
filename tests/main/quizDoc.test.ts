@@ -45,8 +45,12 @@ interface Parsed {
   paragraphs: { xml: string; text: string }[]
 }
 
-async function open(quiz: QuizDetail, version: 'student' | 'key'): Promise<Parsed> {
-  const zip = await JSZip.loadAsync(await quizDocx(quiz, version))
+async function open(
+  quiz: QuizDetail,
+  version: 'student' | 'key',
+  form?: 'A' | 'B'
+): Promise<Parsed> {
+  const zip = await JSZip.loadAsync(await quizDocx(quiz, version, form))
   const xml = await zip.file('word/document.xml')!.async('string')
   const numbering = await zip.file('word/numbering.xml')!.async('string')
   const paragraphs = (xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g) ?? []).map((p) => ({
@@ -274,6 +278,57 @@ describe('quiz Word document: answer key', () => {
   })
 })
 
+describe('quiz Word document: Form A and Form B', () => {
+  const eight = (env: TestEnv): QuizDetail =>
+    quizWith(
+      env,
+      Array.from({ length: 8 }, (_, i) => choice(`Q${i + 1}?`, i % 4))
+    )
+  const asked = async (quiz: QuizDetail, v: 'student' | 'key', form?: 'A' | 'B') =>
+    (await open(quiz, v, form)).paragraphs.map((p) => p.text).filter((t) => /^Q\d\?$/.test(t))
+
+  it('puts the form in the title, with the key as well', async () => {
+    const quiz = eight(makeEnv())
+    const heads = async (v: 'student' | 'key', form?: 'A' | 'B') =>
+      (await open(quiz, v, form)).paragraphs[0].text
+    expect(await heads('student')).toBe('PHIL 101 • Quiz 3 • October 2, 2026')
+    expect(await heads('student', 'A')).toBe('PHIL 101 • Quiz 3 (Form A) • October 2, 2026')
+    expect(await heads('student', 'B')).toBe('PHIL 101 • Quiz 3 (Form B) • October 2, 2026')
+    expect(await heads('key', 'B')).toBe('PHIL 101 • Quiz 3 (Form B Answer Key) • October 2, 2026')
+  })
+
+  it('Form A is the quiz as built; Form B has the same questions in a new order', async () => {
+    const quiz = eight(makeEnv())
+    const plain = await asked(quiz, 'student')
+    expect(await asked(quiz, 'student', 'A')).toEqual(plain)
+    const b = await asked(quiz, 'student', 'B')
+    expect(b).not.toEqual(plain)
+    expect([...b].sort()).toEqual([...plain].sort())
+  })
+
+  it('the Form B answer key has the same order as the Form B student copy', async () => {
+    const quiz = eight(makeEnv())
+    expect(await asked(quiz, 'key', 'B')).toEqual(await asked(quiz, 'student', 'B'))
+  })
+
+  it('marks the right choice by its text in the Form B key, wherever it landed', async () => {
+    const quiz = eight(makeEnv())
+    const key = await open(quiz, 'key', 'B')
+    const marked = key.paragraphs.filter((p) => p.text.endsWith(' (correct)'))
+    expect(marked).toHaveLength(8)
+    // Each question's right answer is the one the bank says (choice i % 4 of alpha..delta).
+    const order = (await asked(quiz, 'key', 'B')).map((q) => Number(q[1]) - 1)
+    expect(marked.map((p) => p.text.replace(' (correct)', ''))).toEqual(
+      order.map((n) => ['alpha', 'beta', 'gamma', 'delta'][n % 4])
+    )
+  })
+
+  it('exports the same Form B twice', async () => {
+    const quiz = eight(makeEnv())
+    expect(await asked(quiz, 'student', 'B')).toEqual(await asked(quiz, 'student', 'B'))
+  })
+})
+
 describe('quiz export service', () => {
   function service(pick: (name: string) => Promise<string | null>) {
     const env = makeEnv()
@@ -313,6 +368,29 @@ describe('quiz export service', () => {
     expect(suggested).toBe('2026-10-01 PHIL 101 Quiz 3 Answer Key.docx')
     expect(res!.path).toBe(join(dir, 'my key.docx'))
     expect(readdirSync(dir)).toEqual(['my key.docx'])
+  })
+
+  it('names the form in the suggested file name, and refuses an unknown form', async () => {
+    const names: string[] = []
+    const env = makeEnv()
+    const quiz = quizWith(env, [choice('First?'), choice('Second?')])
+    const svc = createQuizService(env.repos, {
+      pickSaveFile: async (name) => {
+        names.push(name)
+        return null
+      },
+      today: () => '2026-10-01'
+    })
+    await svc.exportWord(quiz.id, 'student', 'B')
+    await svc.exportWord(quiz.id, 'key', 'B')
+    await svc.exportWord(quiz.id, 'key', null)
+    expect(names).toEqual([
+      '2026-10-01 PHIL 101 Quiz 3 Form B.docx',
+      '2026-10-01 PHIL 101 Quiz 3 Form B Answer Key.docx',
+      '2026-10-01 PHIL 101 Quiz 3 Answer Key.docx'
+    ])
+    await expect(svc.exportWord(quiz.id, 'student', 'C' as never)).rejects.toThrow(/one of: A, B/)
+    expect(names).toHaveLength(3)
   })
 
   it('keeps characters a file name cannot hold out of the suggestion', async () => {

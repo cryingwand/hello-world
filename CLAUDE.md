@@ -122,7 +122,12 @@ style in the comment at the top; pure, returns a buffer) behind `quizService.exp
 the path through an injected `pickSaveFile`. Ruled answer lines are tab leaders: adjacent paragraphs with
 identical borders merge into one line in Word. The exported file is an ordinary file: nothing stops it
 being saved outside a protected folder, and the app says so. Shared pure helpers (header text, dates,
-parts, points) are in `src/shared/quiz.ts`. The question and quiz fields are not tagged `sensitive`
+parts, points) are in `src/shared/quiz.ts`. Form B (`src/shared/quizForms.ts`, `quizForForm`) shuffles the
+questions within each part and the choices of each multiple-choice question; the seed comes from the quiz
+id and its question ids, so Form B's student copy and key always agree and a re-export is identical until
+the quiz changes. "All of the above" style choices stay last, a question whose choices point at each other
+by letter is left in order, and True/False never moves. Form A is the quiz as built, labelled; no form is
+the plain export. The form letter goes in the title: "Quiz 3 (Form B Answer Key)". The question and quiz fields are not tagged `sensitive`
 (they are not student PII).
 
 ## Lesson & Unit Planner
