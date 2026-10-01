@@ -34,7 +34,7 @@ process from the window's own `webContents` id (nothing the renderer says about 
 
 | Role       | Shows                                                            | Can reach                                           |
 | ---------- | ---------------------------------------------------------------- | --------------------------------------------------- |
-| `launcher` | Files (library) and the Presenter                                | Public data: settings, non-protected files, backups |
+| `launcher` | Files (library), the Presenter and In-class Tools                | Public data: settings, non-protected files, backups |
 | `vault`    | Classes, Gradebook, Advising, Quizzes, Planner, Files, Protected | Everything, only while the vault is unlocked        |
 | `stage`    | What is being presented                                          | One method: `stage.view()`                          |
 
@@ -147,6 +147,11 @@ CHECK together. `units.upcoming()` is dated lessons from `localToday()` on, capp
 `units.duplicate` copies a unit with its lessons in order, the same quizzes linked (a quiz is shared, never
 copied) and the same files attached, in one transaction; lesson dates are cleared unless the options keep
 them or shift them by whole days (`CopyDates`, `copiedDate` in `src/shared/lesson.ts`, worked in UTC).
+`lessons.duplicate` puts a copy right after the original and `lessons.move` appends a lesson to another
+unit (its quizzes and files go with it, the old unit is renumbered). `useAutosave().flush()` returns a
+promise that resolves when every save so far has landed: await it before any action that reads the saved
+text (a copy), because it is otherwise fire-and-forget.
+
 `lesson_classes` and `lesson_assignments` (vault migration 5) link a lesson to the classes it is taught to
 and to the Gradebook assignments that go with it (`lessons.linkClass` / `linkAssignment` and the unlinks):
 an assignment can only be linked once its class is, and unlinking a class drops that class's assignment
@@ -155,10 +160,7 @@ Gradebook, and the planner UI refetches on `classes.changed` and `assignments.ch
 Gradebook repositories emitting `planner.changed`. A copy of a lesson or unit starts with no class or
 assignment links (they belong to one class's scores); a moved lesson keeps them. The `open-gradebook`
 intent (handled by the Gradebook) opens a class there. The PowerPoint never mentions classes or assignments.
-`lessons.duplicate` puts a copy right after the original and `lessons.move` appends a lesson to another
-unit (its quizzes and files go with it, the old unit is renumbered). `useAutosave().flush()` returns a
-promise that resolves when every save so far has landed: await it before any action that reads the saved
-text (a copy), because it is otherwise fire-and-forget.
+
 PowerPoint export is `src/main/lessonDeck.ts` (house style in the comment at the top; pure, returns a
 buffer) behind `lessonService.exportPowerPoint`, which asks for the path through an injected
 `pickSaveFile`, for a whole unit or one lesson. Only quiz titles are written, never questions or answers,
@@ -169,6 +171,21 @@ ordinary file: nothing stops it being saved outside a protected folder, and the 
 when the editor goes away; a refused save puts the saved text back) and opens a linked quiz with the
 `open-quiz` intent, which Quizzes & Exams handles. The planner fields are not tagged `sensitive` (they are
 not student PII).
+
+## In-class Tools
+
+`apps/tools/` (launcher space) is a timer, a random picker, a group maker and a seating chart in one app with
+four tabs. It has no data API and never sees your roster: it works from names the teacher types or pastes,
+which are student information in a window that may be on the projector. So the names live in memory only
+(`namesStore.ts`): never written to storage, never sent to main, gone when the app quits. A test
+(`tests/renderer/toolsPrivacy.test.ts`) scans that folder for storage, network, console and `window.api`
+use, so adding one fails a test. All the rules are pure functions in `src/shared/tools.ts` with injected
+randomness and time (`parseNames`, `pickNext`, `makeGroups`, `seatRandomly`/`swapSeats`/`resizeSeats`, and
+the `timer*` functions): everyone goes once before anyone repeats and a new round never opens with the
+person who just went; groups differ in size by at most one; resizing the seating grid keeps people where
+they sit; the timer counts down from a clock (`endsAt`), not by subtracting ticks, so a busy or sleeping
+screen cannot make it run slow. Every tool stays mounted while switching tabs so a running timer keeps
+running. A seating chart is not saved: that would need a roster and so the Vault.
 
 ## Protected folders
 

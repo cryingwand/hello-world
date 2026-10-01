@@ -7,9 +7,9 @@ passcode-locked **Vault** so that nothing you present can reach it.
 
 Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
 
-## What is in Phases 1 to 4
+## What is in Phases 1 to 5
 
-- **Two spaces**: the everyday window (Files and the Presenter) and the **Vault** window (Classes &
+- **Two spaces**: the everyday window (Files, the Presenter and In-class Tools) and the **Vault** window (Classes &
   Rosters, Gradebook, Advising, Quizzes & Exams, Lesson Planner, Files with attachments, Protected Files). They are separate windows with separate
   data; see [The Vault and the Stage](#the-vault-and-the-stage).
 - **Shell**: top bar (clock, file search, current-class picker in the Vault, Present and Lock buttons), a
@@ -46,6 +46,13 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   of weeks), copy a single lesson, or move a lesson to another unit. A lesson can be linked to the classes it
   is taught to and to the Gradebook assignments that go with it, and opens the class in the Gradebook. It
   lives in the Vault.
+- **In-class Tools** (Phase 5): a **timer** (presets or "7", "1:30", "90s", "1h 15m"; pause, add or take off a
+  minute; it counts down from the clock, so it stays accurate; flashes and beeps at zero), a **random
+  picker** (everyone goes once before anyone repeats), a **group maker** (by number of groups or people per
+  group, sizes never differ by more than one) and a **seating chart** (random seats, click two desks to swap,
+  resize without moving anyone). The picker, groups and seating chart use names you type or paste: this
+  window cannot see your students. The names are kept in memory only, never saved, and are gone when you
+  quit. It lives in the everyday window, so it is safe to leave up on the projector.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only

@@ -211,3 +211,40 @@ record types `unit` and `lesson`.
 Not built: copying a unit or lesson (for next term), moving a lesson to another unit, a calendar or week
 view, linking a lesson to a class and its Gradebook assignments, importing from Word or PowerPoint, and the
 other later phases (In-class Tools, legacy rebuilds).
+
+## Follow-ups to Phases 2 to 4
+
+Requested after Phase 4: build the items that earlier phases listed as "not built", then the next phase.
+
+- **Outside grades import (Phase 2)**: Excel/CSV import of grades earned elsewhere into an advisee's
+  `external_progress`. One row is one grade; rows match advisees only (email, then name); a row whose student,
+  course, term and source match a stored entry updates it, so re-importing the same file changes nothing.
+  Term, source and date can be set once for the whole file. Preview, then commit (which re-plans from the file).
+- **Meeting summary as Word (Phase 2)**: one meeting written up in the house style, with the meeting's own
+  follow-ups as bullet lists for the student and for the teacher.
+- **A/B quiz versions (Phase 3)**: Form B shuffles the questions within each part and the choices of each
+  multiple-choice question, seeded so the student copy and the answer key always agree. "All of the above"
+  style choices stay last; choices that point at each other by letter are left in order.
+- **Copy and move (Phase 4)**: copy a unit (lessons, linked quizzes, attached files; dates cleared, kept or
+  moved by whole weeks), copy a lesson, move a lesson to another unit.
+- **Lessons linked to classes and assignments (Phase 4)**: vault migration 5. Pointers only; copies start
+  with no links; a new `open-gradebook` intent opens the class.
+
+Still not built: importing questions from a Word file, a link from a Gradebook assignment back to its quiz or
+lesson, per-question quiz results, a calendar or week view for lessons, importing lessons from Word or
+PowerPoint, and the legacy-app rebuilds.
+
+## Phase 5: In-class Tools
+
+Phase 5 is the next item on the "later phases" list. Decision: **all in the launcher** (the everyday window,
+which may be on the projector), as one app with four tabs: a timer, a random picker, a group maker and a
+seating chart. Consequence of that decision: the launcher cannot reach vault data, so these tools work from
+names the teacher types or pastes, never from a class roster, and the names are kept in memory only (never
+saved, gone when the app quits). A test keeps storage and network use out of the app's folder.
+
+Not built, and each would need a decision about the Vault: picking, grouping or seating from a real class
+roster, a seating chart that is saved between lessons, and keeping separate pairs apart when seating. The
+timer, picker and groups are not shown on the Stage (the Stage still shows only queued files).
+
+Of the original in-class list, only the legacy-app rebuilds remain.
+
