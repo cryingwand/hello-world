@@ -41,6 +41,9 @@ export default function GradebookApp({ intent, intentNonce }: AppProps): React.J
     if (intent.type === 'open-student') {
       setHandled(intentNonce)
       setView({ kind: 'student', studentId: intent.studentId })
+    } else if (intent.type === 'open-gradebook') {
+      setHandled(intentNonce)
+      setView({ kind: 'grid' })
     } else if (intent.type === 'record-score') {
       setHandled(intentNonce)
       setView({ kind: 'grid' })
@@ -53,6 +56,7 @@ export default function GradebookApp({ intent, intentNonce }: AppProps): React.J
   }
   useEffect(() => {
     if (!intent) return
+    if (intent.type === 'open-gradebook') setCurrentClassId(intent.classId)
     if (intent.type === 'record-score' && intent.classId) setCurrentClassId(intent.classId)
     if (intent.type !== 'open-student') return
     if (intent.classId) {

@@ -253,13 +253,67 @@ const VAULT_V4_SQL = `
       CREATE INDEX idx_file_links_record ON file_links(record_type, record_id);
     `
 
-export const PUBLIC_MIGRATIONS: Migration[] = [{ version: 1, name: 'settings', sql: SETTINGS_SQL }]
+/**
+ * A lesson is taught to one or more classes and can point at the Gradebook assignments that go with it
+ * (the homework, the quiz). Both links are only that: deleting a class or an assignment removes the link,
+ * and deleting a lesson never touches the Gradebook. They cascade from every side.
+ */
+const VAULT_V5_SQL = `
+      CREATE TABLE lesson_classes (
+        lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        class_id  INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+        PRIMARY KEY (lesson_id, class_id)
+      );
+      CREATE INDEX idx_lesson_classes_class ON lesson_classes(class_id);
+
+      CREATE TABLE lesson_assignments (
+        lesson_id     INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+        PRIMARY KEY (lesson_id, assignment_id)
+      );
+      CREATE INDEX idx_lesson_assignments_assignment ON lesson_assignments(assignment_id);
+    `
+
+/**
+ * A names-only copy of the class rosters, kept in the everyday database so the launcher can use a
+ * roster (for the picker, groups and seating chart) while the Vault is locked or a presentation is
+ * running. The Vault stays the only place a roster is edited: the copy is rewritten from it whenever it
+ * changes and is never written from anywhere else. It holds names and nothing else: no email, notes or
+ * tags (the advisee tag would reveal who you advise), and none of the gradebook. A deliberate decision
+ * that these names are safe to show in the everyday window.
+ */
+const ROSTER_COPY_SQL = `
+      CREATE TABLE roster_classes (
+        class_id     INTEGER PRIMARY KEY,
+        course       TEXT NOT NULL,
+        section      TEXT NOT NULL DEFAULT '',
+        period       TEXT NOT NULL DEFAULT '',
+        term_name    TEXT NOT NULL DEFAULT '',
+        current_term INTEGER NOT NULL DEFAULT 0,
+        position     INTEGER NOT NULL
+      );
+      CREATE TABLE roster_members (
+        class_id       INTEGER NOT NULL REFERENCES roster_classes(class_id) ON DELETE CASCADE,
+        student_id     INTEGER NOT NULL,
+        first_name     TEXT NOT NULL,
+        last_name      TEXT NOT NULL,
+        preferred_name TEXT NOT NULL DEFAULT '',
+        position       INTEGER NOT NULL,
+        PRIMARY KEY (class_id, student_id)
+      );
+    `
+
+export const PUBLIC_MIGRATIONS: Migration[] = [
+  { version: 1, name: 'settings', sql: SETTINGS_SQL },
+  { version: 2, name: 'names-only roster copy', sql: ROSTER_COPY_SQL }
+]
 
 export const VAULT_MIGRATIONS: Migration[] = [
   { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL },
   { version: 2, name: 'advising', sql: VAULT_V2_SQL },
   { version: 3, name: 'questions and quizzes', sql: VAULT_V3_SQL },
-  { version: 4, name: 'units and lessons', sql: VAULT_V4_SQL }
+  { version: 4, name: 'units and lessons', sql: VAULT_V4_SQL },
+  { version: 5, name: 'lessons linked to classes and assignments', sql: VAULT_V5_SQL }
 ]
 
 /**

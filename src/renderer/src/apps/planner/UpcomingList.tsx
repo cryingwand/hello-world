@@ -1,6 +1,7 @@
 import { formatDate, localToday } from '@shared/advising'
 import type { UpcomingLesson } from '@shared/models'
 import { useApiQuery } from '@renderer/data/hooks'
+import { classLabel } from '@renderer/lib/labels'
 
 /** Dated lessons from today on, soonest first. Choosing one opens it in its unit. */
 export default function UpcomingList({
@@ -11,7 +12,7 @@ export default function UpcomingList({
   const upcoming = useApiQuery(
     () => window.api.units.upcoming(),
     [],
-    ['planner.changed', 'quizzes.changed']
+    ['planner.changed', 'quizzes.changed', 'classes.changed', 'assignments.changed']
   )
   const list: UpcomingLesson[] = upcoming.data ?? []
   const today = localToday()
@@ -43,6 +44,8 @@ export default function UpcomingList({
                 <span className="hint pl-meta">
                   {formatDate(lesson.date)} ·{' '}
                   {[course, unitTitle].filter((p) => p !== '').join(' · ')}
+                  {lesson.classes.length > 0 &&
+                    ` · ${lesson.classes.map((c) => classLabel(c)).join(', ')}`}
                   {lesson.quizzes.length > 0 &&
                     ` · ${lesson.quizzes.map((q) => q.title).join(', ')}`}
                 </span>

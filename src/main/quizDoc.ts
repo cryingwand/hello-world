@@ -19,12 +19,13 @@ import {
   roman,
   type QuizVersion
 } from '@shared/quiz'
+import { quizForForm, versionSuffix, type QuizForm } from '@shared/quizForms'
 
 /**
  * The house style for printed quizzes and exams: Palatino Linotype 12pt on every run, one centered
  * bold "Course • Title • Date" line, one real Word numbered list for the questions (continuing across
  * parts), a lettered list for each question's choices that restarts at "a." every time, and a question
- * kept whole on one page. US Letter with 0.75 inch top and bottom and 0.5 inch side margins.
+ * kept whole on one page. A form letter, when there is one, goes in the title: "Quiz 3 (Form B)". US Letter with 0.75 inch top and bottom and 0.5 inch side margins.
  */
 const FONT = 'Palatino Linotype'
 const SIZE = 24 // half-points: 12pt
@@ -60,8 +61,14 @@ const partTitle = (kind: Parameters<typeof kindLabel>[0]): string =>
 /** Points are printed unless every question is worth exactly one point. */
 const showPoints = (entries: QuizEntry[]): boolean => entries.some((e) => e.points !== 1)
 
-export function quizDocument(quiz: QuizDetail, version: QuizVersion): Document {
+export function quizDocument(
+  printed: QuizDetail,
+  version: QuizVersion,
+  form?: QuizForm | null
+): Document {
   const key = version === 'key'
+  const quiz = quizForForm(printed, form)
+  const suffix = versionSuffix(version, form)
   const children: Paragraph[] = []
 
   children.push(
@@ -72,7 +79,7 @@ export function quizDocument(quiz: QuizDetail, version: QuizVersion): Document {
         run(
           examHeader({
             course: quiz.course,
-            title: key ? `${quiz.title} (Answer Key)` : quiz.title,
+            title: suffix ? `${quiz.title} (${suffix})` : quiz.title,
             date: quiz.date
           }),
           { bold: true }
@@ -206,5 +213,8 @@ export function quizDocument(quiz: QuizDetail, version: QuizVersion): Document {
   })
 }
 
-export const quizDocx = (quiz: QuizDetail, version: QuizVersion): Promise<Buffer> =>
-  Packer.toBuffer(quizDocument(quiz, version))
+export const quizDocx = (
+  quiz: QuizDetail,
+  version: QuizVersion,
+  form?: QuizForm | null
+): Promise<Buffer> => Packer.toBuffer(quizDocument(quiz, version, form))

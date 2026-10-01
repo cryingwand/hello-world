@@ -184,6 +184,10 @@ export function advisingRepo(db: Db, emit: Emit, today: () => string = localToda
       }))
     },
 
+    /** One meeting, for the main process (Word export). Not part of the window API. */
+    meeting(rawId: number): AdvisingMeeting | null {
+      return getMeeting(v.id(rawId))
+    },
     meetings(rawStudentId: number): AdvisingMeeting[] {
       const rows = db
         .prepare(

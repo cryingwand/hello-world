@@ -1,8 +1,17 @@
 import { localToday } from '@shared/advising'
-import type { LessonInput, UnitInput } from '@shared/api'
-import { MAX_LESSONS, UPCOMING_LIMIT } from '@shared/lesson'
+import type { LessonCopyInput, LessonInput, UnitCopyInput, UnitInput } from '@shared/api'
+import {
+  MAX_LESSONS,
+  MAX_SHIFT_DAYS,
+  UPCOMING_LIMIT,
+  copiedDate,
+  copyTitle,
+  type CopyDates
+} from '@shared/lesson'
 import type {
   Lesson,
+  LinkedAssignment,
+  LinkedClass,
   LinkedQuiz,
   QuizKind,
   Unit,
@@ -43,6 +52,23 @@ interface QuizLinkRow {
   quiz_date: string | null
 }
 
+interface ClassLinkRow {
+  lesson_id: number
+  id: number
+  course: string
+  section: string
+  period: string
+  term_name: string
+}
+interface AssignmentLinkRow {
+  lesson_id: number
+  id: number
+  class_id: number
+  title: string
+  points_possible: number
+  due_date: string | null
+}
+
 const toUnit = (r: UnitRow): Unit => ({
   id: r.id,
   title: r.title,
@@ -53,6 +79,21 @@ const toUnit = (r: UnitRow): Unit => ({
 // A lesson's plan can run to a page of steps; the rest are short.
 const MAX_PLAN = 20000
 const MAX_TEXT = 10000
+
+/** The date rule for a copy. Nothing given means clear them: a copy is for later. */
+function copyDates(value: unknown): CopyDates {
+  if (value == null) return { mode: 'clear' }
+  const d = value as { mode?: unknown; days?: unknown }
+  const mode = v.oneOf(d.mode, ['keep', 'clear', 'shift'] as const, 'Dates')
+  if (mode !== 'shift') return { mode }
+  const days = v.num(d.days, 'Days', -MAX_SHIFT_DAYS)
+  if (!Number.isInteger(days) || days > MAX_SHIFT_DAYS) {
+    throw new v.ValidationError(
+      `Move the dates by a whole number of days, up to ${MAX_SHIFT_DAYS} either way`
+    )
+  }
+  return { mode, days }
+}
 
 /** Units, the lessons in them and the quizzes a lesson uses. One repository, two API namespaces. */
 export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday) {
@@ -66,23 +107,62 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
     return u
   }
 
-  /** Attaches each lesson's quizzes with one query, whatever the number of lessons. */
-  const withQuizzes = (rows: LessonRow[]): Lesson[] => {
-    const byLesson = new Map<number, LinkedQuiz[]>()
+  /** Attaches each lesson's quizzes, classes and assignments with one query each, whatever the number of lessons. */
+  const withLinks = (rows: LessonRow[]): Lesson[] => {
+    const quizzesBy = new Map<number, LinkedQuiz[]>()
+    const classesBy = new Map<number, LinkedClass[]>()
+    const assignmentsBy = new Map<number, LinkedAssignment[]>()
+    const push = <T>(map: Map<number, T[]>, key: number, item: T): void => {
+      map.set(key, [...(map.get(key) ?? []), item])
+    }
     if (rows.length > 0) {
       const marks = rows.map(() => '?').join(', ')
-      const links = db
+      const ids = rows.map((r) => r.id)
+      const quizLinks = db
         .prepare(
           `SELECT lq.lesson_id, z.id, z.kind, z.title, z.quiz_date
            FROM lesson_quizzes lq JOIN quizzes z ON z.id = lq.quiz_id
            WHERE lq.lesson_id IN (${marks})
            ORDER BY COALESCE(z.quiz_date, '9999'), z.id`
         )
-        .all(...rows.map((r) => r.id)) as QuizLinkRow[]
-      for (const l of links) {
-        const list = byLesson.get(l.lesson_id) ?? []
-        list.push({ id: l.id, kind: l.kind, title: l.title, date: l.quiz_date })
-        byLesson.set(l.lesson_id, list)
+        .all(...ids) as QuizLinkRow[]
+      for (const l of quizLinks) {
+        push(quizzesBy, l.lesson_id, { id: l.id, kind: l.kind, title: l.title, date: l.quiz_date })
+      }
+      const classLinks = db
+        .prepare(
+          `SELECT lc.lesson_id, c.id, c.course, c.section, c.period, t.name AS term_name
+           FROM lesson_classes lc
+             JOIN classes c ON c.id = lc.class_id JOIN terms t ON t.id = c.term_id
+           WHERE lc.lesson_id IN (${marks})
+           ORDER BY t.is_current DESC, t.start_date DESC, c.course COLLATE NOCASE, c.period, c.section, c.id`
+        )
+        .all(...ids) as ClassLinkRow[]
+      for (const l of classLinks) {
+        push(classesBy, l.lesson_id, {
+          id: l.id,
+          course: l.course,
+          section: l.section,
+          period: l.period,
+          termName: l.term_name
+        })
+      }
+      const assignmentLinks = db
+        .prepare(
+          `SELECT la.lesson_id, a.id, a.class_id, a.title, a.points_possible, a.due_date
+           FROM lesson_assignments la JOIN assignments a ON a.id = la.assignment_id
+           WHERE la.lesson_id IN (${marks})
+           ORDER BY a.class_id, a.sort_order, a.id`
+        )
+        .all(...ids) as AssignmentLinkRow[]
+      for (const l of assignmentLinks) {
+        push(assignmentsBy, l.lesson_id, {
+          id: l.id,
+          classId: l.class_id,
+          title: l.title,
+          pointsPossible: l.points_possible,
+          dueDate: l.due_date
+        })
       }
     }
     return rows.map((r) => ({
@@ -95,11 +175,13 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
       plan: r.plan,
       homework: r.homework,
       notes: r.notes,
-      quizzes: byLesson.get(r.id) ?? []
+      quizzes: quizzesBy.get(r.id) ?? [],
+      classes: classesBy.get(r.id) ?? [],
+      assignments: assignmentsBy.get(r.id) ?? []
     }))
   }
   const lessonsOf = (unitId: number): Lesson[] =>
-    withQuizzes(
+    withLinks(
       db
         .prepare('SELECT * FROM lessons WHERE unit_id = ? ORDER BY position, id')
         .all(unitId) as LessonRow[]
@@ -108,7 +190,7 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
 
   const getLesson = (id: number): Lesson | null => {
     const r = db.prepare('SELECT * FROM lessons WHERE id = ?').get(id) as LessonRow | undefined
-    return r ? withQuizzes([r])[0] : null
+    return r ? withLinks([r])[0] : null
   }
   const mustLesson = (id: number): Lesson => {
     const l = getLesson(id)
@@ -131,6 +213,56 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
            AND record_id IN (SELECT id FROM lessons WHERE ${where})`
       )
       .run(...params).changes
+
+  /**
+   * Copies one lesson row into a unit at a position, with the same quizzes linked and the same files
+   * attached (a quiz is shared, not copied). Returns the new lesson and how many file links were made.
+   */
+  const copyLesson = (
+    row: LessonRow,
+    unitId: number,
+    position: number,
+    title: string,
+    dates: CopyDates
+  ): { id: number; links: number } => {
+    const res = db
+      .prepare(
+        `INSERT INTO lessons (unit_id, position, title, lesson_date, objectives, plan, homework, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        unitId,
+        position,
+        title,
+        copiedDate(row.lesson_date, dates),
+        row.objectives,
+        row.plan,
+        row.homework,
+        row.notes
+      )
+    const newId = Number(res.lastInsertRowid)
+    db.prepare(
+      'INSERT INTO lesson_quizzes (lesson_id, quiz_id) SELECT ?, quiz_id FROM lesson_quizzes WHERE lesson_id = ?'
+    ).run(newId, row.id)
+    const links = db
+      .prepare(
+        `INSERT OR IGNORE INTO file_links (path, record_type, record_id)
+         SELECT path, 'lesson', ? FROM file_links WHERE record_type = 'lesson' AND record_id = ?`
+      )
+      .run(newId, row.id).changes
+    return { id: newId, links }
+  }
+  const lessonRow = (id: number): LessonRow => {
+    const r = db.prepare('SELECT * FROM lessons WHERE id = ?').get(id) as LessonRow | undefined
+    if (!r) throw new v.ValidationError('That lesson no longer exists')
+    return r
+  }
+  const lessonCount = (unitId: number): number =>
+    (
+      db.prepare('SELECT COUNT(*) AS n FROM lessons WHERE unit_id = ?').get(unitId) as {
+        n: number
+      }
+    ).n
 
   return {
     units: {
@@ -206,6 +338,39 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         if (cleared > 0) emit('fileLinks.changed')
       },
 
+      /** A new unit with its lessons copied in order, for planning the same course again. */
+      duplicate(rawId: number, options?: UnitCopyInput): UnitDetail {
+        const id = v.id(rawId)
+        const source = mustUnit(id)
+        const title =
+          options?.title !== undefined
+            ? v.reqStr(options.title, 'Title', 200)
+            : copyTitle(source.title)
+        const dates = copyDates(options?.dates)
+        const { newId, linked } = db.transaction(() => {
+          const res = db
+            .prepare('INSERT INTO units (title, course, summary) VALUES (?, ?, ?)')
+            .run(title, source.course, source.summary)
+          const made = Number(res.lastInsertRowid)
+          let links = db
+            .prepare(
+              `INSERT OR IGNORE INTO file_links (path, record_type, record_id)
+               SELECT path, 'unit', ? FROM file_links WHERE record_type = 'unit' AND record_id = ?`
+            )
+            .run(made, id).changes
+          const lessons = db
+            .prepare('SELECT * FROM lessons WHERE unit_id = ? ORDER BY position, id')
+            .all(id) as LessonRow[]
+          lessons.forEach((l, i) => {
+            links += copyLesson(l, made, i, l.title, dates).links
+          })
+          return { newId: made, linked: links }
+        })()
+        emit('planner.changed')
+        if (linked > 0) emit('fileLinks.changed')
+        return detail(newId)
+      },
+
       reorder(rawId: number, rawLessonIds: number[]): UnitDetail {
         const id = v.id(rawId)
         mustUnit(id)
@@ -247,7 +412,7 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
           unit_title: string
           unit_course: string
         })[]
-        const lessons = withQuizzes(rows)
+        const lessons = withLinks(rows)
         return rows.map((r, i) => ({
           lesson: lessons[i],
           unitTitle: r.unit_title,
@@ -318,6 +483,57 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         if (cleared > 0) emit('fileLinks.changed')
       },
 
+      /** Copied to just after the original; its quizzes and files come too, its date does not by default. */
+      duplicate(rawId: number, options?: LessonCopyInput): Lesson {
+        const id = v.id(rawId)
+        const source = lessonRow(id)
+        const dates = copyDates(options?.dates)
+        if (lessonCount(source.unit_id) >= MAX_LESSONS) {
+          throw new v.ValidationError('That unit has too many lessons')
+        }
+        const { newId, linked } = db.transaction(() => {
+          db.prepare(
+            'UPDATE lessons SET position = position + 1 WHERE unit_id = ? AND position > ?'
+          ).run(source.unit_id, source.position)
+          const copy = copyLesson(
+            source,
+            source.unit_id,
+            source.position + 1,
+            copyTitle(source.title),
+            dates
+          )
+          renumber(source.unit_id)
+          return { newId: copy.id, linked: copy.links }
+        })()
+        emit('planner.changed')
+        if (linked > 0) emit('fileLinks.changed')
+        return mustLesson(newId)
+      },
+
+      /** To the end of another unit. Its quizzes and attached files stay with it. */
+      move(rawId: number, rawUnitId: number): Lesson {
+        const id = v.id(rawId)
+        const unitId = v.id(rawUnitId, 'Unit')
+        const source = lessonRow(id)
+        mustUnit(unitId)
+        if (unitId === source.unit_id) {
+          throw new v.ValidationError('That lesson is already in this unit')
+        }
+        if (lessonCount(unitId) >= MAX_LESSONS) {
+          throw new v.ValidationError('That unit has too many lessons')
+        }
+        db.transaction(() => {
+          db.prepare(
+            `UPDATE lessons SET unit_id = ?,
+               position = (SELECT COALESCE(MAX(position), -1) + 1 FROM lessons WHERE unit_id = ?)
+             WHERE id = ?`
+          ).run(unitId, unitId, id)
+          renumber(source.unit_id)
+        })()
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
       /** Quizzes can be used by more than one lesson (a review, say). Linking twice is harmless. */
       linkQuiz(rawId: number, rawQuizId: number): Lesson {
         const id = v.id(rawId)
@@ -329,6 +545,75 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         db.prepare('INSERT OR IGNORE INTO lesson_quizzes (lesson_id, quiz_id) VALUES (?, ?)').run(
           id,
           quizId
+        )
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
+      /** The classes a lesson is taught to. Linking twice is harmless. */
+      linkClass(rawId: number, rawClassId: number): Lesson {
+        const id = v.id(rawId)
+        const classId = v.id(rawClassId, 'Class')
+        mustLesson(id)
+        if (!db.prepare('SELECT 1 FROM classes WHERE id = ?').get(classId)) {
+          throw new v.ValidationError('That class no longer exists')
+        }
+        db.prepare('INSERT OR IGNORE INTO lesson_classes (lesson_id, class_id) VALUES (?, ?)').run(
+          id,
+          classId
+        )
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
+      /** Also drops the lesson's links to that class's assignments, which would otherwise be left dangling. */
+      unlinkClass(rawId: number, rawClassId: number): Lesson {
+        const id = v.id(rawId)
+        const classId = v.id(rawClassId, 'Class')
+        mustLesson(id)
+        db.transaction(() => {
+          db.prepare(
+            `DELETE FROM lesson_assignments WHERE lesson_id = ?
+               AND assignment_id IN (SELECT id FROM assignments WHERE class_id = ?)`
+          ).run(id, classId)
+          db.prepare('DELETE FROM lesson_classes WHERE lesson_id = ? AND class_id = ?').run(
+            id,
+            classId
+          )
+        })()
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
+      /** An assignment can only be linked once its class is, so every link has a class to sit under. */
+      linkAssignment(rawId: number, rawAssignmentId: number): Lesson {
+        const id = v.id(rawId)
+        const assignmentId = v.id(rawAssignmentId, 'Assignment')
+        mustLesson(id)
+        const a = db.prepare('SELECT class_id FROM assignments WHERE id = ?').get(assignmentId) as
+          { class_id: number } | undefined
+        if (!a) throw new v.ValidationError('That assignment no longer exists')
+        if (
+          !db
+            .prepare('SELECT 1 FROM lesson_classes WHERE lesson_id = ? AND class_id = ?')
+            .get(id, a.class_id)
+        ) {
+          throw new v.ValidationError('Link the lesson to that assignment’s class first')
+        }
+        db.prepare(
+          'INSERT OR IGNORE INTO lesson_assignments (lesson_id, assignment_id) VALUES (?, ?)'
+        ).run(id, assignmentId)
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
+      unlinkAssignment(rawId: number, rawAssignmentId: number): Lesson {
+        const id = v.id(rawId)
+        const assignmentId = v.id(rawAssignmentId, 'Assignment')
+        mustLesson(id)
+        db.prepare('DELETE FROM lesson_assignments WHERE lesson_id = ? AND assignment_id = ?').run(
+          id,
+          assignmentId
         )
         emit('planner.changed')
         return mustLesson(id)

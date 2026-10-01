@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { Lesson } from '@shared/models'
+import { useApiQuery } from '@renderer/data/hooks'
 import AttachedFiles from './AttachedFiles'
+import ClassLinks from './ClassLinks'
 import QuizLinks from './QuizLinks'
 import { useAutosave } from './useAutosave'
 
@@ -9,14 +11,22 @@ const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 /** One lesson: its fields save as you type, then its quizzes and files. */
 export default function LessonEditor({
   lesson,
+  unitId,
   onError,
   onDeleted,
+  onCopied,
+  onMoved,
   onExport,
   exporting
 }: {
   lesson: Lesson
+  unitId: number
   onError: (message: string) => void
   onDeleted: () => void
+  /** The lesson was copied: show the copy. */
+  onCopied: (lessonId: number) => void
+  /** The lesson was moved to this unit: show it there. */
+  onMoved: (unitId: number) => void
   onExport: () => void
   exporting: boolean
 }): React.JSX.Element {
@@ -40,6 +50,32 @@ export default function LessonEditor({
   )
 
   const [removing, setRemoving] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const units = useApiQuery(() => window.api.units.list(), [], ['planner.changed'])
+  const others = (units.data ?? []).filter((u) => u.id !== unitId)
+
+  const copy = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      await flush() // the copy should hold what is on screen
+      onCopied((await window.api.lessons.duplicate(lesson.id)).id)
+    } catch (e) {
+      onError(msg(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const moveTo = async (target: number): Promise<void> => {
+    setBusy(true)
+    try {
+      await flush()
+      await window.api.lessons.move(lesson.id, target)
+      onMoved(target)
+    } catch (e) {
+      onError(msg(e))
+      setBusy(false)
+    }
+  }
   const remove = (): void => {
     if (
       !window.confirm(
@@ -71,6 +107,23 @@ export default function LessonEditor({
           <button className="btn" disabled={exporting} onClick={onExport}>
             {exporting ? 'Saving…' : 'PowerPoint for this lesson'}
           </button>
+          <button className="btn" disabled={busy} onClick={() => void copy()}>
+            Copy lesson
+          </button>
+          <select
+            aria-label="Move this lesson to another unit"
+            value=""
+            disabled={busy || others.length === 0}
+            onChange={(e) => e.target.value && void moveTo(Number(e.target.value))}
+          >
+            <option value="">Move to…</option>
+            {others.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.course ? `${u.course}: ` : ''}
+                {u.title}
+              </option>
+            ))}
+          </select>
           <button className="btn btn-danger" disabled={removing} onClick={remove}>
             Delete lesson
           </button>
@@ -108,6 +161,7 @@ export default function LessonEditor({
         </label>
       </div>
       <QuizLinks lesson={lesson} onError={onError} />
+      <ClassLinks lesson={lesson} onError={onError} />
       <AttachedFiles recordType="lesson" recordId={lesson.id} onError={onError} />
     </div>
   )

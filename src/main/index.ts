@@ -34,7 +34,10 @@ import { registerIpc } from './ipc'
 import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
 import { createNotifier, type Notifier } from './notifier'
 import { createFileGuard, createProtectedPaths } from './protected'
+import { createMeetingService } from './meetingService'
+import { createProgressService } from './progressService'
 import { createProtectionService } from './protectionService'
+import { createRosterMirror, type RosterMirror } from './rosterMirror'
 import { createRoleRegistry } from './roles'
 import { countExternalDisplays, createStageService } from './stage'
 import { createLessonService } from './lessonService'
@@ -133,6 +136,8 @@ function startBackups(backups: BackupService, notifier: Notifier): void {
 interface VaultSession {
   repos: ReturnType<typeof createVaultRepositories>
   roster: ReturnType<typeof createRosterService>
+  progress: ReturnType<typeof createProgressService>
+  meetings: ReturnType<typeof createMeetingService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
   lessons: ReturnType<typeof createLessonService>
@@ -169,15 +174,24 @@ void app.whenReady().then(() => {
     dir: vaultDir,
     openDb: openVaultDatabase,
     createSession: (vdb) => {
-      const repos = createVaultRepositories(vdb, broadcast)
+      // Roster changes also refresh the names-only copy the everyday window reads (see rosterMirror.ts).
+      let mirror: RosterMirror | null = null
+      const repos = createVaultRepositories(vdb, (name, detail) => {
+        broadcast(name, detail)
+        mirror?.handle(name)
+      })
+      mirror = createRosterMirror(repos, publicRepos.directory)
+      mirror.sync() // on every unlock, which also builds the first copy after an upgrade
       const roster = createRosterService(repos, {
         pickOpenFile: pickTableFile,
         pickSaveFile: pickSaveTableFile
       })
+      const progress = createProgressService(repos, roster.tokens)
+      const meetings = createMeetingService(repos, { pickSaveFile: pickSaveDocxFile })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
       const quizzes = createQuizService(repos, { pickSaveFile: pickSaveDocxFile })
       const lessons = createLessonService(repos, { pickSaveFile: pickSavePptxFile })
-      return { repos, roster, scores, quizzes, lessons }
+      return { repos, roster, progress, meetings, scores, quizzes, lessons }
     },
     // A database from before the vault existed is moved in the first time the vault opens.
     afterOpen: (vdb) => void importLegacyData(db, vdb, { backupDir }),
@@ -379,6 +393,8 @@ void app.whenReady().then(() => {
       vault: {
         repos: () => manager.session().repos,
         roster: () => manager.session().roster,
+        progress: () => manager.session().progress,
+        meetings: () => manager.session().meetings,
         scores: () => manager.session().scores,
         quizzes: () => manager.session().quizzes,
         lessons: () => manager.session().lessons

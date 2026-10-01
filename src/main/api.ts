@@ -1,5 +1,7 @@
 import type { ApiContract, SystemInfo } from '@shared/api'
 import type { BackupService } from './backupService'
+import type { MeetingService } from './meetingService'
+import type { ProgressService } from './progressService'
 import type { ProtectionService } from './protectionService'
 import type { QuizService } from './quizService'
 import type { LessonService } from './lessonService'
@@ -26,6 +28,8 @@ export interface ApiDeps {
   vault: {
     repos: () => Repositories
     roster: () => RosterService
+    progress: () => ProgressService
+    meetings: () => MeetingService
     scores: () => ScoreService
     quizzes: () => QuizService
     lessons: () => LessonService
@@ -44,6 +48,8 @@ export function createApi(deps: ApiDeps): ApiContract {
   const { env, stage, gate } = deps
   const repos = (): Repositories => deps.vault.repos()
   const roster = (): RosterService => deps.vault.roster()
+  const progress = (): ProgressService => deps.vault.progress()
+  const meetings = (): MeetingService => deps.vault.meetings()
   const scores = (): ScoreService => deps.vault.scores()
   const quizzes = (): QuizService => deps.vault.quizzes()
   const lessons = (): LessonService => deps.vault.lessons()
@@ -90,7 +96,10 @@ export function createApi(deps: ApiDeps): ApiContract {
       progress: (studentId) => repos().advising.progress(studentId),
       createProgress: (input) => repos().advising.createProgress(input),
       updateProgress: (id, patch) => repos().advising.updateProgress(id, patch),
-      deleteProgress: (id) => repos().advising.deleteProgress(id)
+      deleteProgress: (id) => repos().advising.deleteProgress(id),
+      previewProgressImport: (request) => progress().previewImport(request),
+      commitProgressImport: (request) => progress().commitImport(request),
+      exportMeetingWord: (id) => meetings().exportWord(id)
     },
     questions: {
       list: (query) => repos().questions.list(query),
@@ -111,7 +120,7 @@ export function createApi(deps: ApiDeps): ApiContract {
       setPoints: (id, questionId, points) => repos().quizzes.setPoints(id, questionId, points),
       assignments: (id) => repos().quizzes.assignments(id),
       createAssignment: (input) => repos().quizzes.createAssignment(input),
-      exportWord: (id, version) => quizzes().exportWord(id, version)
+      exportWord: (id, version, form) => quizzes().exportWord(id, version, form)
     },
     units: {
       list: () => repos().units.list(),
@@ -119,6 +128,7 @@ export function createApi(deps: ApiDeps): ApiContract {
       create: (input) => repos().units.create(input),
       update: (id, patch) => repos().units.update(id, patch),
       delete: (id) => repos().units.delete(id),
+      duplicate: (id, options) => repos().units.duplicate(id, options),
       reorder: (id, lessonIds) => repos().units.reorder(id, lessonIds),
       upcoming: () => repos().units.upcoming(),
       exportPowerPoint: (id, lessonId) => lessons().exportPowerPoint(id, lessonId)
@@ -127,8 +137,14 @@ export function createApi(deps: ApiDeps): ApiContract {
       create: (input) => repos().lessons.create(input),
       update: (id, patch) => repos().lessons.update(id, patch),
       delete: (id) => repos().lessons.delete(id),
+      duplicate: (id, options) => repos().lessons.duplicate(id, options),
+      move: (id, unitId) => repos().lessons.move(id, unitId),
       linkQuiz: (id, quizId) => repos().lessons.linkQuiz(id, quizId),
-      unlinkQuiz: (id, quizId) => repos().lessons.unlinkQuiz(id, quizId)
+      unlinkQuiz: (id, quizId) => repos().lessons.unlinkQuiz(id, quizId),
+      linkClass: (id, classId) => repos().lessons.linkClass(id, classId),
+      unlinkClass: (id, classId) => repos().lessons.unlinkClass(id, classId),
+      linkAssignment: (id, assignmentId) => repos().lessons.linkAssignment(id, assignmentId),
+      unlinkAssignment: (id, assignmentId) => repos().lessons.unlinkAssignment(id, assignmentId)
     },
     grading: {
       categories: (classId) => repos().grading.categories(classId),
@@ -194,6 +210,10 @@ export function createApi(deps: ApiDeps): ApiContract {
       list: (type, id) => repos().fileLinks.list(type, id),
       add: (input) => repos().fileLinks.add(input),
       remove: (id) => repos().fileLinks.remove(id)
+    },
+    directory: {
+      classes: () => deps.publicRepos.directory.classes(),
+      students: (classId) => deps.publicRepos.directory.students(classId)
     },
     settings: {
       get: () => deps.publicRepos.settings.get(),

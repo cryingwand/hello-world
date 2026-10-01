@@ -3,6 +3,7 @@ import { formatDate } from '@shared/advising'
 import type { Question, QuizEntry, QuizKind } from '@shared/models'
 import type { QuizVersion } from '@shared/quiz'
 import { kindLabel, pointsLabel } from '@shared/quiz'
+import type { QuizForm } from '@shared/quizForms'
 import ErrorBanner from '@renderer/components/ErrorBanner'
 import { useApiQuery } from '@renderer/data/hooks'
 import QuestionForm from './QuestionForm'
@@ -24,6 +25,7 @@ export default function QuizEditor({
   const [editing, setEditing] = useState<Question | null>(null)
   const [exporting, setExporting] = useState<QuizVersion | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
+  const [form, setForm] = useState<QuizForm | ''>('')
 
   const quiz = useApiQuery(
     () => window.api.quizzes.get(quizId),
@@ -57,7 +59,7 @@ export default function QuizEditor({
     setExporting(version)
     setSaved(null)
     window.api.quizzes
-      .exportWord(q.id, version)
+      .exportWord(q.id, version, form || null)
       .then((res) => setSaved(res?.path ?? null))
       .catch(fail)
       .finally(() => setExporting(null))
@@ -173,9 +175,18 @@ export default function QuizEditor({
         <h3>Word documents</h3>
         <p className="hint">
           A saved exam is an ordinary file. Save it inside a protected folder to keep it out of file
-          search and the Presenter.
+          search and the Presenter. Form B shuffles the questions within each part and the choices
+          of each multiple-choice question; its answer key matches it, so export both for Form B.
         </p>
         <div className="adv-add">
+          <label className="inline">
+            Version
+            <select value={form} onChange={(e) => setForm(e.target.value as QuizForm | '')}>
+              <option value="">Single version</option>
+              <option value="A">Form A (as built)</option>
+              <option value="B">Form B (shuffled)</option>
+            </select>
+          </label>
           <button
             className="btn btn-primary"
             disabled={q.entries.length === 0 || exporting !== null}

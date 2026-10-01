@@ -7,9 +7,9 @@ passcode-locked **Vault** so that nothing you present can reach it.
 
 Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
 
-## What is in Phases 1 to 4
+## What is in Phases 1 to 5
 
-- **Two spaces**: the everyday window (Files and the Presenter) and the **Vault** window (Classes &
+- **Two spaces**: the everyday window (Files, the Presenter and In-class Tools) and the **Vault** window (Classes &
   Rosters, Gradebook, Advising, Quizzes & Exams, Lesson Planner, Files with attachments, Protected Files). They are separate windows with separate
   data; see [The Vault and the Stage](#the-vault-and-the-stage).
 - **Shell**: top bar (clock, file search, current-class picker in the Vault, Present and Lock buttons), a
@@ -23,13 +23,15 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   and late flags, averages, a per-student view, and Excel/CSV import and export of scores.
 - **Advising** (Phase 2): students tagged `advisee` get a profile with goals, follow-ups (yours or the
   student's, with due dates and an overdue flag), a meeting history and grades earned elsewhere (entered
-  by hand). Start meeting opens meeting mode: last time's summary, what is still open and the goals beside
-  this meeting's notes, saved as you type, with a copy-ready summary. It lives in the Vault.
+  by hand, or imported from a spreadsheet or CSV for all advisees at once, with a preview). Start meeting
+  opens meeting mode: last time's summary, what is still open and the goals beside this meeting's notes,
+  saved as you type, with a copy-ready summary or a Word file in your house style. It lives in the Vault.
 - **Quizzes & Exams** (Phase 3): a question bank (multiple choice, true/false, short answer, essay; with
   tags, search and a model answer for the key) and quizzes built from it, in order, with points that can
   differ per quiz. Export a **student copy** or an **answer key** as a Word file in your house style:
   Palatino Linotype 12pt, a centered Course • Title • Date line, numbered questions with lettered choices
-  kept together on a page, Part headings when a quiz mixes kinds, ruled lines for written answers. **Add to
+  kept together on a page, Part headings when a quiz mixes kinds, ruled lines for written answers. Export a
+  shuffled **Form B** (questions within each part, and the choices) with a matching answer key. **Add to
   Gradebook** creates the assignment in a class (one per class, worth the quiz's total points) and flags it
   if the quiz's points change later. It lives in the Vault, so the question bank is never reachable from
   the presenting window. A question that is in a quiz cannot be deleted until it is taken out.
@@ -39,7 +41,17 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   dated lessons from today on. Export a **PowerPoint** for the whole unit (title, overview, lesson list,
   then each lesson's objectives, plan, homework and quizzes) or for a single lesson, in Palatino Linotype
   to match your Word files. Long lists continue on another slide, and your private notes become speaker
-  notes. Only the titles of linked quizzes go in the deck, never their questions. It lives in the Vault.
+  notes. Only the titles of linked quizzes go in the deck, never their questions. **Copy a unit** for next
+  term (its lessons, linked quizzes and attached files, with the dates cleared, kept or moved by a number
+  of weeks), copy a single lesson, or move a lesson to another unit. A lesson can be linked to the classes it
+  is taught to and to the Gradebook assignments that go with it, and opens the class in the Gradebook. It
+  lives in the Vault.
+- **In-class Tools** (Phase 5): a **timer** (presets or "7", "1:30", "90s", "1h 15m"; pause, add or take off a
+  minute; it counts down from the clock, so it stays accurate; flashes and beeps at zero), a **random
+  picker** (everyone goes once before anyone repeats), a **group maker** (by number of groups or people per
+  group, sizes never differ by more than one) and a **seating chart** (random seats, click two desks to swap,
+  resize without moving anyone). The picker, groups and seating chart take names you type or paste, or load a
+  whole class. The names are kept in memory only, never saved by the tool, and are gone when you quit.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
@@ -58,6 +70,11 @@ presenting window cannot reach.
   windows are gone. It locks when you press Lock, after the idle time in its Settings (10 minutes by
   default), when the screen locks or the Mac sleeps, when a display is connected, and when you start the
   Stage. It will not open while the Stage is showing, and asks first if another display is connected.
+  The one exception is a **names-only copy of your class rosters** in the everyday database, so the
+  In-class Tools can load a class even while the Vault is locked or you are presenting. It holds each
+  student's name and which class they are in, and nothing else: no email, notes, tags (so nothing shows who
+  you advise) or grades, and a student in no class is not copied at all. You still edit rosters only in the
+  Vault; the copy is rewritten from it whenever they change and every time the Vault is unlocked.
 - **Stage**: a full-screen window on the other display (or this screen if there is none) that can call
   exactly one thing: "what should I show?". In the Presenter, search for PDFs, images, Word and text
   files, click to queue them, then Start the Stage. Keys: `]` and `[` for next and previous, `B` to blank,
@@ -71,6 +88,9 @@ presenting window cannot reach.
 
 ### What this does not do
 
+- The names-only roster copy is not locked: anyone who can use the everyday window or read `data.sqlite`
+  can see who is in each class. That was a deliberate choice, since the people in a class can see the
+  roster anyway; keep anything more private than a name in the Vault.
 - The passcode stops access through the app. It does not encrypt `vault.sqlite`, so someone who can read
   your files can read it. Turn on **FileVault** (System Settings, Privacy & Security) to protect the disk.
 - It cannot stop a screenshot or screen recording, and it cannot clear the **Recent Files** lists that

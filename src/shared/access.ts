@@ -62,7 +62,10 @@ export const API_ACCESS = {
     progress: VAULT,
     createProgress: VAULT,
     updateProgress: VAULT,
-    deleteProgress: VAULT
+    deleteProgress: VAULT,
+    previewProgressImport: VAULT,
+    commitProgressImport: VAULT,
+    exportMeetingWord: VAULT
   },
   questions: { list: VAULT, get: VAULT, create: VAULT, update: VAULT, delete: VAULT },
   quizzes: {
@@ -85,11 +88,24 @@ export const API_ACCESS = {
     create: VAULT,
     update: VAULT,
     delete: VAULT,
+    duplicate: VAULT,
     reorder: VAULT,
     upcoming: VAULT,
     exportPowerPoint: VAULT
   },
-  lessons: { create: VAULT, update: VAULT, delete: VAULT, linkQuiz: VAULT, unlinkQuiz: VAULT },
+  lessons: {
+    create: VAULT,
+    update: VAULT,
+    delete: VAULT,
+    duplicate: VAULT,
+    move: VAULT,
+    linkQuiz: VAULT,
+    unlinkQuiz: VAULT,
+    linkClass: VAULT,
+    unlinkClass: VAULT,
+    linkAssignment: VAULT,
+    unlinkAssignment: VAULT
+  },
   grading: {
     categories: VAULT,
     createCategory: VAULT,
@@ -126,6 +142,8 @@ export const API_ACCESS = {
     restoreLayout: EVERYDAY,
     pickFile: EVERYDAY
   },
+  // The names-only roster copy: read-only, for the everyday window, and available while the Vault is locked.
+  directory: { classes: LAUNCHER, students: LAUNCHER },
   settings: { get: EVERYDAY, update: EVERYDAY },
   backup: { runNow: EVERYDAY, list: EVERYDAY },
   system: { info: EVERYDAY, chooseFolder: EVERYDAY, openAccessibilitySettings: EVERYDAY },

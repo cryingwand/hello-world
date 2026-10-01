@@ -13,6 +13,8 @@ import { createFileGuard, createProtectedPaths } from '../../src/main/protected'
 import { createProtectionService } from '../../src/main/protectionService'
 import { createVaultRepositories } from '../../src/main/repos'
 import { createLessonService } from '../../src/main/lessonService'
+import { createMeetingService } from '../../src/main/meetingService'
+import { createProgressService } from '../../src/main/progressService'
 import { createQuizService } from '../../src/main/quizService'
 import { createRosterService } from '../../src/main/rosterService'
 import { createScoreService } from '../../src/main/scoreService'
@@ -29,6 +31,8 @@ afterEach(() => {
 interface Session {
   repos: ReturnType<typeof createVaultRepositories>
   roster: ReturnType<typeof createRosterService>
+  progress: ReturnType<typeof createProgressService>
+  meetings: ReturnType<typeof createMeetingService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
   lessons: ReturnType<typeof createLessonService>
@@ -51,10 +55,12 @@ function env(opts: { unlocked?: boolean } = {}) {
         pickOpenFile: async () => null,
         pickSaveFile: async () => null
       })
+      const progress = createProgressService(repos, roster.tokens)
+      const meetings = createMeetingService(repos, { pickSaveFile: async () => null })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: async () => null })
       const quizzes = createQuizService(repos, { pickSaveFile: async () => null })
       const lessons = createLessonService(repos, { pickSaveFile: async () => null })
-      return { repos, roster, scores, quizzes, lessons }
+      return { repos, roster, progress, meetings, scores, quizzes, lessons }
     },
     scrypt: { N: 1 << 4, r: 8, p: 1, keylen: 32 }
   })
@@ -85,6 +91,8 @@ function env(opts: { unlocked?: boolean } = {}) {
     vault: {
       repos: () => manager.session().repos,
       roster: () => manager.session().roster,
+      progress: () => manager.session().progress,
+      meetings: () => manager.session().meetings,
       scores: () => manager.session().scores,
       quizzes: () => manager.session().quizzes,
       lessons: () => manager.session().lessons
@@ -189,6 +197,50 @@ describe('api wiring', () => {
     expect((await api.units.get(unit.id))?.lessons[0].quizzes.map((q) => q.id)).toEqual([quiz.id])
     expect((await api.units.list())[0]).toMatchObject({ lessonCount: 1 })
     expect((await api.units.upcoming())[0].lesson.id).toBe(lesson.id)
+  })
+
+  it('links a lesson to a class and its assignments through the API', async () => {
+    const { api, ready } = env()
+    await ready
+    const term = await api.terms.create({ name: 'T' })
+    const cls = await api.classes.create({ termId: term.id, course: 'Bio', gradingMode: 'points' })
+    const hw = await api.grading.createAssignment({
+      classId: cls.id,
+      title: 'HW',
+      pointsPossible: 5
+    })
+    const unit = await api.units.create({ title: 'Cells' })
+    const lesson = await api.lessons.create({ unitId: unit.id, title: 'Day 1' })
+    await expect(
+      Promise.resolve().then(() => api.lessons.linkAssignment(lesson.id, hw.id))
+    ).rejects.toThrow(/Link the lesson/)
+    await api.lessons.linkClass(lesson.id, cls.id)
+    const linked = await api.lessons.linkAssignment(lesson.id, hw.id)
+    expect(linked.classes.map((c) => c.id)).toEqual([cls.id])
+    expect(linked.assignments.map((a) => a.id)).toEqual([hw.id])
+    expect((await api.lessons.unlinkClass(lesson.id, cls.id)).assignments).toEqual([])
+  })
+
+  it('serves the names-only roster copy even while the vault is locked', async () => {
+    const { api, pub, manager } = env({ unlocked: false })
+    expect(manager.isUnlocked()).toBe(false)
+    pub.repos.directory.replace({
+      classes: [
+        {
+          id: 3,
+          course: 'Bio',
+          section: '',
+          period: '2',
+          termName: 'Fall',
+          currentTerm: true,
+          students: [{ id: 9, firstName: 'Ada', lastName: 'Lovelace', preferredName: '' }]
+        }
+      ]
+    })
+    expect((await api.directory.classes()).map((c) => c.course)).toEqual(['Bio'])
+    expect(await api.directory.students(3)).toEqual([{ id: 9, name: 'Ada Lovelace' }])
+    // The real roster is still locked away.
+    await expect(Promise.resolve().then(() => api.classes.roster(3))).rejects.toThrow(/locked/)
   })
 
   it('refuses every vault method while the vault is locked', async () => {

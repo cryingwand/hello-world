@@ -32,11 +32,11 @@ Path aliases: `@shared/*`, `@renderer/*`, `@apps/*`.
 Sensitive data is kept out of reach instead of hidden. Every window has one role, recorded by the main
 process from the window's own `webContents` id (nothing the renderer says about itself is trusted):
 
-| Role       | Shows                                                            | Can reach                                           |
-| ---------- | ---------------------------------------------------------------- | --------------------------------------------------- |
-| `launcher` | Files (library) and the Presenter                                | Public data: settings, non-protected files, backups |
-| `vault`    | Classes, Gradebook, Advising, Quizzes, Planner, Files, Protected | Everything, only while the vault is unlocked        |
-| `stage`    | What is being presented                                          | One method: `stage.view()`                          |
+| Role       | Shows                                                            | Can reach                                                                       |
+| ---------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `launcher` | Files (library), the Presenter and In-class Tools                | Public data: settings, non-protected files, backups, the names-only roster copy |
+| `vault`    | Classes, Gradebook, Advising, Quizzes, Planner, Files, Protected | Everything, only while the vault is unlocked                                    |
+| `stage`    | What is being presented                                          | One method: `stage.view()`                                                      |
 
 Each role has its own storage partition (`persist:teachingos-<role>`), its own `window.api` (the preload
 exposes only the methods the role may call) and its own `tos-file://` handler. Main refuses a call from
@@ -68,11 +68,27 @@ in-process React modules, not iframes, and talk to data only through `window.api
 
 ## The Vault
 
-- `data.sqlite` holds settings and the protected folder list. `vault.sqlite` (in `vault/`) holds terms,
+- `data.sqlite` holds settings, the protected folder list and a names-only copy of the class rosters (see
+  below). `vault.sqlite` (in `vault/`) holds terms,
   classes, students, enrollments, categories, assignments, scores, file links and the advising tables
   (`advising_meetings`, `goals`, `action_items`, `external_progress`) and the quiz tables (`questions`,
   `quizzes`, `quiz_items`) and the planner tables (`units`, `lessons`, `lesson_quizzes`). **A new table goes in
   the vault** unless there is a deliberate decision that it is safe to show anywhere.
+- **The public roster copy** is a deliberate exception to "student data stays in the vault": `roster_classes`
+  and `roster_members` (public migration 2) hold each class's label and its students' names, so the
+  launcher can use a roster (In-class Tools) while the Vault is locked or a presentation is running. The
+  decision is that names are fine to show in the everyday window (the class can see who is in it). Nothing
+  else may go there: the columns are an allowlist (`PUBLIC_ROSTER_COLUMNS` in `src/shared/sensitive.ts`, and
+  a test fails if one is added), and email, notes, tags (the `advisee` tag shows who you advise), grades and
+  advising never leave the vault. A student in no class is not copied at all. The Vault stays the only place
+  a roster is edited; `src/main/rosterMirror.ts` rewrites the copy from it, straight away on the vault's
+  `students`/`classes`/`enrollments`/`terms` change events (they only fire while it is open, so there is
+  never a closed database to write to) and once on every unlock, which also builds the first copy after an
+  upgrade. The mirror must never throw (it runs while the vault opens and after the teacher's own saves),
+  logs no names, and `directoryRepo.replace` is the only writer: the window API is read-only
+  (`directory.classes` / `directory.students`, launcher only, no vault needed, nothing for the vault or
+  stage windows) and a change is announced as `directory.changed` to the launcher only. A new place that
+  changes a student's name or class must emit one of those events.
 - Migrations are versioned and append-only, separately for each database (`PUBLIC_MIGRATIONS`,
   `VAULT_MIGRATIONS`). Never edit a shipped migration; add a new one.
 - The vault is a lifecycle (`src/main/vault/manager.ts`). Locked means the connection is closed, every
@@ -96,7 +112,15 @@ deleting a meeting or goal leaves its follow-ups, unlinked. A follow-up may only
 of the same student. Dates are `YYYY-MM-DD` text; "today" is `localToday()` in `src/shared/advising.ts`
 (also holds the overdue rule and the copy-ready meeting summary). The app (`apps/advising/`) handles the
 `open-advisee` intent and offers "Open in Gradebook" (`open-student`); meeting mode autosaves with a
-debounce and flushes on leaving. Grades earned elsewhere are manual entry only; there is no import yet.
+debounce and flushes on leaving. Grades earned elsewhere are entered by hand or imported from a spreadsheet
+(`src/shared/progressImport.ts`, `src/main/progressService.ts`, `advising.previewProgressImport` /
+`commitProgressImport`): one row is one grade, matched to advisees only (email, then name), and a row
+whose student, course, term and source match a stored entry updates it, so a re-import changes nothing.
+The preview and the commit share one planner, and the commit re-plans from the file.
+Word export of one meeting is `src/main/meetingDoc.ts` (house style in the comment at the top; pure,
+returns a buffer) behind `meetingService.exportWord` and `advising.exportMeetingWord`, which asks for the
+path through an injected `pickSaveFile`. It writes the meeting's own follow-ups only. The saved file is an
+ordinary file with the student's name in it: nothing keeps it inside the Vault, and the app says so.
 
 ## Quizzes & Exams
 
@@ -114,7 +138,12 @@ style in the comment at the top; pure, returns a buffer) behind `quizService.exp
 the path through an injected `pickSaveFile`. Ruled answer lines are tab leaders: adjacent paragraphs with
 identical borders merge into one line in Word. The exported file is an ordinary file: nothing stops it
 being saved outside a protected folder, and the app says so. Shared pure helpers (header text, dates,
-parts, points) are in `src/shared/quiz.ts`. The question and quiz fields are not tagged `sensitive`
+parts, points) are in `src/shared/quiz.ts`. Form B (`src/shared/quizForms.ts`, `quizForForm`) shuffles the
+questions within each part and the choices of each multiple-choice question; the seed comes from the quiz
+id and its question ids, so Form B's student copy and key always agree and a re-export is identical until
+the quiz changes. "All of the above" style choices stay last, a question whose choices point at each other
+by letter is left in order, and True/False never moves. Form A is the quiz as built, labelled; no form is
+the plain export. The form letter goes in the title: "Quiz 3 (Form B Answer Key)". The question and quiz fields are not tagged `sensitive`
 (they are not student PII).
 
 ## Lesson & Unit Planner
@@ -131,6 +160,23 @@ quiz. Attached files use `file_links` with record types `unit` and `lesson` (mig
 since SQLite cannot change a CHECK); links are not foreign keys, so the planner clears them with the
 record and emits `fileLinks.changed`. Add a record type to `TABLE` in `fileLinks.ts` and the migration's
 CHECK together. `units.upcoming()` is dated lessons from `localToday()` on, capped at `UPCOMING_LIMIT`.
+`units.duplicate` copies a unit with its lessons in order, the same quizzes linked (a quiz is shared, never
+copied) and the same files attached, in one transaction; lesson dates are cleared unless the options keep
+them or shift them by whole days (`CopyDates`, `copiedDate` in `src/shared/lesson.ts`, worked in UTC).
+`lessons.duplicate` puts a copy right after the original and `lessons.move` appends a lesson to another
+unit (its quizzes and files go with it, the old unit is renumbered). `useAutosave().flush()` returns a
+promise that resolves when every save so far has landed: await it before any action that reads the saved
+text (a copy), because it is otherwise fire-and-forget.
+
+`lesson_classes` and `lesson_assignments` (vault migration 5) link a lesson to the classes it is taught to
+and to the Gradebook assignments that go with it (`lessons.linkClass` / `linkAssignment` and the unlinks):
+an assignment can only be linked once its class is, and unlinking a class drops that class's assignment
+links. They are pointers only: both cascade from every side, deleting a lesson or unit never touches the
+Gradebook, and the planner UI refetches on `classes.changed` and `assignments.changed` instead of the
+Gradebook repositories emitting `planner.changed`. A copy of a lesson or unit starts with no class or
+assignment links (they belong to one class's scores); a moved lesson keeps them. The `open-gradebook`
+intent (handled by the Gradebook) opens a class there. The PowerPoint never mentions classes or assignments.
+
 PowerPoint export is `src/main/lessonDeck.ts` (house style in the comment at the top; pure, returns a
 buffer) behind `lessonService.exportPowerPoint`, which asks for the path through an injected
 `pickSaveFile`, for a whole unit or one lesson. Only quiz titles are written, never questions or answers,
@@ -141,6 +187,23 @@ ordinary file: nothing stops it being saved outside a protected folder, and the 
 when the editor goes away; a refused save puts the saved text back) and opens a linked quiz with the
 `open-quiz` intent, which Quizzes & Exams handles. The planner fields are not tagged `sensitive` (they are
 not student PII).
+
+## In-class Tools
+
+`apps/tools/` (launcher space) is a timer, a random picker, a group maker and a seating chart in one app with
+four tabs. The names come from what the teacher types or pastes, or from "Load a class", which reads the
+names-only roster copy (`directory.*`, the only part of the data API this app may call). Names are student
+information in a window that may be on the projector, so they live in memory only (`namesStore.ts`): never
+written to storage, never sent to main, gone when the app quits. A test
+(`tests/renderer/toolsPrivacy.test.ts`) scans that folder for storage, network, console and any
+`window.api` call other than `directory.classes` / `directory.students`, so adding one fails a test. All the rules are pure functions in `src/shared/tools.ts` with injected
+randomness and time (`parseNames`, `pickNext`, `makeGroups`, `seatRandomly`/`swapSeats`/`resizeSeats`, and
+the `timer*` functions): everyone goes once before anyone repeats and a new round never opens with the
+person who just went; groups differ in size by at most one; resizing the seating grid keeps people where
+they sit; the timer counts down from a clock (`endsAt`), not by subtracting ticks, so a busy or sleeping
+screen cannot make it run slow. Every tool stays mounted while switching tabs so a running timer keeps
+running. A seating chart is not saved: the roster copy is names only, and a saved layout would be a second
+place for student data outside the Vault.
 
 ## Protected folders
 

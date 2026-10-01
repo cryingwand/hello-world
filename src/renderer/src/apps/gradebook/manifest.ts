@@ -9,7 +9,7 @@ const manifest: AppManifest = {
   component: GradebookApp,
   defaultSize: { w: 1180, h: 700 },
   minSize: { w: 640, h: 420 },
-  handles: ['open-student', 'record-score']
+  handles: ['open-student', 'record-score', 'open-gradebook']
 }
 
 export default manifest

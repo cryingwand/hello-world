@@ -10,11 +10,20 @@ import type {
   TextFile
 } from './files'
 import type { QuizVersion } from './quiz'
+import type { QuizForm } from './quizForms'
+import type { CopyDates } from './lesson'
 import type { StageState, StageView } from './stage'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
+  ProgressImportPlan,
+  ProgressImportRequest,
+  ProgressImportResult
+} from './progressImport'
+import type {
+  DirectoryClass,
+  DirectoryStudent,
   ActionItem,
   ActionOwner,
   AdviseeSummary,
@@ -198,6 +207,17 @@ export interface LessonInput {
   notes?: string
 }
 
+export interface UnitCopyInput {
+  /** Defaults to the original's title with "(copy)". */
+  title?: string
+  /** Defaults to clearing them. */
+  dates?: CopyDates
+}
+
+export interface LessonCopyInput {
+  dates?: CopyDates
+}
+
 export interface SystemInfo {
   dataDir: string
   dbPath: string
@@ -265,6 +285,11 @@ export interface ApiContract {
     createProgress(input: ProgressInput): ExternalProgress
     updateProgress(id: number, patch: Patch<Omit<ProgressInput, 'studentId'>>): ExternalProgress
     deleteProgress(id: number): void
+    /** What importing this spreadsheet of outside grades would do, without writing anything. */
+    previewProgressImport(request: ProgressImportRequest): Awaitable<ProgressImportPlan>
+    commitProgressImport(request: ProgressImportRequest): Awaitable<ProgressImportResult>
+    /** Asks where to save, then writes the meeting up as a Word file. Null if cancelled. */
+    exportMeetingWord(meetingId: number): Awaitable<{ path: string } | null>
   }
   questions: {
     /** Newest first. */
@@ -293,8 +318,15 @@ export interface ApiContract {
     assignments(id: number): Assignment[]
     /** Creates the assignment in a class, worth the quiz's total points. One per class. */
     createAssignment(input: QuizAssignmentInput): Assignment
-    /** Asks where to save, then writes a Word copy: for students, or the answer key. Null if cancelled. */
-    exportWord(id: number, version: QuizVersion): Awaitable<{ path: string } | null>
+    /**
+     * Asks where to save, then writes a Word copy: for students, or the answer key. Form B has the
+     * questions and choices shuffled (the same shuffle for the copy and its key). Null if cancelled.
+     */
+    exportWord(
+      id: number,
+      version: QuizVersion,
+      form?: QuizForm | null
+    ): Awaitable<{ path: string } | null>
   }
   units: {
     /** By course, then by when the unit starts. */
@@ -304,6 +336,11 @@ export interface ApiContract {
     update(id: number, patch: Patch<UnitInput>): UnitDetail
     /** Takes its lessons, and their attached-file links, with it. Quizzes are untouched. */
     delete(id: number): void
+    /**
+     * A new unit with copies of its lessons, in order, with the same quizzes linked and the same
+     * files attached. Lesson dates are cleared unless the options keep or shift them.
+     */
+    duplicate(id: number, options?: UnitCopyInput): UnitDetail
     /** Every lesson in the unit, in the new order. */
     reorder(id: number, lessonIds: number[]): UnitDetail
     /** Lessons dated today or later, soonest first. */
@@ -319,9 +356,20 @@ export interface ApiContract {
     create(input: LessonInput): Lesson
     update(id: number, patch: Patch<Omit<LessonInput, 'unitId'>>): Lesson
     delete(id: number): void
+    /** Copies a lesson (quizzes and files too) to just after the original, with its date cleared by default. */
+    duplicate(id: number, options?: LessonCopyInput): Lesson
+    /** Moves a lesson to the end of another unit. Its quizzes and files go with it. */
+    move(id: number, unitId: number): Lesson
     /** Records that the lesson uses a quiz or exam. Linking twice is harmless. */
     linkQuiz(id: number, quizId: number): Lesson
     unlinkQuiz(id: number, quizId: number): Lesson
+    /** Records that the lesson is taught to a class. Linking twice is harmless. */
+    linkClass(id: number, classId: number): Lesson
+    /** Also unlinks the lesson from that class's assignments. */
+    unlinkClass(id: number, classId: number): Lesson
+    /** The assignment's class must already be linked to the lesson. */
+    linkAssignment(id: number, assignmentId: number): Lesson
+    unlinkAssignment(id: number, assignmentId: number): Lesson
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -425,6 +473,12 @@ export interface ApiContract {
     add(input: FileLinkInput): FileLink
     remove(id: number): void
   }
+  directory: {
+    /** The classes in the names-only roster copy, current term first. Works while the Vault is locked. */
+    classes(): DirectoryClass[]
+    /** One class's students as display names, by last name. Names only: no email, notes or grades. */
+    students(classId: number): DirectoryStudent[]
+  }
   settings: {
     get(): AppSettings
     update(patch: Patch<AppSettings>): AppSettings
@@ -475,7 +529,10 @@ export const API_METHODS = {
     'progress',
     'createProgress',
     'updateProgress',
-    'deleteProgress'
+    'deleteProgress',
+    'previewProgressImport',
+    'commitProgressImport',
+    'exportMeetingWord'
   ],
   questions: ['list', 'get', 'create', 'update', 'delete'],
   quizzes: [
@@ -492,8 +549,30 @@ export const API_METHODS = {
     'createAssignment',
     'exportWord'
   ],
-  units: ['list', 'get', 'create', 'update', 'delete', 'reorder', 'upcoming', 'exportPowerPoint'],
-  lessons: ['create', 'update', 'delete', 'linkQuiz', 'unlinkQuiz'],
+  units: [
+    'list',
+    'get',
+    'create',
+    'update',
+    'delete',
+    'duplicate',
+    'reorder',
+    'upcoming',
+    'exportPowerPoint'
+  ],
+  lessons: [
+    'create',
+    'update',
+    'delete',
+    'duplicate',
+    'move',
+    'linkQuiz',
+    'unlinkQuiz',
+    'linkClass',
+    'unlinkClass',
+    'linkAssignment',
+    'unlinkAssignment'
+  ],
   grading: [
     'categories',
     'createCategory',
@@ -540,6 +619,7 @@ export const API_METHODS = {
   ],
   protection: ['folders', 'chooseAndAdd', 'remove', 'browse'],
   fileLinks: ['list', 'add', 'remove'],
+  directory: ['classes', 'students'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],
   system: ['info', 'chooseFolder', 'openAccessibilitySettings']

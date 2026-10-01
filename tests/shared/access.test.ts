@@ -128,11 +128,27 @@ describe('access policy', () => {
 describe('change audiences', () => {
   it('names an audience for every change, and keeps vault data changes out of other windows', () => {
     for (const name of CHANGE_NAMES) expect(CHANGE_AUDIENCE[name], name).toBeDefined()
+    // The two that are not vault-only are each a deliberate decision: settings are public, and the
+    // names-only roster copy exists to be read by the everyday window.
+    const notVaultOnly = ['settings.changed', 'directory.changed']
     for (const name of CHANGE_NAMES) {
-      if (name === 'settings.changed') continue
+      if (notVaultOnly.includes(name)) continue
       expect(CHANGE_AUDIENCE[name], name).toEqual(['vault'])
     }
     expect(CHANGE_AUDIENCE['settings.changed']).toContain('launcher')
     expect(CHANGE_AUDIENCE['settings.changed']).not.toContain('stage')
+    expect(CHANGE_AUDIENCE['directory.changed']).toEqual(['launcher'])
+  })
+
+  it('lets the launcher read the names-only roster copy and nothing more, even with the Vault locked', () => {
+    expect(methodsFor('launcher').directory).toEqual(['classes', 'students'])
+    for (const m of ['classes', 'students']) {
+      const access = API_ACCESS.directory[m as 'classes' | 'students']
+      expect(access.roles).toEqual(['launcher'])
+      expect((access as { needsVault?: boolean }).needsVault).toBeUndefined()
+    }
+    // The vault window has the real roster, and the stage can reach none of it.
+    expect(methodsFor('vault').directory).toBeUndefined()
+    expect(methodsFor('stage').directory).toBeUndefined()
   })
 })

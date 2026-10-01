@@ -242,6 +242,24 @@ export interface LinkedQuiz {
   date: string | null
 }
 
+/** A class a lesson is taught to. Just enough to name it. */
+export interface LinkedClass {
+  id: number
+  course: string
+  section: string
+  period: string
+  termName: string
+}
+
+/** A Gradebook assignment that goes with a lesson (its homework or quiz). */
+export interface LinkedAssignment {
+  id: number
+  classId: number
+  title: string
+  pointsPossible: number
+  dueDate: string | null
+}
+
 export interface Lesson {
   id: number
   unitId: number
@@ -258,6 +276,10 @@ export interface Lesson {
   /** For the teacher only: become speaker notes in the PowerPoint. */
   notes: string
   quizzes: LinkedQuiz[]
+  /** The classes it is taught to. */
+  classes: LinkedClass[]
+  /** Gradebook assignments for it. Each is in one of `classes`. */
+  assignments: LinkedAssignment[]
 }
 
 export interface UnitDetail extends Unit {
@@ -277,4 +299,22 @@ export interface UpcomingLesson {
   lesson: Lesson
   unitTitle: string
   course: string
+}
+
+/** A class in the names-only roster copy that the everyday window may read. */
+export interface DirectoryClass {
+  id: number
+  course: string
+  section: string
+  period: string
+  termName: string
+  currentTerm: boolean
+  studentCount: number
+}
+
+/** A student in the roster copy: a display name and nothing else. */
+export interface DirectoryStudent {
+  id: number
+  /** The preferred name if there is one, then the last name: "Pri Abernathy". */
+  name: string
 }
