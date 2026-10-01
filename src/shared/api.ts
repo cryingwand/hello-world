@@ -13,7 +13,7 @@ import type { QuizVersion } from './quiz'
 import type { QuizForm } from './quizForms'
 import type { CopyDates } from './lesson'
 import type { StageState, StageView } from './stage'
-import type { VaultSettings, VaultStatus } from './vault'
+import type { VaultSettings, VaultSettingsPatch, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
@@ -410,10 +410,7 @@ export interface ApiContract {
     touch(): Awaitable<void>
     changePasscode(current: string, next: string): Awaitable<void>
     settings(): Awaitable<VaultSettings>
-    updateSettings(patch: {
-      autoLockMinutes?: number
-      touchIdEnabled?: boolean
-    }): Awaitable<VaultSettings>
+    updateSettings(patch: VaultSettingsPatch): Awaitable<VaultSettings>
   }
   stage: {
     /** Presenter: the queue, and whether the Stage is showing. No paths are returned. */

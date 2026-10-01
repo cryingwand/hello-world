@@ -150,7 +150,7 @@ describe('backup service', () => {
     const svc = createBackupService({
       dir: join(dir, 'backups'),
       publicDb: () => publicDb,
-      vault: { open: () => open, dbPath: vaultPath },
+      vault: { open: () => open, dbPath: vaultPath, extraDir: () => null },
       extraDir: () => null,
       now: () => new Date(2026, 8, 30, 9, 0, 0)
     })

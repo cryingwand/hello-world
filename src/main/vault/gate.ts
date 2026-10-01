@@ -1,4 +1,4 @@
-import type { VaultSettings, VaultStatus } from '@shared/vault'
+import type { VaultSettings, VaultSettingsPatch, VaultStatus } from '@shared/vault'
 import { ValidationError } from '../validate'
 import type { VaultManager } from './manager'
 
@@ -74,12 +74,10 @@ export function createVaultGate<S>(deps: GateDeps<S>) {
     settings: (): VaultSettings => manager.settings(),
     changePasscode: (current: unknown, next: unknown): Promise<void> =>
       manager.changePasscode(current, next),
-    async updateSettings(patch: {
-      autoLockMinutes?: number
-      touchIdEnabled?: boolean
-    }): Promise<VaultSettings> {
+    async updateSettings(patch: VaultSettingsPatch): Promise<VaultSettings> {
       if (patch.autoLockMinutes !== undefined) manager.setAutoLock(patch.autoLockMinutes)
       if (patch.touchIdEnabled !== undefined) await manager.setTouchId(!!patch.touchIdEnabled)
+      if (patch.backupFolder !== undefined) manager.setBackupFolder(patch.backupFolder)
       return manager.settings()
     }
   }

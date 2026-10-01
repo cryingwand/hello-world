@@ -289,6 +289,42 @@ describe('idle lock', () => {
   })
 })
 
+describe('Vault backup folder', () => {
+  it('is off by default, survives a relaunch and can be read while locked', async () => {
+    const a = make()
+    expect(a.mgr.backupFolder()).toBeNull()
+    await a.mgr.setup('first passcode')
+    expect(a.mgr.settings().backupFolder).toBeNull()
+    a.mgr.setBackupFolder('/Volumes/USB/Vault')
+    a.mgr.lock('manual')
+    const again = make({ dir: a.dir })
+    expect(again.mgr.status().locked).toBe(true)
+    expect(again.mgr.backupFolder()).toBe('/Volumes/USB/Vault')
+    again.mgr.setBackupFolder(null)
+    expect(again.mgr.backupFolder()).toBeNull()
+  })
+
+  it('takes only an absolute path, and needs a passcode first', async () => {
+    const a = make()
+    expect(() => a.mgr.setBackupFolder('/Volumes/USB')).toThrow(/passcode first/)
+    await a.mgr.setup('first passcode')
+    for (const bad of ['relative/folder', '', 42, undefined])
+      expect(() => a.mgr.setBackupFolder(bad)).toThrow(ValidationError)
+    expect(a.mgr.backupFolder()).toBeNull()
+  })
+
+  it('reads a vault.json written before the setting existed as off', async () => {
+    const a = make()
+    await a.mgr.setup('first passcode')
+    const meta = JSON.parse(readFileSync(a.mgr.paths.meta, 'utf8')) as Record<string, unknown>
+    delete meta.backupFolder
+    writeFileSync(a.mgr.paths.meta, JSON.stringify(meta))
+    const again = make({ dir: a.dir })
+    expect(again.mgr.status().initialized).toBe(true)
+    expect(again.mgr.backupFolder()).toBeNull()
+  })
+})
+
 describe('Touch ID', () => {
   const touch = (over: Partial<TouchIdLike> = {}): TouchIdLike & { prompts: string[] } => {
     const prompts: string[] = []

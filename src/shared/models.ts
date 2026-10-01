@@ -137,7 +137,10 @@ export interface FileLink {
 
 export interface AppSettings {
   teachingFolders: string[]
-  /** An extra folder that also receives every backup. */
+  /**
+   * An extra folder that also receives every backup of the public database. Never the Vault's:
+   * those go only to the folder chosen inside the Vault (`VaultSettings.backupFolder`).
+   */
   backupFolder: string | null
   presentation: {
     /** Offer the Stage when an external display connects. The Vault locks either way. */
@@ -163,6 +166,8 @@ export interface BackupInfo {
   vaultName?: string
   /** Set when the vault backup failed (the public backup above still succeeded). */
   vaultError?: string
+  /** Set when the copy to the Vault's own extra folder failed. A fixed message, with no path. */
+  vaultExtraError?: string
 }
 
 export type QuestionKind = 'multiple-choice' | 'true-false' | 'short-answer' | 'essay'

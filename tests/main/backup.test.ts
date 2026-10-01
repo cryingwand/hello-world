@@ -11,7 +11,12 @@ import {
   pruneBackups,
   runBackup
 } from '../../src/main/backup'
-import { makeEnv, seedClass } from './helpers'
+import { VAULT_EXTRA_ERROR, createBackupService } from '../../src/main/backupService'
+import { openVaultDatabase } from '../../src/main/db/connection'
+import { createVaultGate } from '../../src/main/vault/gate'
+import { legacyCopyName } from '../../src/main/vault/legacy'
+import { createVaultManager } from '../../src/main/vault/manager'
+import { makeEnv, makePublicEnv, seedClass } from './helpers'
 
 const dirs: string[] = []
 const tmp = (): string => {
@@ -120,5 +125,124 @@ describe('needsDailyBackup', () => {
   it('handles a missing folder', () => {
     expect(needsDailyBackup(join(tmp(), 'nope'), new Date())).toBe(true)
     expect(listBackups(join(tmp(), 'nope'))).toEqual([])
+  })
+})
+
+describe('backup service: extra folders', () => {
+  /** Wired as in `src/main/index.ts`: the public folder from settings, the Vault's from `vault.json`. */
+  const setup = (now = at(2026, 9, 30)) => {
+    const root = tmp()
+    const pub = makePublicEnv()
+    const manager = createVaultManager<object>({
+      dir: join(root, 'vault'),
+      openDb: openVaultDatabase,
+      createSession: () => ({}),
+      scrypt: { N: 1 << 4, r: 8, p: 1, keylen: 32 }
+    })
+    const gate = createVaultGate({
+      manager,
+      presenting: () => false,
+      externalDisplays: () => 0,
+      confirmExternalDisplay: async () => true
+    })
+    const clock = { now }
+    const dir = join(root, 'backups')
+    const svc = createBackupService({
+      dir,
+      publicDb: () => pub.db,
+      vault: {
+        open: () => (manager.isUnlocked() ? manager.database() : null),
+        dbPath: manager.paths.db,
+        extraDir: () => manager.backupFolder()
+      },
+      extraDir: () => pub.repos.settings.get().backupFolder,
+      now: () => clock.now
+    })
+    return { root, dir, pub, manager, gate, svc, clock }
+  }
+  const files = (dir: string): string[] => (existsSync(dir) ? readdirSync(dir).sort() : [])
+
+  it('never copies the Vault to the public extra folder, locked or open', async () => {
+    const { root, pub, gate, svc, clock } = setup()
+    await gate.setup('first passcode')
+    gate.lock()
+    // What the launcher can do without the passcode: choose a folder and back up now.
+    const usb = join(root, 'usb')
+    pub.repos.settings.update({ backupFolder: usb })
+    const locked = await svc.runAll()
+    expect(locked.vaultName).toBeDefined()
+    expect(files(usb)).toEqual([locked.name])
+
+    await gate.unlock('first passcode')
+    clock.now = at(2026, 9, 30, 10)
+    const open = await svc.runAll()
+    expect(open.vaultName).toBeDefined()
+    expect(files(usb).every((f) => f.startsWith('data-'))).toBe(true)
+    expect(files(usb)).toHaveLength(2)
+  })
+
+  it('is off by default and copies Vault backups only to the folder chosen inside the Vault', async () => {
+    const { root, dir, pub, gate, manager, svc } = setup()
+    await gate.setup('first passcode')
+    expect(gate.settings().backupFolder).toBeNull()
+    const usb = join(root, 'usb')
+    const vaultCopy = join(root, 'vault-usb')
+    pub.repos.settings.update({ backupFolder: usb })
+    expect((await gate.updateSettings({ backupFolder: vaultCopy })).backupFolder).toBe(vaultCopy)
+    gate.lock()
+
+    // The setting is read from vault.json, so it applies while locked.
+    expect(manager.backupFolder()).toBe(vaultCopy)
+    const info = await svc.runAll()
+    expect(files(vaultCopy)).toEqual([info.vaultName])
+    expect(files(usb)).toEqual([info.name])
+    expect(files(dir)).toEqual([info.name, info.vaultName].sort())
+  })
+
+  it('stops copying the Vault when its folder is turned off', async () => {
+    const { root, gate, svc, clock } = setup()
+    await gate.setup('first passcode')
+    const vaultCopy = join(root, 'vault-usb')
+    await gate.updateSettings({ backupFolder: vaultCopy })
+    await svc.runAll()
+    await gate.updateSettings({ backupFolder: null })
+    clock.now = at(2026, 9, 30, 11)
+    await svc.runAll()
+    expect(files(vaultCopy)).toHaveLength(1)
+  })
+
+  it('reports a failed Vault copy without naming its folder', async () => {
+    const { root, gate, svc } = setup()
+    await gate.setup('first passcode')
+    const blocker = join(root, 'secret-place')
+    writeFileSync(blocker, 'x') // a file where a folder is expected
+    await gate.updateSettings({ backupFolder: join(blocker, 'sub') })
+    const info = await svc.runAll()
+    expect(info.vaultName).toBeDefined()
+    expect(info.extraError).toBeUndefined()
+    expect(info.vaultExtraError).toBe(VAULT_EXTRA_ERROR)
+    expect(JSON.stringify(info)).not.toContain('secret-place')
+  })
+
+  it('lets vault copies an older version left in the public folder age out after 14 days', async () => {
+    const { root, pub, svc } = setup(at(2026, 9, 30, 12))
+    const usb = join(root, 'usb')
+    mkdirSync(usb)
+    const recent = backupFileName(at(2026, 9, 20), 'vault')
+    const old = backupFileName(at(2026, 9, 1), 'vault')
+    for (const n of [recent, old, 'notes.txt']) writeFileSync(join(usb, n), '')
+    pub.repos.settings.update({ backupFolder: usb })
+    const info = await svc.runAll()
+    expect(files(usb)).toEqual([info.name, 'notes.txt', recent].sort())
+  })
+
+  it('prunes the pre-Vault copy of the old database like any other backup', async () => {
+    const { dir, svc } = setup(at(2026, 9, 30, 12))
+    mkdirSync(dir, { recursive: true })
+    const recent = legacyCopyName(at(2026, 9, 20))
+    const old = legacyCopyName(at(2026, 9, 1))
+    for (const n of [recent, old, 'data-before-vault-notes.sqlite']) writeFileSync(join(dir, n), '')
+    const info = await svc.runAll()
+    expect(files(dir)).toEqual([info.name, 'data-before-vault-notes.sqlite', recent].sort())
   })
 })

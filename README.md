@@ -56,8 +56,10 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
   inside the Vault.
-- **Backups**: a SQLite backup of both databases at launch and daily, the last 14 days kept, optionally
-  copied to a second folder. The Vault is backed up even while it is locked.
+- **Backups**: a SQLite backup of both databases at launch and daily, the last 14 days kept. The Vault
+  is backed up even while it is locked. The extra folder in Settings receives the everyday database
+  only (settings, protected folders, class lists by name); Vault backups are copied off this Mac only if
+  you choose a folder for them in Settings inside the Vault (off by default).
 
 ## The Vault and the Stage
 
@@ -142,10 +144,13 @@ Then drag it to `/Applications` and, on the first launch, right-click it and cho
 ## First-run setup
 
 1. Click **Teaching OS** in the top bar to open Settings. Add your teaching folders (search lists their
-   files first) and, if you like, an extra folder that also receives every backup.
+   files first) and, if you like, an extra folder that also receives every backup of the everyday
+   database. Vault backups never go there: to copy them too, choose a folder in Settings inside the
+   Vault. That copy is an ordinary file the passcode does not protect, so do not choose a cloud-synced
+   folder.
 2. Open the **Vault** from the dock and choose a passcode. If you used an earlier version, your classes
    and grades are moved into the Vault the first time it opens (a copy of the old database is kept in
-   `backups/`).
+   `backups/` for 14 days, like any backup, and the old rows are cleared out of `data.sqlite`).
 3. In the Vault, open **Protected Files** and add the folders that hold exams, quizzes and answer keys.
 4. The first time you snap a window beside the launcher, macOS asks for **Accessibility** and
    **Automation** access. Allow them under System Settings, Privacy & Security.
@@ -163,12 +168,12 @@ Then drag it to `/Applications` and, on the first launch, right-click it and cho
 
 ## Where things live
 
-| Path                                                          | What                                                     |
-| ------------------------------------------------------------- | -------------------------------------------------------- |
-| `~/Library/Application Support/TeachingOS/data.sqlite`        | Settings and the protected folder list                   |
-| `~/Library/Application Support/TeachingOS/vault/vault.sqlite` | Students, classes, grades, attachments                   |
-| `~/Library/Application Support/TeachingOS/vault/vault.json`   | Passcode hash, Touch ID, idle time, failed attempts      |
-| `~/Library/Application Support/TeachingOS/backups/`           | `data-` and `vault-` backups (launch and daily, 14 days) |
+| Path                                                          | What                                                                     |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `~/Library/Application Support/TeachingOS/data.sqlite`        | Settings and the protected folder list                                   |
+| `~/Library/Application Support/TeachingOS/vault/vault.sqlite` | Students, classes, grades, attachments                                   |
+| `~/Library/Application Support/TeachingOS/vault/vault.json`   | Passcode hash, Touch ID, idle time, failed attempts, Vault backup folder |
+| `~/Library/Application Support/TeachingOS/backups/`           | `data-` and `vault-` backups (launch and daily, 14 days)                 |
 
 ## Permissions
 

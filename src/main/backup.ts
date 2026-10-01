@@ -44,6 +44,10 @@ export function listBackups(dir: string, prefix: BackupPrefix = 'data'): BackupI
   return out.sort((a, b) => b.name.localeCompare(a.name))
 }
 
+/** Anything made before this time (local midnight, `keepDays` calendar days ago) is past keeping. */
+export const keepCutoff = (now: Date, keepDays: number): number =>
+  new Date(now.getFullYear(), now.getMonth(), now.getDate() - keepDays).getTime()
+
 /**
  * Deletes backups older than `keepDays` calendar days. Only files matching our naming pattern are
  * touched, so anything else the user keeps in the folder is safe. Returns what was removed.
@@ -54,7 +58,7 @@ export function pruneBackups(
   now: Date,
   prefix: BackupPrefix = 'data'
 ): string[] {
-  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - keepDays).getTime()
+  const cutoff = keepCutoff(now, keepDays)
   const removed: string[] = []
   for (const b of listBackups(dir, prefix)) {
     if (new Date(b.createdAt).getTime() < cutoff) {

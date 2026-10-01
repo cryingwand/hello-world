@@ -106,7 +106,7 @@ function env(opts: { unlocked?: boolean } = {}) {
     backups: createBackupService({
       dir: join(dir, 'backups'),
       publicDb: () => pub.db,
-      vault: { open: () => null, dbPath: manager.paths.db },
+      vault: { open: () => null, dbPath: manager.paths.db, extraDir: () => null },
       extraDir: () => null
     }),
     gate,

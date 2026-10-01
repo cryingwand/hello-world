@@ -94,12 +94,26 @@ in-process React modules, not iframes, and talk to data only through `window.api
 - The vault is a lifecycle (`src/main/vault/manager.ts`). Locked means the connection is closed, every
   vault window is destroyed, and nothing built on the database exists. It locks on: manual lock, idle
   timeout, screen lock, sleep, a display connecting, and the start of a presentation.
-- `vault.json` holds the scrypt passcode hash, the Touch ID flag, the idle setting and the failed-attempt
-  counter (persisted, so restarting does not reset the wait). The passcode gates access through the app;
-  it does not encrypt `vault.sqlite`. FileVault protects the disk.
+- `vault.json` holds the scrypt passcode hash, the Touch ID flag, the idle setting, the failed-attempt
+  counter (persisted, so restarting does not reset the wait) and the Vault's backup folder. The passcode
+  gates access through the app; it does not encrypt `vault.sqlite`. FileVault protects the disk.
 - Unlock goes through `createVaultGate`: refused while presenting (checked again after the passcode is
   verified), and confirmed with a native dialog when another display is connected.
-- Vault backups are taken even while it is locked, from main.
+- Vault backups are taken even while it is locked, from main. **The public extra backup folder
+  (`settings.backupFolder`) never receives them**: it is set from the launcher, which needs no passcode,
+  so letting it would hand anyone at the everyday window a full copy of the Vault on a USB stick or a
+  cloud-synced folder. A Vault backup is copied out of `backups/` only to `VaultSettings.backupFolder`,
+  stored in `vault.json` (readable while locked, since backups run then) and set only through
+  `vault.updateSettings` (`VAULT`) from Settings inside the Vault. It is off by default. The service
+  (`src/main/backupService.ts`) takes the two folders as separate dependencies; keep them separate. A
+  failed copy to the Vault's folder is reported with a fixed message (`VAULT_EXTRA_ERROR`), because
+  `backup.runNow` answers the launcher too and the real error names the folder. Vault copies an earlier
+  version left in the public folder are pruned there by the 14-day rule.
+- The legacy import (`src/main/vault/legacy.ts`) keeps a full copy of the old database as
+  `data-before-vault-<UTC stamp>.sqlite` in `backups/`. It holds every pre-Vault student and grade, so
+  `pruneLegacyCopies` removes it after 14 days like any backup (run from `backupService.runAll`). After
+  dropping the old tables it runs `VACUUM` and a `wal_checkpoint(TRUNCATE)`: the public connection stays
+  open all session, and without the checkpoint the old rows sit in `data.sqlite` and its WAL until quit.
 - Fields holding student PII are tagged `sensitive` in `src/shared/sensitive.ts`. Nothing sends them
   anywhere; the tag is the seam for a future `src/main/ai/` service.
 

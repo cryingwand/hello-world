@@ -22,6 +22,18 @@ export interface VaultSettings {
   autoLockMinutes: number
   touchIdAvailable: boolean
   touchIdEnabled: boolean
+  /**
+   * A folder that also receives every Vault backup, or null (the default) to keep them on this Mac
+   * only. Set only from the unlocked Vault; the public backup folder never receives Vault data.
+   */
+  backupFolder: string | null
+}
+
+export interface VaultSettingsPatch {
+  autoLockMinutes?: number
+  touchIdEnabled?: boolean
+  /** An absolute folder path, or null to turn the extra copy of Vault backups off. */
+  backupFolder?: string | null
 }
 
 export const AUTO_LOCK_CHOICES = [0, 2, 5, 10, 15, 30, 60] as const

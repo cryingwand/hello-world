@@ -287,7 +287,8 @@ void app.whenReady().then(() => {
     publicDb: () => db,
     vault: {
       open: () => (manager.isUnlocked() ? manager.database() : null),
-      dbPath: manager.paths.db
+      dbPath: manager.paths.db,
+      extraDir: () => manager.backupFolder()
     },
     extraDir: () => publicRepos.settings.get().backupFolder
   })

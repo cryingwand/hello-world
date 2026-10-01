@@ -1,5 +1,5 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import {
   AUTO_LOCK_CHOICES,
   DEFAULT_AUTO_LOCK_MINUTES,
@@ -9,7 +9,7 @@ import {
   type VaultStatus
 } from '@shared/vault'
 import type { Db } from '../repos/types'
-import { ValidationError } from '../validate'
+import { ValidationError, reqStr } from '../validate'
 import {
   DEFAULT_SCRYPT,
   hashPasscode,
@@ -55,6 +55,8 @@ interface Meta {
   autoLockMinutes: number
   failures: number
   blockedUntil: number
+  /** Extra folder for Vault backups. Missing in files written before it existed: off. */
+  backupFolder?: string | null
 }
 
 const FREE_ATTEMPTS = 4
@@ -73,7 +75,8 @@ const isMeta = (m: unknown): m is Meta => {
     typeof x.touchId === 'boolean' &&
     typeof x.autoLockMinutes === 'number' &&
     Number.isFinite(x.failures) &&
-    Number.isFinite(x.blockedUntil)
+    Number.isFinite(x.blockedUntil) &&
+    (x.backupFolder === undefined || x.backupFolder === null || typeof x.backupFolder === 'string')
   )
 }
 
@@ -310,7 +313,8 @@ export function createVaultManager<S>(deps: VaultManagerDeps<S>) {
       return {
         autoLockMinutes: s.autoLockMinutes,
         touchIdAvailable: s.touchId.available,
-        touchIdEnabled: s.touchId.enabled
+        touchIdEnabled: s.touchId.enabled,
+        backupFolder: readMeta()?.backupFolder ?? null
       }
     },
 
@@ -352,6 +356,23 @@ export function createVaultManager<S>(deps: VaultManagerDeps<S>) {
       writeMeta({ ...m, autoLockMinutes: minutes })
       armTimer()
       announce()
+    },
+
+    /**
+     * The folder that also receives Vault backups, or null. Readable while locked, because backups
+     * run then too; only `setBackupFolder` (an unlocked-Vault call) changes it.
+     */
+    backupFolder: (): string | null => readMeta()?.backupFolder ?? null,
+
+    setBackupFolder(folder: unknown): void {
+      const m = readMeta()
+      if (!m) throw new ValidationError('Choose a passcode first.')
+      let clean: string | null = null
+      if (folder !== null) {
+        clean = reqStr(folder, 'Backup folder', 1024)
+        if (!isAbsolute(clean)) throw new ValidationError('Backup folder must be an absolute path')
+      }
+      writeMeta({ ...m, backupFolder: clean })
     },
 
     /** True if a vault database file exists, whether or not a passcode has been chosen. */

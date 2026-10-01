@@ -47,10 +47,13 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
     setMessage(null)
     try {
       const b = await window.api.backup.runNow()
+      const problems = [
+        b.extraError && `the extra folder failed: ${b.extraError}`,
+        b.vaultError && `the Vault backup failed: ${b.vaultError}`,
+        b.vaultExtraError
+      ].filter(Boolean)
       setMessage(
-        b.extraError
-          ? `Backed up, but the extra folder failed: ${b.extraError}`
-          : `Backed up ${b.name}`
+        problems.length > 0 ? `Backed up, but ${problems.join('; ')}` : `Backed up ${b.name}`
       )
       backups.reload()
     } catch (err) {
@@ -99,7 +102,9 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
           <h3>Backups</h3>
           <p className="hint">
             A backup is taken at launch and daily; the last 14 days are kept in{' '}
-            <code>{info.data?.backupDir}</code>. You can also copy each one to another folder.
+            <code>{info.data?.backupDir}</code>. You can also copy each one to another folder. That
+            copy holds settings and class lists by name only: the Vault&apos;s backups go elsewhere
+            only if you choose a folder for them in Settings inside the Vault.
           </p>
           <div className="row">
             <span>Extra folder:</span>

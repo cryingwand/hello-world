@@ -1,10 +1,24 @@
 import Database from 'better-sqlite3'
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { LEGACY_SCHEMA_SQL, VAULT_MIGRATIONS, migrate } from '../../src/main/db/migrations'
-import { VAULT_TABLES, importLegacyData } from '../../src/main/vault/legacy'
+import {
+  VAULT_TABLES,
+  importLegacyData,
+  legacyCopyName,
+  parseLegacyCopyName,
+  pruneLegacyCopies
+} from '../../src/main/vault/legacy'
 
 const dirs: string[] = []
 const tmp = (): string => {
@@ -115,7 +129,7 @@ describe('importLegacyData', () => {
       now: () => new Date('2026-09-30T10:00:00Z')
     })!
     expect(res.backupPath).toBeTruthy()
-    expect(readdirSync(dir)).toHaveLength(1)
+    expect(readdirSync(dir)).toEqual(['data-before-vault-2026-09-30T10-00-00-000Z.sqlite'])
     const copy = new Database(res.backupPath!, { readonly: true })
     expect((copy.prepare('SELECT COUNT(*) n FROM students').get() as { n: number }).n).toBe(2)
     copy.close()
@@ -191,5 +205,65 @@ describe('importLegacyData', () => {
     const backups = join(dir, 'backups')
     importLegacyData(pub, vaultDb(), { backupDir: backups })
     expect(existsSync(backups)).toBe(false)
+  })
+})
+
+describe('removing the old rows from the public database file', () => {
+  /** True if the name appears anywhere in the file's bytes, free pages included. */
+  const inFile = (path: string, text: string): boolean =>
+    existsSync(path) && readFileSync(path).includes(Buffer.from(text))
+
+  it('leaves no trace of the moved rows in data.sqlite or its WAL, while still open', () => {
+    const dir = tmp()
+    const path = join(dir, 'data.sqlite')
+    const pub = legacyDb(path)
+    pub.pragma('journal_mode = WAL')
+    // Enough rows to fill pages of their own, then written into the main file as the app would.
+    const add = pub.prepare("INSERT INTO students (first_name, last_name) VALUES ('Zephyrine', ?)")
+    for (let i = 0; i < 200; i++) add.run(`Quill${i}`)
+    pub.pragma('wal_checkpoint(TRUNCATE)')
+    expect(inFile(path, 'Zephyrine')).toBe(true)
+
+    importLegacyData(pub, vaultDb())
+
+    // The public connection stays open all session, so this must hold before it closes.
+    for (const f of [path, `${path}-wal`]) {
+      expect(inFile(f, 'Zephyrine'), f).toBe(false)
+      expect(inFile(f, 'handed in Tuesday'), f).toBe(false)
+    }
+    expect(pub.prepare('SELECT value FROM settings WHERE key = ?').get('teachingFolders')).toEqual({
+      value: '["/Users/t/Courses"]'
+    })
+    pub.close()
+  })
+})
+
+describe('the pre-Vault copy', () => {
+  const at = (y: number, mo: number, d: number, h = 9): Date => new Date(y, mo - 1, d, h)
+
+  it('round-trips its name', () => {
+    const d = new Date('2026-09-30T10:11:12.345Z')
+    expect(legacyCopyName(d)).toBe('data-before-vault-2026-09-30T10-11-12-345Z.sqlite')
+    expect(parseLegacyCopyName(legacyCopyName(d))?.getTime()).toBe(d.getTime())
+    expect(parseLegacyCopyName('data-2026-09-30-091542.sqlite')).toBeNull()
+    expect(parseLegacyCopyName(`${legacyCopyName(d)}.partial`)).toBeNull()
+  })
+
+  it('is pruned after 14 days, like other backups, and nothing else is touched', () => {
+    const dir = tmp()
+    const now = at(2026, 9, 30, 12)
+    const keep = [legacyCopyName(at(2026, 9, 30)), legacyCopyName(at(2026, 9, 16, 0))]
+    const drop = [legacyCopyName(at(2026, 9, 15, 23)), legacyCopyName(at(2025, 8, 1))]
+    for (const n of [...keep, ...drop]) writeFileSync(join(dir, n), '')
+    writeFileSync(join(dir, 'data-2026-08-01-090000.sqlite'), '') // pruneBackups' job, not this
+    mkdirSync(join(dir, 'data-before-vault-folder'))
+    expect(pruneLegacyCopies(dir, 14, now).sort()).toEqual(drop.sort())
+    expect(readdirSync(dir).sort()).toEqual(
+      [...keep, 'data-2026-08-01-090000.sqlite', 'data-before-vault-folder'].sort()
+    )
+  })
+
+  it('handles a missing folder', () => {
+    expect(pruneLegacyCopies(join(tmp(), 'nope'), 14, new Date())).toEqual([])
   })
 })
