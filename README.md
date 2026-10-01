@@ -1,16 +1,16 @@
 # Teaching OS
 
 A desktop-style teaching suite for one teacher on one Mac: a full-screen shell with a top bar, dock and
-movable windows, where apps (Classes & Rosters, Files, Gradebook, Advising, Quizzes & Exams, and later the
-Lesson Planner and so on) share local SQLite data. Student data never leaves the machine, and it is kept in a separate,
+movable windows, where apps (Classes & Rosters, Files, Gradebook, Advising, Quizzes & Exams, the Lesson
+Planner, and later the In-class Tools and so on) share local SQLite data. Student data never leaves the machine, and it is kept in a separate,
 passcode-locked **Vault** so that nothing you present can reach it.
 
 Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
 
-## What is in Phases 1 to 3
+## What is in Phases 1 to 4
 
 - **Two spaces**: the everyday window (Files and the Presenter) and the **Vault** window (Classes &
-  Rosters, Gradebook, Advising, Quizzes & Exams, Files with attachments, Protected Files). They are separate windows with separate
+  Rosters, Gradebook, Advising, Quizzes & Exams, Lesson Planner, Files with attachments, Protected Files). They are separate windows with separate
   data; see [The Vault and the Stage](#the-vault-and-the-stage).
 - **Shell**: top bar (clock, file search, current-class picker in the Vault, Present and Lock buttons), a
   dock, and movable, resizable, snappable windows whose layout is restored on relaunch.
@@ -33,6 +33,13 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   Gradebook** creates the assignment in a class (one per class, worth the quiz's total points) and flags it
   if the quiz's points change later. It lives in the Vault, so the question bank is never reachable from
   the presenting window. A question that is in a quiz cannot be deleted until it is taken out.
+- **Lesson Planner** (Phase 4): units (a title, a course and an overview) made of lessons in order, each
+  with a date, objectives, a plan, homework and private notes. Lessons can link to quizzes and exams, which
+  open in Quizzes & Exams, and attach files, including ones in protected folders. Coming up lists the
+  dated lessons from today on. Export a **PowerPoint** for the whole unit (title, overview, lesson list,
+  then each lesson's objectives, plan, homework and quizzes) or for a single lesson, in Palatino Linotype
+  to match your Word files. Long lists continue on another slide, and your private notes become speaker
+  notes. Only the titles of linked quizzes go in the deck, never their questions. It lives in the Vault.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
@@ -74,6 +81,9 @@ presenting window cannot reach.
 - A Word file exported from Quizzes & Exams is an ordinary file in the folder you choose. Save it inside a
   protected folder if it should stay out of file search and the Presenter; the question bank itself stays
   in the Vault database either way.
+- A PowerPoint exported from the Lesson Planner is also an ordinary file, with your lesson notes as speaker
+  notes and the names of any quizzes. Save it inside a protected folder if it should stay out of file
+  search. The Stage does not show slides: open the deck in PowerPoint.
 - A mirrored projector can look like a single display, so "a display was connected" may not fire. Starting
   the Stage always locks the Vault, so start it before you put anything on the screen.
 

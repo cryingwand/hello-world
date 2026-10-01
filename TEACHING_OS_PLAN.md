@@ -196,3 +196,18 @@ migration 3; the Gradebook link is the assignment's `source_app`/`source_id`. No
 Not built: shuffled versions (A/B order), importing questions from a Word file, a link from a Gradebook
 assignment back to its quiz, recording per-question results, and the other later phases (Lesson Planner,
 In-class Tools, legacy rebuilds).
+
+## Phase 4: Lesson & Unit Planner
+
+Phase 4 is the next item on the "later phases" list: the **Lesson & Unit Planner**. Built as a vault app:
+lessons link to exams and attach protected files. Included: units (title, course, overview) made of ordered
+lessons (date, objectives, plan, homework, private notes), quizzes and exams linked to a lesson (opened in
+the Quizzes app through a new `open-quiz` intent), files attached to a unit or a lesson, a Coming up list of
+dated lessons, and **PowerPoint export** with `pptxgenjs` for a unit or one lesson (title, overview, lesson
+list, then objectives, plan, homework and quiz titles per lesson; notes become speaker notes). Tables
+`units`, `lessons` and `lesson_quizzes` are vault migration 4, which also rebuilds `file_links` to accept the
+record types `unit` and `lesson`.
+
+Not built: copying a unit or lesson (for next term), moving a lesson to another unit, a calendar or week
+view, linking a lesson to a class and its Gradebook assignments, importing from Word or PowerPoint, and the
+other later phases (In-class Tools, legacy rebuilds).
