@@ -13,6 +13,7 @@ import { createFileGuard, createProtectedPaths } from '../../src/main/protected'
 import { createProtectionService } from '../../src/main/protectionService'
 import { createVaultRepositories } from '../../src/main/repos'
 import { createLessonService } from '../../src/main/lessonService'
+import { createMeetingService } from '../../src/main/meetingService'
 import { createProgressService } from '../../src/main/progressService'
 import { createQuizService } from '../../src/main/quizService'
 import { createRosterService } from '../../src/main/rosterService'
@@ -31,6 +32,7 @@ interface Session {
   repos: ReturnType<typeof createVaultRepositories>
   roster: ReturnType<typeof createRosterService>
   progress: ReturnType<typeof createProgressService>
+  meetings: ReturnType<typeof createMeetingService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
   lessons: ReturnType<typeof createLessonService>
@@ -54,10 +56,11 @@ function env(opts: { unlocked?: boolean } = {}) {
         pickSaveFile: async () => null
       })
       const progress = createProgressService(repos, roster.tokens)
+      const meetings = createMeetingService(repos, { pickSaveFile: async () => null })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: async () => null })
       const quizzes = createQuizService(repos, { pickSaveFile: async () => null })
       const lessons = createLessonService(repos, { pickSaveFile: async () => null })
-      return { repos, roster, progress, scores, quizzes, lessons }
+      return { repos, roster, progress, meetings, scores, quizzes, lessons }
     },
     scrypt: { N: 1 << 4, r: 8, p: 1, keylen: 32 }
   })
@@ -89,6 +92,7 @@ function env(opts: { unlocked?: boolean } = {}) {
       repos: () => manager.session().repos,
       roster: () => manager.session().roster,
       progress: () => manager.session().progress,
+      meetings: () => manager.session().meetings,
       scores: () => manager.session().scores,
       quizzes: () => manager.session().quizzes,
       lessons: () => manager.session().lessons

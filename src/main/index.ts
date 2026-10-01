@@ -34,6 +34,7 @@ import { registerIpc } from './ipc'
 import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
 import { createNotifier, type Notifier } from './notifier'
 import { createFileGuard, createProtectedPaths } from './protected'
+import { createMeetingService } from './meetingService'
 import { createProgressService } from './progressService'
 import { createProtectionService } from './protectionService'
 import { createRoleRegistry } from './roles'
@@ -135,6 +136,7 @@ interface VaultSession {
   repos: ReturnType<typeof createVaultRepositories>
   roster: ReturnType<typeof createRosterService>
   progress: ReturnType<typeof createProgressService>
+  meetings: ReturnType<typeof createMeetingService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
   lessons: ReturnType<typeof createLessonService>
@@ -177,10 +179,11 @@ void app.whenReady().then(() => {
         pickSaveFile: pickSaveTableFile
       })
       const progress = createProgressService(repos, roster.tokens)
+      const meetings = createMeetingService(repos, { pickSaveFile: pickSaveDocxFile })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
       const quizzes = createQuizService(repos, { pickSaveFile: pickSaveDocxFile })
       const lessons = createLessonService(repos, { pickSaveFile: pickSavePptxFile })
-      return { repos, roster, progress, scores, quizzes, lessons }
+      return { repos, roster, progress, meetings, scores, quizzes, lessons }
     },
     // A database from before the vault existed is moved in the first time the vault opens.
     afterOpen: (vdb) => void importLegacyData(db, vdb, { backupDir }),
@@ -383,6 +386,7 @@ void app.whenReady().then(() => {
         repos: () => manager.session().repos,
         roster: () => manager.session().roster,
         progress: () => manager.session().progress,
+        meetings: () => manager.session().meetings,
         scores: () => manager.session().scores,
         quizzes: () => manager.session().quizzes,
         lessons: () => manager.session().lessons

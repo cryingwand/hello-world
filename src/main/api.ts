@@ -1,5 +1,6 @@
 import type { ApiContract, SystemInfo } from '@shared/api'
 import type { BackupService } from './backupService'
+import type { MeetingService } from './meetingService'
 import type { ProgressService } from './progressService'
 import type { ProtectionService } from './protectionService'
 import type { QuizService } from './quizService'
@@ -28,6 +29,7 @@ export interface ApiDeps {
     repos: () => Repositories
     roster: () => RosterService
     progress: () => ProgressService
+    meetings: () => MeetingService
     scores: () => ScoreService
     quizzes: () => QuizService
     lessons: () => LessonService
@@ -47,6 +49,7 @@ export function createApi(deps: ApiDeps): ApiContract {
   const repos = (): Repositories => deps.vault.repos()
   const roster = (): RosterService => deps.vault.roster()
   const progress = (): ProgressService => deps.vault.progress()
+  const meetings = (): MeetingService => deps.vault.meetings()
   const scores = (): ScoreService => deps.vault.scores()
   const quizzes = (): QuizService => deps.vault.quizzes()
   const lessons = (): LessonService => deps.vault.lessons()
@@ -95,7 +98,8 @@ export function createApi(deps: ApiDeps): ApiContract {
       updateProgress: (id, patch) => repos().advising.updateProgress(id, patch),
       deleteProgress: (id) => repos().advising.deleteProgress(id),
       previewProgressImport: (request) => progress().previewImport(request),
-      commitProgressImport: (request) => progress().commitImport(request)
+      commitProgressImport: (request) => progress().commitImport(request),
+      exportMeetingWord: (id) => meetings().exportWord(id)
     },
     questions: {
       list: (query) => repos().questions.list(query),

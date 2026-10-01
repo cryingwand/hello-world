@@ -273,6 +273,8 @@ export interface ApiContract {
     /** What importing this spreadsheet of outside grades would do, without writing anything. */
     previewProgressImport(request: ProgressImportRequest): Awaitable<ProgressImportPlan>
     commitProgressImport(request: ProgressImportRequest): Awaitable<ProgressImportResult>
+    /** Asks where to save, then writes the meeting up as a Word file. Null if cancelled. */
+    exportMeetingWord(meetingId: number): Awaitable<{ path: string } | null>
   }
   questions: {
     /** Newest first. */
@@ -485,7 +487,8 @@ export const API_METHODS = {
     'updateProgress',
     'deleteProgress',
     'previewProgressImport',
-    'commitProgressImport'
+    'commitProgressImport',
+    'exportMeetingWord'
   ],
   questions: ['list', 'get', 'create', 'update', 'delete'],
   quizzes: [

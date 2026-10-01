@@ -77,6 +77,7 @@ function Editor({
   })
   const [copyText, setCopyText] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
   const persisted = useRef<Draft>(draft)
   const latest = useRef<Draft>(draft)
   useEffect(() => {
@@ -132,6 +133,19 @@ function Editor({
       setCopyText(text) // the clipboard can be refused; show the text to copy by hand
     }
   }
+  const exportWord = async (): Promise<void> => {
+    await flush() // the file should hold what is on screen
+    setExporting(true)
+    setNotice(null)
+    try {
+      const res = await window.api.advising.exportMeetingWord(meeting.id)
+      if (res) setNotice(`Saved to ${res.path}`)
+    } catch (err) {
+      onError(msg(err))
+    } finally {
+      setExporting(false)
+    }
+  }
   const finish = async (): Promise<void> => {
     await flush()
     onDone()
@@ -164,6 +178,14 @@ function Editor({
           </button>
           <button className="btn" onClick={() => void copy()}>
             Copy summary
+          </button>
+          <button
+            className="btn"
+            onClick={() => void exportWord()}
+            disabled={exporting}
+            title="A saved summary is an ordinary file with the student's name in it. It is not protected once it leaves the Vault."
+          >
+            {exporting ? 'Saving…' : 'Export to Word…'}
           </button>
           <button className="btn btn-primary" onClick={() => void finish()}>
             Done

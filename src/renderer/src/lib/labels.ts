@@ -1,3 +1,4 @@
+import { studentDisplayName } from '@shared/advising'
 import type { Student } from '@shared/models'
 
 export function classLabel(c: { course: string; section: string; period: string }): string {
@@ -13,9 +14,8 @@ export function studentName(s: Pick<Student, 'firstName' | 'lastName' | 'preferr
 }
 
 /** "First Last", using the preferred name when set. For text written to someone, not for sorting. */
-export function fullName(s: Pick<Student, 'firstName' | 'lastName' | 'preferredName'>): string {
-  return [s.preferredName || s.firstName, s.lastName].filter(Boolean).join(' ')
-}
+export const fullName: (s: Pick<Student, 'firstName' | 'lastName' | 'preferredName'>) => string =
+  studentDisplayName
 
 /** Spreadsheet-style column letters: 0 -> A, 26 -> AA. */
 export function columnLetter(i: number): string {

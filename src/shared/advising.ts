@@ -1,4 +1,4 @@
-import type { ActionItem, AdvisingMeeting } from './models'
+import type { ActionItem, AdvisingMeeting, Student } from './models'
 
 /** Today as YYYY-MM-DD in the machine's own time zone (what the teacher means by "today"). */
 export function localToday(now = new Date()): string {
@@ -34,6 +34,24 @@ export function formatDate(date: string | null): string {
   return month ? `${month} ${Number(m[3])}, ${m[1]}` : date
 }
 
+/** "First Last", using the preferred name when set. For text written to someone, not for sorting. */
+export function studentDisplayName(
+  s: Pick<Student, 'firstName' | 'lastName' | 'preferredName'>
+): string {
+  return [s.preferredName || s.firstName, s.lastName].filter(Boolean).join(' ')
+}
+
+/** What a meeting says for itself: the written summary, or the working notes until there is one. */
+export function meetingBody(meeting: Pick<AdvisingMeeting, 'notes' | 'summary'>): {
+  label: 'Summary' | 'Notes'
+  text: string
+} {
+  const summary = meeting.summary.trim()
+  return summary
+    ? { label: 'Summary', text: summary }
+    : { label: 'Notes', text: meeting.notes.trim() }
+}
+
 /**
  * Plain text for pasting into an email or a record: who, when, what was said, and who does what
  * next. Uses the written summary, and falls back to the working notes when there is no summary yet.
@@ -45,7 +63,7 @@ export function meetingSummaryText(
 ): string {
   const lines = [`Advising meeting with ${studentName}`, formatDate(meeting.metOn)]
   if (meeting.topic) lines.push(`Topic: ${meeting.topic}`)
-  const body = meeting.summary.trim() || meeting.notes.trim()
+  const body = meetingBody(meeting).text
   if (body) lines.push('', body)
   const line = (a: Pick<ActionItem, 'title' | 'dueDate'>): string =>
     `- ${a.title}${a.dueDate ? ` (by ${formatDate(a.dueDate)})` : ''}`

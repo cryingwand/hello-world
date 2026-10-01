@@ -64,7 +64,8 @@ export const API_ACCESS = {
     updateProgress: VAULT,
     deleteProgress: VAULT,
     previewProgressImport: VAULT,
-    commitProgressImport: VAULT
+    commitProgressImport: VAULT,
+    exportMeetingWord: VAULT
   },
   questions: { list: VAULT, get: VAULT, create: VAULT, update: VAULT, delete: VAULT },
   quizzes: {
