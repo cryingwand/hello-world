@@ -221,6 +221,28 @@ describe('api wiring', () => {
     expect((await api.lessons.unlinkClass(lesson.id, cls.id)).assignments).toEqual([])
   })
 
+  it('serves the names-only roster copy even while the vault is locked', async () => {
+    const { api, pub, manager } = env({ unlocked: false })
+    expect(manager.isUnlocked()).toBe(false)
+    pub.repos.directory.replace({
+      classes: [
+        {
+          id: 3,
+          course: 'Bio',
+          section: '',
+          period: '2',
+          termName: 'Fall',
+          currentTerm: true,
+          students: [{ id: 9, firstName: 'Ada', lastName: 'Lovelace', preferredName: '' }]
+        }
+      ]
+    })
+    expect((await api.directory.classes()).map((c) => c.course)).toEqual(['Bio'])
+    expect(await api.directory.students(3)).toEqual([{ id: 9, name: 'Ada Lovelace' }])
+    // The real roster is still locked away.
+    await expect(Promise.resolve().then(() => api.classes.roster(3))).rejects.toThrow(/locked/)
+  })
+
   it('refuses every vault method while the vault is locked', async () => {
     const { api, manager } = env({ unlocked: false })
     expect(manager.isUnlocked()).toBe(false)

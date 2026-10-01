@@ -50,9 +50,8 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   minute; it counts down from the clock, so it stays accurate; flashes and beeps at zero), a **random
   picker** (everyone goes once before anyone repeats), a **group maker** (by number of groups or people per
   group, sizes never differ by more than one) and a **seating chart** (random seats, click two desks to swap,
-  resize without moving anyone). The picker, groups and seating chart use names you type or paste: this
-  window cannot see your students. The names are kept in memory only, never saved, and are gone when you
-  quit. It lives in the everyday window, so it is safe to leave up on the projector.
+  resize without moving anyone). The picker, groups and seating chart take names you type or paste, or load a
+  whole class. The names are kept in memory only, never saved by the tool, and are gone when you quit.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
@@ -71,6 +70,11 @@ presenting window cannot reach.
   windows are gone. It locks when you press Lock, after the idle time in its Settings (10 minutes by
   default), when the screen locks or the Mac sleeps, when a display is connected, and when you start the
   Stage. It will not open while the Stage is showing, and asks first if another display is connected.
+  The one exception is a **names-only copy of your class rosters** in the everyday database, so the
+  In-class Tools can load a class even while the Vault is locked or you are presenting. It holds each
+  student's name and which class they are in, and nothing else: no email, notes, tags (so nothing shows who
+  you advise) or grades, and a student in no class is not copied at all. You still edit rosters only in the
+  Vault; the copy is rewritten from it whenever they change and every time the Vault is unlocked.
 - **Stage**: a full-screen window on the other display (or this screen if there is none) that can call
   exactly one thing: "what should I show?". In the Presenter, search for PDFs, images, Word and text
   files, click to queue them, then Start the Stage. Keys: `]` and `[` for next and previous, `B` to blank,
@@ -84,6 +88,9 @@ presenting window cannot reach.
 
 ### What this does not do
 
+- The names-only roster copy is not locked: anyone who can use the everyday window or read `data.sqlite`
+  can see who is in each class. That was a deliberate choice, since the people in a class can see the
+  roster anyway; keep anything more private than a name in the Vault.
 - The passcode stops access through the app. It does not encrypt `vault.sqlite`, so someone who can read
   your files can read it. Turn on **FileVault** (System Settings, Privacy & Security) to protect the disk.
 - It cannot stop a screenshot or screen recording, and it cannot clear the **Recent Files** lists that

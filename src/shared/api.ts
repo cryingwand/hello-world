@@ -22,6 +22,8 @@ import type {
   ProgressImportResult
 } from './progressImport'
 import type {
+  DirectoryClass,
+  DirectoryStudent,
   ActionItem,
   ActionOwner,
   AdviseeSummary,
@@ -471,6 +473,12 @@ export interface ApiContract {
     add(input: FileLinkInput): FileLink
     remove(id: number): void
   }
+  directory: {
+    /** The classes in the names-only roster copy, current term first. Works while the Vault is locked. */
+    classes(): DirectoryClass[]
+    /** One class's students as display names, by last name. Names only: no email, notes or grades. */
+    students(classId: number): DirectoryStudent[]
+  }
   settings: {
     get(): AppSettings
     update(patch: Patch<AppSettings>): AppSettings
@@ -611,6 +619,7 @@ export const API_METHODS = {
   ],
   protection: ['folders', 'chooseAndAdd', 'remove', 'browse'],
   fileLinks: ['list', 'add', 'remove'],
+  directory: ['classes', 'students'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],
   system: ['info', 'chooseFolder', 'openAccessibilitySettings']

@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 import { describe, expect, it } from 'vitest'
-import { SENSITIVE_COLUMNS } from '@shared/sensitive'
+import { PUBLIC_ROSTER_COLUMNS, SENSITIVE_COLUMNS } from '@shared/sensitive'
 import { openPublicDatabase, openVaultDatabase } from '../../src/main/db/connection'
 import {
   LEGACY_SCHEMA_SQL,
@@ -42,11 +42,29 @@ const PLANNER_TABLES = [
 const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES, ...PLANNER_TABLES].sort()
 
 describe('migrations', () => {
-  it('build a public database that holds settings and nothing about students', () => {
+  it('build a public database that holds settings and the names-only roster copy, nothing else', () => {
     const db = new Database(':memory:')
     const res = migrate(db, PUBLIC_MIGRATIONS)
     expect(res).toEqual({ from: 0, to: latestVersion(PUBLIC_MIGRATIONS) })
+    expect(tables(db)).toEqual([...Object.keys(PUBLIC_ROSTER_COLUMNS), 'settings'].sort())
+    // Exactly the allowlisted columns: no email, notes, tags or grades.
+    for (const [table, cols] of Object.entries(PUBLIC_ROSTER_COLUMNS)) {
+      const real = (db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name)
+      expect(real.sort(), table).toEqual([...cols].sort())
+    }
+  })
+
+  it('add the roster copy to a version 1 public database without touching its settings', () => {
+    const db = new Database(':memory:')
+    migrate(db, PUBLIC_MIGRATIONS.slice(0, 1))
+    db.prepare("INSERT INTO settings (key, value) VALUES ('keep', 'me')").run()
     expect(tables(db)).toEqual(['settings'])
+    migrate(db, PUBLIC_MIGRATIONS)
+    expect(db.prepare('SELECT key, value FROM settings').get()).toEqual({
+      key: 'keep',
+      value: 'me'
+    })
+    expect(tables(db)).toContain('roster_members')
   })
 
   it('build the vault schema on an empty database, without settings', () => {

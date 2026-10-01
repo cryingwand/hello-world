@@ -238,13 +238,35 @@ PowerPoint, and the legacy-app rebuilds.
 
 Phase 5 is the next item on the "later phases" list. Decision: **all in the launcher** (the everyday window,
 which may be on the projector), as one app with four tabs: a timer, a random picker, a group maker and a
-seating chart. Consequence of that decision: the launcher cannot reach vault data, so these tools work from
-names the teacher types or pastes, never from a class roster, and the names are kept in memory only (never
-saved, gone when the app quits). A test keeps storage and network use out of the app's folder.
+seating chart. Consequence of that decision: the launcher cannot reach vault data, so the tools first worked
+from names the teacher types or pastes (see the roster amendment below for loading a class), and the names
+are kept in memory only (never saved, gone when the app quits). A test keeps storage and network use out of
+the app's folder.
 
-Not built, and each would need a decision about the Vault: picking, grouping or seating from a real class
-roster, a seating chart that is saved between lessons, and keeping separate pairs apart when seating. The
-timer, picker and groups are not shown on the Stage (the Stage still shows only queued files).
+Not built: a seating chart that is saved between lessons (it would be a second place for student data
+outside the Vault) and keeping separate pairs apart when seating. The timer, picker and groups are not
+shown on the Stage (the Stage still shows only queued files).
 
 Of the original in-class list, only the legacy-app rebuilds remain.
+
+## Amendment: a names-only roster copy outside the Vault
+
+Requested after Phase 5: "maybe the roster can be outside of the vault but the gradebook should be inside of
+it. Students in the class can view the roster online anyways."
+
+Moving the real students, classes and enrollments out was rejected: scores, advising, lesson links and
+file links point at them, SQLite cannot enforce a foreign key across two database files, and the `advisee`
+tag lives on the student record. Instead, decided with the teacher:
+
+| Topic | Decision |
+|---|---|
+| What | A **names-only copy** of each class roster in the everyday database (`roster_classes`, `roster_members`): class label, term, and each student's first, last and preferred name |
+| Fields | Names only. No email, notes or tags; none of the gradebook or advising. A student in no class is not copied |
+| Editing | Still only in the Vault. The copy is rewritten from the Vault on its roster change events and on every unlock |
+| Reading | A read-only `directory.*` API for the launcher, available while the Vault is locked or a presentation is running |
+| Used by | In-class Tools: "Load a class" fills the picker, groups and seating chart |
+| Guard | The copy's columns are an allowlist (`PUBLIC_ROSTER_COLUMNS`) that a test checks; the tools' privacy test allows only `directory.classes` and `directory.students` |
+
+Not built: editing rosters from the everyday window, email in the copy, and showing the roster anywhere
+other than In-class Tools.
 

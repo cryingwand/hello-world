@@ -142,6 +142,8 @@ export const API_ACCESS = {
     restoreLayout: EVERYDAY,
     pickFile: EVERYDAY
   },
+  // The names-only roster copy: read-only, for the everyday window, and available while the Vault is locked.
+  directory: { classes: LAUNCHER, students: LAUNCHER },
   settings: { get: EVERYDAY, update: EVERYDAY },
   backup: { runNow: EVERYDAY, list: EVERYDAY },
   system: { info: EVERYDAY, chooseFolder: EVERYDAY, openAccessibilitySettings: EVERYDAY },

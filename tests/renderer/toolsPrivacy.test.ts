@@ -14,7 +14,11 @@ const FORBIDDEN: [RegExp, string][] = [
   [/\blocalStorage\b/, 'localStorage'],
   [/\bsessionStorage\b/, 'sessionStorage'],
   [/\bindexedDB\b/, 'indexedDB'],
-  [/\bwindow\.api\b/, 'window.api (the data API)'],
+  // Only the read-only, names-only roster copy may be called; every other method is off limits.
+  [
+    /\bwindow\.api\b(?!\.directory\.(?:classes|students)\()/,
+    'window.api other than directory.classes/students'
+  ],
   [/\bfetch\s*\(/, 'fetch'],
   [/\bXMLHttpRequest\b/, 'XMLHttpRequest'],
   [/\bWebSocket\b/, 'WebSocket'],
@@ -29,7 +33,7 @@ describe('In-class Tools keep names in memory only', () => {
   })
 
   for (const file of files.length > 0 ? files : ['(none)']) {
-    it(`${file} uses no storage, network, console or data API`, () => {
+    it(`${file} uses no storage, network, console or data API beyond the roster copy`, () => {
       const source = readFileSync(join(dir, file), 'utf8')
         // Comments may talk about these things; only code is checked.
         .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -39,6 +43,12 @@ describe('In-class Tools keep names in memory only', () => {
       }
     })
   }
+
+  it('can only reach the roster through the read-only names copy', () => {
+    const all = files.map((f) => readFileSync(join(dir, f), 'utf8')).join('\n')
+    const calls = [...all.matchAll(/window\.api\.(\w+)\.(\w+)/g)].map((m) => `${m[1]}.${m[2]}`)
+    expect(new Set(calls)).toEqual(new Set(['directory.classes', 'directory.students']))
+  })
 
   it('lives in the launcher, which cannot reach vault data', async () => {
     const manifest = readFileSync(join(dir, 'manifest.ts'), 'utf8')

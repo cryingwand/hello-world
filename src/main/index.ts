@@ -37,6 +37,7 @@ import { createFileGuard, createProtectedPaths } from './protected'
 import { createMeetingService } from './meetingService'
 import { createProgressService } from './progressService'
 import { createProtectionService } from './protectionService'
+import { createRosterMirror, type RosterMirror } from './rosterMirror'
 import { createRoleRegistry } from './roles'
 import { countExternalDisplays, createStageService } from './stage'
 import { createLessonService } from './lessonService'
@@ -173,7 +174,14 @@ void app.whenReady().then(() => {
     dir: vaultDir,
     openDb: openVaultDatabase,
     createSession: (vdb) => {
-      const repos = createVaultRepositories(vdb, broadcast)
+      // Roster changes also refresh the names-only copy the everyday window reads (see rosterMirror.ts).
+      let mirror: RosterMirror | null = null
+      const repos = createVaultRepositories(vdb, (name, detail) => {
+        broadcast(name, detail)
+        mirror?.handle(name)
+      })
+      mirror = createRosterMirror(repos, publicRepos.directory)
+      mirror.sync() // on every unlock, which also builds the first copy after an upgrade
       const roster = createRosterService(repos, {
         pickOpenFile: pickTableFile,
         pickSaveFile: pickSaveTableFile

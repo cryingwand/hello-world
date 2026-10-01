@@ -300,3 +300,21 @@ export interface UpcomingLesson {
   unitTitle: string
   course: string
 }
+
+/** A class in the names-only roster copy that the everyday window may read. */
+export interface DirectoryClass {
+  id: number
+  course: string
+  section: string
+  period: string
+  termName: string
+  currentTerm: boolean
+  studentCount: number
+}
+
+/** A student in the roster copy: a display name and nothing else. */
+export interface DirectoryStudent {
+  id: number
+  /** The preferred name if there is one, then the last name: "Pri Abernathy". */
+  name: string
+}

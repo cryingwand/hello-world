@@ -13,7 +13,8 @@ export const CHANGE_NAMES = [
   'quizzes.changed',
   'planner.changed',
   'settings.changed',
-  'protection.changed'
+  'protection.changed',
+  'directory.changed'
 ] as const
 
 export type ChangeName = (typeof CHANGE_NAMES)[number]
@@ -52,5 +53,7 @@ export const CHANGE_AUDIENCE: Record<ChangeName, readonly ('launcher' | 'vault' 
   'planner.changed': ['vault'],
   'settings.changed': ['launcher', 'vault'],
   // Which folders are protected is itself not shown outside the vault.
-  'protection.changed': ['vault']
+  'protection.changed': ['vault'],
+  // The names-only roster copy is for the everyday window; the Vault has the real thing.
+  'directory.changed': ['launcher']
 }

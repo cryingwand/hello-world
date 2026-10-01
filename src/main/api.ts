@@ -211,6 +211,10 @@ export function createApi(deps: ApiDeps): ApiContract {
       add: (input) => repos().fileLinks.add(input),
       remove: (id) => repos().fileLinks.remove(id)
     },
+    directory: {
+      classes: () => deps.publicRepos.directory.classes(),
+      students: (classId) => deps.publicRepos.directory.students(classId)
+    },
     settings: {
       get: () => deps.publicRepos.settings.get(),
       update: (patch) => deps.publicRepos.settings.update(patch)

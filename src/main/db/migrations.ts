@@ -274,7 +274,39 @@ const VAULT_V5_SQL = `
       CREATE INDEX idx_lesson_assignments_assignment ON lesson_assignments(assignment_id);
     `
 
-export const PUBLIC_MIGRATIONS: Migration[] = [{ version: 1, name: 'settings', sql: SETTINGS_SQL }]
+/**
+ * A names-only copy of the class rosters, kept in the everyday database so the launcher can use a
+ * roster (for the picker, groups and seating chart) while the Vault is locked or a presentation is
+ * running. The Vault stays the only place a roster is edited: the copy is rewritten from it whenever it
+ * changes and is never written from anywhere else. It holds names and nothing else: no email, notes or
+ * tags (the advisee tag would reveal who you advise), and none of the gradebook. A deliberate decision
+ * that these names are safe to show in the everyday window.
+ */
+const ROSTER_COPY_SQL = `
+      CREATE TABLE roster_classes (
+        class_id     INTEGER PRIMARY KEY,
+        course       TEXT NOT NULL,
+        section      TEXT NOT NULL DEFAULT '',
+        period       TEXT NOT NULL DEFAULT '',
+        term_name    TEXT NOT NULL DEFAULT '',
+        current_term INTEGER NOT NULL DEFAULT 0,
+        position     INTEGER NOT NULL
+      );
+      CREATE TABLE roster_members (
+        class_id       INTEGER NOT NULL REFERENCES roster_classes(class_id) ON DELETE CASCADE,
+        student_id     INTEGER NOT NULL,
+        first_name     TEXT NOT NULL,
+        last_name      TEXT NOT NULL,
+        preferred_name TEXT NOT NULL DEFAULT '',
+        position       INTEGER NOT NULL,
+        PRIMARY KEY (class_id, student_id)
+      );
+    `
+
+export const PUBLIC_MIGRATIONS: Migration[] = [
+  { version: 1, name: 'settings', sql: SETTINGS_SQL },
+  { version: 2, name: 'names-only roster copy', sql: ROSTER_COPY_SQL }
+]
 
 export const VAULT_MIGRATIONS: Migration[] = [
   { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL },

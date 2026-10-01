@@ -1751,7 +1751,9 @@ td .badge:first-child {
   padding: 18px 22px;
 }
 .tools-names {
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   padding: 10px;
 }
 .tools-names-label {
