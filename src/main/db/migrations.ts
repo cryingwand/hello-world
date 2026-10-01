@@ -158,11 +158,54 @@ const VAULT_V2_SQL = `
       CREATE INDEX idx_progress_student ON external_progress(student_id);
     `
 
+/**
+ * Quiz & Exam Builder: the question bank, quizzes and the questions in them. Exams are exactly the
+ * material the Vault exists to protect, so none of it is in the public database. A question that is
+ * in a quiz cannot be deleted (RESTRICT) so a printed exam can never lose a question silently; a
+ * deleted quiz takes only its list of questions with it. The Gradebook link is the assignment's own
+ * source_app/source_id, so it needs no column here.
+ */
+const VAULT_V3_SQL = `
+      CREATE TABLE questions (
+        id             INTEGER PRIMARY KEY,
+        kind           TEXT NOT NULL
+                       CHECK (kind IN ('multiple-choice', 'true-false', 'short-answer', 'essay')),
+        prompt         TEXT NOT NULL,
+        choices        TEXT NOT NULL DEFAULT '[]',
+        correct_choice INTEGER,
+        answer         TEXT NOT NULL DEFAULT '',
+        points         REAL NOT NULL DEFAULT 1 CHECK (points >= 0),
+        tags           TEXT NOT NULL DEFAULT '[]',
+        created_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE quizzes (
+        id           INTEGER PRIMARY KEY,
+        kind         TEXT NOT NULL DEFAULT 'quiz' CHECK (kind IN ('quiz', 'exam')),
+        title        TEXT NOT NULL,
+        course       TEXT NOT NULL DEFAULT '',
+        quiz_date    TEXT,
+        instructions TEXT NOT NULL DEFAULT '',
+        created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE quiz_items (
+        id          INTEGER PRIMARY KEY,
+        quiz_id     INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+        question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE RESTRICT,
+        position    INTEGER NOT NULL,
+        points      REAL CHECK (points IS NULL OR points >= 0),
+        UNIQUE (quiz_id, question_id)
+      );
+      CREATE INDEX idx_quiz_items_question ON quiz_items(question_id);
+    `
+
 export const PUBLIC_MIGRATIONS: Migration[] = [{ version: 1, name: 'settings', sql: SETTINGS_SQL }]
 
 export const VAULT_MIGRATIONS: Migration[] = [
   { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL },
-  { version: 2, name: 'advising', sql: VAULT_V2_SQL }
+  { version: 2, name: 'advising', sql: VAULT_V2_SQL },
+  { version: 3, name: 'questions and quizzes', sql: VAULT_V3_SQL }
 ]
 
 /**

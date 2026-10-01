@@ -164,3 +164,62 @@ export interface BackupInfo {
   /** Set when the vault backup failed (the public backup above still succeeded). */
   vaultError?: string
 }
+
+export type QuestionKind = 'multiple-choice' | 'true-false' | 'short-answer' | 'essay'
+
+/** A reusable question in the bank. */
+export interface Question {
+  id: number
+  kind: QuestionKind
+  prompt: string
+  /** Multiple choice: 2 to 6 options. True/false: always True then False. Otherwise empty. */
+  choices: string[]
+  /** Index into `choices` of the right answer. Null for short answer and essay. */
+  correctChoice: number | null
+  /** Short answer and essay: the model answer or marking notes (shown on the answer key only). */
+  answer: string
+  /** Points the question is worth unless a quiz overrides it. */
+  points: number
+  /** Lowercase. */
+  tags: string[]
+  /** How many quizzes use it. A question that is in a quiz cannot be deleted. */
+  quizCount: number
+}
+
+export type QuizKind = 'quiz' | 'exam'
+
+export interface Quiz {
+  id: number
+  kind: QuizKind
+  title: string
+  /** Printed in the header, for example "PHIL 101". */
+  course: string
+  /** YYYY-MM-DD, printed in the header. */
+  date: string | null
+  /** Directions printed under the header. */
+  instructions: string
+}
+
+/** One question in a quiz, in order. */
+export interface QuizEntry {
+  questionId: number
+  position: number
+  /** A points value that replaces the question's own for this quiz only. */
+  pointsOverride: number | null
+  /** What it is worth in this quiz: the override, else the question's own. */
+  points: number
+  question: Question
+}
+
+export interface QuizDetail extends Quiz {
+  entries: QuizEntry[]
+  totalPoints: number
+}
+
+/** One row of the quiz list. */
+export interface QuizSummary extends Quiz {
+  questionCount: number
+  totalPoints: number
+  /** Gradebook assignments created from it. */
+  assignmentCount: number
+}

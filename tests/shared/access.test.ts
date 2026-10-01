@@ -16,6 +16,8 @@ describe('access policy', () => {
   it('keeps everything that touches student data vault-only, and needing the vault', () => {
     const vaultOnly = [
       'advising',
+      'questions',
+      'quizzes',
       'terms',
       'students',
       'classes',
@@ -38,6 +40,8 @@ describe('access policy', () => {
     for (const ns of [
       'protection',
       'advising',
+      'questions',
+      'quizzes',
       'terms',
       'students',
       'classes',

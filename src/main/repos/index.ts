@@ -3,6 +3,8 @@ import { classesRepo } from './classes'
 import { fileLinksRepo } from './fileLinks'
 import { gradingRepo } from './grading'
 import { protectionRepo } from './protection'
+import { questionsRepo } from './questions'
+import { quizzesRepo } from './quizzes'
 import { settingsRepo } from './settings'
 import { studentsRepo } from './students'
 import { termsRepo } from './terms'
@@ -54,6 +56,7 @@ export function createDeferredEmit(db: Db, emit: Emit) {
 export function createVaultRepositories(db: Db, emit: Emit) {
   const deferred = createDeferredEmit(db, emit)
   emit = deferred.emit
+  const grading = gradingRepo(db, emit)
   return {
     /** Runs `fn` atomically; change events are broadcast only after it commits. */
     transaction: deferred.transaction,
@@ -61,7 +64,9 @@ export function createVaultRepositories(db: Db, emit: Emit) {
     students: studentsRepo(db, emit),
     classes: classesRepo(db, emit),
     advising: advisingRepo(db, emit),
-    grading: gradingRepo(db, emit),
+    grading,
+    questions: questionsRepo(db, emit),
+    quizzes: quizzesRepo(db, emit, grading),
     fileLinks: fileLinksRepo(db, emit)
   }
 }

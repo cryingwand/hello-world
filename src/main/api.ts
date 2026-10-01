@@ -82,6 +82,26 @@ export function createApi(deps: ApiDeps): ApiContract {
       updateProgress: (id, patch) => repos().advising.updateProgress(id, patch),
       deleteProgress: (id) => repos().advising.deleteProgress(id)
     },
+    questions: {
+      list: (query) => repos().questions.list(query),
+      get: (id) => repos().questions.get(id),
+      create: (input) => repos().questions.create(input),
+      update: (id, patch) => repos().questions.update(id, patch),
+      delete: (id) => repos().questions.delete(id)
+    },
+    quizzes: {
+      list: () => repos().quizzes.list(),
+      get: (id) => repos().quizzes.get(id),
+      create: (input) => repos().quizzes.create(input),
+      update: (id, patch) => repos().quizzes.update(id, patch),
+      delete: (id) => repos().quizzes.delete(id),
+      addQuestions: (id, questionIds) => repos().quizzes.addQuestions(id, questionIds),
+      removeQuestion: (id, questionId) => repos().quizzes.removeQuestion(id, questionId),
+      reorder: (id, questionIds) => repos().quizzes.reorder(id, questionIds),
+      setPoints: (id, questionId, points) => repos().quizzes.setPoints(id, questionId, points),
+      assignments: (id) => repos().quizzes.assignments(id),
+      createAssignment: (input) => repos().quizzes.createAssignment(input)
+    },
     grading: {
       categories: (classId) => repos().grading.categories(classId),
       createCategory: (input) => repos().grading.createCategory(input),

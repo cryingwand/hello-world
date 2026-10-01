@@ -158,12 +158,27 @@ describe('api wiring', () => {
     expect((await api.advising.advisees())[0].student.id).toBe(ada.id)
   })
 
+  it('serves the question bank and quizzes through the same vault session', async () => {
+    const { api, ready } = env()
+    await ready
+    const q = await api.questions.create({ kind: 'short-answer', prompt: 'Why?' })
+    const quiz = await api.quizzes.create({ title: 'Quiz 1' })
+    const withQ = await api.quizzes.addQuestions(quiz.id, [q.id])
+    expect(withQ.entries.map((e) => e.questionId)).toEqual([q.id])
+    expect((await api.quizzes.list())[0]).toMatchObject({ questionCount: 1, totalPoints: 1 })
+    await expect(Promise.resolve().then(() => api.questions.delete(q.id))).rejects.toThrow(
+      /in 1 quiz/
+    )
+  })
+
   it('refuses every vault method while the vault is locked', async () => {
     const { api, manager } = env({ unlocked: false })
     expect(manager.isUnlocked()).toBe(false)
     await expect(Promise.resolve().then(() => api.students.list())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.grading.scores(1))).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.advising.advisees())).rejects.toThrow(/locked/)
+    await expect(Promise.resolve().then(() => api.questions.list())).rejects.toThrow(/locked/)
+    await expect(Promise.resolve().then(() => api.quizzes.list())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.fileLinks.list('class', 1))).rejects.toThrow(
       /locked/
     )
