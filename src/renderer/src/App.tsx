@@ -1,0 +1,43 @@
+import Desktop from './shell/Desktop'
+import Dock from './shell/Dock'
+import PresentationOffer from './shell/PresentationOffer'
+import { ShellProvider, useShell } from './shell/ShellContext'
+import TopBar from './shell/TopBar'
+import StageApp from './stage/StageApp'
+import VaultRoot from './vault/VaultRoot'
+
+function Shell(): React.JSX.Element {
+  const { presenting, space } = useShell()
+  return (
+    <div className={`shell shell-${space}${presenting ? ' presenting' : ''}`}>
+      <TopBar />
+      <PresentationOffer />
+      <Desktop />
+      <Dock />
+    </div>
+  )
+}
+
+/** Draws the shell for this window's role, which the main process decided (not the page). */
+export default function App(): React.JSX.Element {
+  const role = window.api.role
+  if (role === 'launcher') {
+    return (
+      <ShellProvider space="launcher">
+        <Shell />
+      </ShellProvider>
+    )
+  }
+  if (role === 'vault') {
+    // Nothing in the shell is mounted, so nothing calls the API, until the passcode is accepted.
+    return (
+      <VaultRoot>
+        <ShellProvider space="vault">
+          <Shell />
+        </ShellProvider>
+      </VaultRoot>
+    )
+  }
+  if (role === 'stage') return <StageApp />
+  return <p className="hint pad">This window has no role.</p>
+}
