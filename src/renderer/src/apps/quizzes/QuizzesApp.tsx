@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDate } from '@shared/advising'
 import { pointsLabel } from '@shared/quiz'
+import type { AppProps } from '@apps/types'
 import { useApiQuery } from '@renderer/data/hooks'
 import QuestionBank from './QuestionBank'
 import QuizEditor from './QuizEditor'
@@ -8,10 +9,19 @@ import QuizForm from './QuizForm'
 
 type Tab = 'quizzes' | 'bank'
 
-export default function QuizzesApp(): React.JSX.Element {
+export default function QuizzesApp({ intent, intentNonce }: AppProps): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('quizzes')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [creating, setCreating] = useState(false)
+
+  // The shell can ask this app to open a quiz (`open-quiz`). Keyed on the nonce so a repeated
+  // identical intent still applies once.
+  const [handled, setHandled] = useState<number | undefined>(undefined)
+  if (intent?.type === 'open-quiz' && intentNonce !== handled) {
+    setHandled(intentNonce)
+    setTab('quizzes')
+    setSelectedId(intent.quizId)
+  }
 
   const quizzes = useApiQuery(() => window.api.quizzes.list(), [], ['quizzes.changed'])
   const list = quizzes.data ?? []

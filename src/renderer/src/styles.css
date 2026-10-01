@@ -1662,3 +1662,69 @@ td .badge:first-child {
 .qf-choice input:not([type='radio']) {
   flex: 1;
 }
+
+/* ---- lesson planner ---- */
+.pl-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pl-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.pl-item-on {
+  background: rgba(255, 255, 255, 0.06);
+}
+.pl-open {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pl-open:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.pl-name {
+  overflow-wrap: anywhere;
+}
+.pl-meta,
+.pl-path {
+  display: block;
+  margin: 0;
+  font-size: 12px;
+}
+.pl-today {
+  margin-left: 6px;
+  color: #e6c36a;
+  font-size: 12px;
+}
+.pl-grow {
+  flex: 1;
+  min-width: 0;
+}
+.pl-lesson {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.pl-lesson-title {
+  margin: 0;
+}
+.pl-lesson textarea {
+  width: 100%;
+  resize: vertical;
+}
+.pl-upcoming {
+  overflow: auto;
+}
