@@ -44,9 +44,11 @@ import { createLessonService } from './lessonService'
 import { createQuizService } from './quizService'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
+import { createSafeSave } from './safeSave'
 import {
   appVersion,
   chooseFolderDialog,
+  confirmSaveOutsideDialog,
   pickAnyFile,
   pickSaveDocxFile,
   pickSavePptxFile,
@@ -167,6 +169,14 @@ void app.whenReady().then(() => {
       if (Notification.isSupported()) new Notification({ title: n.title, body: n.body }).show()
     }
   })
+  // Protected folders apply everywhere but inside the open Vault, including while it is locked.
+  const protectedPaths = createProtectedPaths({ folders: () => publicRepos.protection.list() })
+  const safeSave = createSafeSave({
+    folders: () => publicRepos.protection.list(),
+    isProtected: (path) => protectedPaths.isProtected(path),
+    confirmOutside: confirmSaveOutsideDialog
+  })
+
   const toLauncher = (channel: string, payload?: unknown): void =>
     registry.first('launcher')?.webContents.send(channel, payload)
 
@@ -183,15 +193,18 @@ void app.whenReady().then(() => {
       })
       mirror = createRosterMirror(repos, publicRepos.directory)
       mirror.sync() // on every unlock, which also builds the first copy after an upgrade
+      // Exports start in a protected folder, and saving one anywhere else asks first.
+      const saveTable = safeSave(pickSaveTableFile)
+      const saveDocx = safeSave(pickSaveDocxFile)
       const roster = createRosterService(repos, {
         pickOpenFile: pickTableFile,
-        pickSaveFile: pickSaveTableFile
+        pickSaveFile: saveTable
       })
       const progress = createProgressService(repos, roster.tokens)
-      const meetings = createMeetingService(repos, { pickSaveFile: pickSaveDocxFile })
-      const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
-      const quizzes = createQuizService(repos, { pickSaveFile: pickSaveDocxFile })
-      const lessons = createLessonService(repos, { pickSaveFile: pickSavePptxFile })
+      const meetings = createMeetingService(repos, { pickSaveFile: saveDocx })
+      const scores = createScoreService(repos, roster.tokens, { pickSaveFile: saveTable })
+      const quizzes = createQuizService(repos, { pickSaveFile: saveDocx })
+      const lessons = createLessonService(repos, { pickSaveFile: safeSave(pickSavePptxFile) })
       return { repos, roster, progress, meetings, scores, quizzes, lessons }
     },
     // A database from before the vault existed is moved in the first time the vault opens.
@@ -212,8 +225,6 @@ void app.whenReady().then(() => {
   powerMonitor.on('lock-screen', () => manager.lock('screen-lock'))
   powerMonitor.on('suspend', () => manager.lock('sleep'))
 
-  // Protected folders apply everywhere but inside the open Vault, including while it is locked.
-  const protectedPaths = createProtectedPaths({ folders: () => publicRepos.protection.list() })
   const guardFor = (role: Role) =>
     createFileGuard({
       paths: protectedPaths,

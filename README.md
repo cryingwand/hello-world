@@ -76,7 +76,8 @@ presenting window cannot reach.
   The one exception is a **names-only copy of your class rosters** in the everyday database, so the
   In-class Tools can load a class even while the Vault is locked or you are presenting. It holds each
   student's name and which class they are in, and nothing else: no email, notes, tags (so nothing shows who
-  you advise) or grades, and a student in no class is not copied at all. You still edit rosters only in the
+  you advise) or grades, and a student in no class is not copied at all. Only the classes you are
+  teaching are copied: those in the current term, and in any term whose end date has not passed. You still edit rosters only in the
   Vault; the copy is rewritten from it whenever they change and every time the Vault is unlocked.
 - **Stage**: a full-screen window on the other display (or this screen if there is none) that can call
   exactly one thing: "what should I show?". In the Presenter, search for PDFs, images, Word and text
@@ -101,12 +102,11 @@ presenting window cannot reach.
   opening one in another app is refused while a display is connected.
 - Protected folders are matched by where a file really is, so symlinks and `..` do not get around them.
   Hard links and Finder aliases point at the same data without a path inside the folder, and are not seen.
-- A Word file exported from Quizzes & Exams is an ordinary file in the folder you choose. Save it inside a
-  protected folder if it should stay out of file search and the Presenter; the question bank itself stays
-  in the Vault database either way.
-- A PowerPoint exported from the Lesson Planner is also an ordinary file, with your lesson notes as speaker
-  notes and the names of any quizzes. Save it inside a protected folder if it should stay out of file
-  search. The Stage does not show slides: open the deck in PowerPoint.
+- Anything exported from the Vault (a gradebook or roster spreadsheet, a meeting write-up, a quiz or answer
+  key, a lesson deck) is an ordinary file. The save dialog opens in a protected folder (the last one you
+  used), and choosing anywhere else asks first, because a file there shows up in everyday file search and
+  can be queued on the Stage. A lesson deck has your notes as speaker notes and the names of any quizzes;
+  the Stage does not show slides, so open the deck in PowerPoint.
 - A mirrored projector can look like a single display, so "a display was connected" may not fire. Starting
   the Stage always locks the Vault, so start it before you put anything on the screen.
 

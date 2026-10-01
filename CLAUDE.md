@@ -83,7 +83,9 @@ in-process React modules, not iframes, and talk to data only through `window.api
   decision is that names are fine to show in the everyday window (the class can see who is in it). Nothing
   else may go there: the columns are an allowlist (`PUBLIC_ROSTER_COLUMNS` in `src/shared/sensitive.ts`, and
   a test fails if one is added), and email, notes, tags (the `advisee` tag shows who you advise), grades and
-  advising never leave the vault. A student in no class is not copied at all. The Vault stays the only place
+  advising never leave the vault. A student in no class is not copied at all, and only classes still being
+  taught are: the current term's and those of terms whose end date has not passed (`rosterSnapshot`), so past
+  students' names do not stay outside the Vault. The Vault stays the only place
   a roster is edited; `src/main/rosterMirror.ts` rewrites the copy from it, straight away on the vault's
   `students`/`classes`/`enrollments`/`terms` change events (they only fire while it is open, so there is
   never a closed database to write to) and once on every unlock, which also builds the first copy after an
@@ -193,7 +195,8 @@ and a test enforces that. Long lists are split by `chunkBullets` (`src/shared/le
 relying on shrink-to-fit, which PowerPoint only applies when a slide is edited. The saved file is an
 ordinary file: nothing stops it being saved outside a protected folder, and the app says so. The app
 (`apps/planner/`) saves lesson and unit fields as you type through `useAutosave` (debounced, on blur and
-when the editor goes away; a refused save puts the saved text back) and opens a linked quiz with the
+when the editor goes away; a refused save keeps the typing on screen, reports the error and is retried
+with the next save) and opens a linked quiz with the
 `open-quiz` intent, which Quizzes & Exams handles. The planner fields are not tagged `sensitive` (they are
 not student PII).
 
@@ -225,6 +228,10 @@ the window's `FileGuard`: search drops protected files before ranking, `info`/`r
 `table`/`thumbnail`/`pickFile` refuse them, `open` and `reveal` also refuse while another display is
 connected, and the `tos-file://` handlers refuse them. Only an unlocked vault window may see them. A new
 way to read a file path must call the guard.
+
+Every save dialog for a file exported from the Vault goes through `createSafeSave` (`src/main/safeSave.ts`,
+wired in `createSession` in `src/main/index.ts`): it opens in a protected folder and asks before saving
+outside one. A new Vault export must use it.
 
 ## The Stage
 

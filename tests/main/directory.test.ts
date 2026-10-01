@@ -219,7 +219,7 @@ describe('keeping the copy in step with the Vault', () => {
     const pub = makePublicEnv()
     const vdb = openVaultDatabase(':memory:')
     const repos = createVaultRepositories(vdb, () => undefined) // no events: like data from an older version
-    const term = repos.terms.create({ name: 'T' })
+    const term = repos.terms.create({ name: 'T', isCurrent: true })
     const cls = repos.classes.create({ termId: term.id, course: 'Bio', gradingMode: 'points' })
     repos.classes.enroll(cls.id, repos.students.create({ firstName: 'Ada', lastName: 'L' }).id)
     expect(pub.repos.directory.classes()).toEqual([])
@@ -245,7 +245,7 @@ describe('keeping the copy in step with the Vault', () => {
   it('follows a class being added, renamed, moved to another term and deleted', () => {
     const ctx = vaultWithSecrets()
     const { repos, pub, cls, term } = ctx
-    const next = repos.terms.create({ name: 'Spring 2027' })
+    const next = repos.terms.create({ name: 'Spring 2027', endDate: '2099-05-15' })
     const bio = repos.classes.create({ termId: next.id, course: 'BIO 200', gradingMode: 'points' })
     expect(pub.repos.directory.classes().map((c) => c.course)).toEqual(['PHIL 101', 'BIO 200'])
     repos.classes.update(cls.id, { course: 'PHIL 102' })
@@ -258,12 +258,39 @@ describe('keeping the copy in step with the Vault', () => {
 
   it('follows a term being renamed or made the current one', () => {
     const ctx = vaultWithSecrets()
-    const { repos, pub, term } = ctx
+    const { repos, pub, term, cls } = ctx
     repos.terms.update(term.id, { name: 'Autumn 2026' })
     expect(pub.repos.directory.classes()[0].termName).toBe('Autumn 2026')
     const other = repos.terms.create({ name: 'Spring 2027', isCurrent: true })
+    const bio = repos.classes.create({ termId: other.id, course: 'BIO 200', gradingMode: 'points' })
     expect(other.isCurrent).toBe(true)
-    expect(pub.repos.directory.classes()[0].currentTerm).toBe(false)
+    // The old term is no longer current and has no end date to say it is still running.
+    expect(pub.repos.directory.classes().map((c) => [c.id, c.currentTerm])).toEqual([
+      [bio.id, true]
+    ])
+    expect(pub.repos.directory.students(cls.id)).toEqual([])
+  })
+
+  it('copies only classes still being taught: the current term and terms that have not ended', () => {
+    const pub = makePublicEnv()
+    const repos = createVaultRepositories(openVaultDatabase(':memory:'), () => undefined)
+    const mk = (termId: number, course: string): number => {
+      const c = repos.classes.create({ termId, course, gradingMode: 'points' })
+      repos.classes.enroll(c.id, repos.students.create({ firstName: course, lastName: 'S' }).id)
+      return c.id
+    }
+    const now = repos.terms.create({ name: 'Fall', isCurrent: true, endDate: '2026-09-01' })
+    const next = repos.terms.create({ name: 'Spring', endDate: '2027-05-01' })
+    const past = repos.terms.create({ name: 'Last spring', endDate: '2026-05-01' })
+    const undated = repos.terms.create({ name: 'Old' })
+    mk(now.id, 'NOW')
+    mk(next.id, 'NEXT')
+    mk(past.id, 'PAST')
+    mk(undated.id, 'UNDATED')
+    createRosterMirror(repos, pub.repos.directory, undefined, () => '2026-10-01').sync()
+    expect(pub.repos.directory.classes().map((c) => c.course)).toEqual(['NOW', 'NEXT'])
+    const copy = JSON.stringify(pub.db.prepare('SELECT * FROM roster_members').all())
+    expect(copy).not.toMatch(/PAST|UNDATED/)
   })
 
   it('leaves the copy alone for changes that are not about a roster, so grading never touches it', () => {
