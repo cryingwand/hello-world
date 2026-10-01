@@ -13,13 +13,16 @@
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
     "build": "npm run typecheck && electron-vite build && electron-builder --mac --dir",
+    "install:mac": "sh scripts/install-mac.sh",
     "build:renderer": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "smoke": "electron-vite build && node scripts/smoke.mjs"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.2",
@@ -50,6 +53,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^16.0.0",
     "jszip": "^3.10.2",
+    "playwright-core": "^1.63.0",
     "prettier": "^3.9.9",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.71.0",

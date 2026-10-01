@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useApiQuery } from '@renderer/data/hooks'
+import VaultBackups from '@renderer/vault/VaultBackups'
 import VaultSettings from '@renderer/vault/VaultSettings'
 import { useShell } from './ShellContext'
 
@@ -99,7 +100,9 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
           <h3>Backups</h3>
           <p className="hint">
             A backup is taken at launch and daily; the last 14 days are kept in{' '}
-            <code>{info.data?.backupDir}</code>. You can also copy each one to another folder.
+            <code>{info.data?.backupDir}</code>, then one a week for 16 weeks and one a month for a
+            year. You can also copy each one to another folder. Restore the Vault from Settings
+            inside the Vault.
           </p>
           <div className="row">
             <span>Extra folder:</span>
@@ -144,7 +147,10 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
         </section>
 
         {space === 'vault' ? (
-          <VaultSettings />
+          <>
+            <VaultSettings />
+            <VaultBackups />
+          </>
         ) : (
           <section>
             <h3>Vault</h3>

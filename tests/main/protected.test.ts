@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -106,10 +114,12 @@ describe('protected paths', () => {
     expect(await accented.isProtected(join(t.root, 'Cafe', 'x.pdf'))).toBe(false)
   })
 
-  it('is case sensitive where the disk is', async () => {
+  it('is case sensitive where the disk is, and follows the disk where it is not', async () => {
     const t = tree()
     const p = createProtectedPaths({ folders: () => [join(t.root, 'Exams')], foldCase: false })
-    expect(await p.isProtected(join(t.root, 'EXAMS', 'Key.docx'))).toBe(false)
+    // On a case-insensitive disk (a Mac's default) EXAMS is the Exams folder, and the real path says so.
+    const sameFolder = existsSync(join(t.root, 'EXAMS'))
+    expect(await p.isProtected(join(t.root, 'EXAMS', 'Key.docx'))).toBe(sameFolder)
   })
 
   it('still protects a folder that is not there right now (an unplugged drive)', async () => {

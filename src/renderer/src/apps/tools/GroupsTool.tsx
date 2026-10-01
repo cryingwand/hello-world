@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { groupCount, makeGroups, type GroupSpec } from '@shared/tools'
+import { showOnStage, useStageLink } from './stageLink'
 
 /** Splits the names into groups of nearly equal size, in a fresh random order each time. */
 export default function GroupsTool({ names }: { names: string[] }): React.JSX.Element {
@@ -7,6 +8,8 @@ export default function GroupsTool({ names }: { names: string[] }): React.JSX.El
   const [amount, setAmount] = useState('4')
   const [groups, setGroups] = useState<string[][]>([])
   const [copied, setCopied] = useState(false)
+  const stage = useStageLink()
+  const onStage = stage.tool === 'groups'
 
   const n = Math.floor(Number(amount))
   const valid = Number.isFinite(n) && n >= 1
@@ -15,8 +18,11 @@ export default function GroupsTool({ names }: { names: string[] }): React.JSX.El
 
   const make = (): void => {
     if (!valid || names.length === 0) return
-    setGroups(makeGroups(names, spec, Math.random))
+    const next = makeGroups(names, spec, Math.random)
+    setGroups(next)
     setCopied(false)
+    // Shuffling again while the groups are up puts the new groups up.
+    if (onStage) showOnStage({ kind: 'groups', groups: next }).catch(() => undefined)
   }
   const copy = async (): Promise<void> => {
     const text = groups.map((g, i) => `Group ${i + 1}: ${g.join(', ')}`).join('\n')
@@ -59,6 +65,18 @@ export default function GroupsTool({ names }: { names: string[] }): React.JSX.El
             {groups.length > 0 && (
               <button className="btn" onClick={() => void copy()}>
                 {copied ? 'Copied' : 'Copy as text'}
+              </button>
+            )}
+            {groups.length > 0 && (
+              <button
+                className={`btn${onStage ? ' btn-primary' : ''}`}
+                disabled={!stage.showing}
+                title={stage.showing ? undefined : 'Start the Stage in the Presenter first'}
+                onClick={() =>
+                  showOnStage(onStage ? null : { kind: 'groups', groups }).catch(() => undefined)
+                }
+              >
+                {onStage ? 'Back to the file' : 'Show on the Stage'}
               </button>
             )}
           </div>

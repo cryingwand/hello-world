@@ -4,7 +4,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  assertSoundDatabase,
   backupFileName,
+  backupsToKeep,
   listBackups,
   needsDailyBackup,
   parseBackupName,
@@ -55,7 +57,7 @@ describe('runBackup', () => {
     const env = makeEnv()
     const dir = tmp()
     const extra = join(tmp(), 'nested', 'usb')
-    const old = at(2026, 9, 1)
+    const old = at(2025, 6, 1) // past every retention window
     await runBackup(env.db, { dir, extraDir: extra, now: old })
     const info = await runBackup(env.db, { dir, extraDir: extra, now: at(2026, 9, 30) })
     expect(info.extraError).toBeUndefined()
@@ -87,23 +89,68 @@ describe('runBackup', () => {
 })
 
 describe('pruneBackups', () => {
-  it('keeps 14 days, removes older, and never touches unrelated files', () => {
+  it('keeps 14 days, removes older ones it does not keep, and never touches unrelated files', () => {
     const dir = tmp()
     const now = at(2026, 9, 30, 12)
     const names = [
       backupFileName(at(2026, 9, 30)), // today
       backupFileName(at(2026, 9, 16, 0, 0, 1)), // 14 days ago: kept
-      backupFileName(at(2026, 9, 15, 23)), // 15 days ago: removed
-      backupFileName(at(2026, 8, 1))
+      backupFileName(at(2026, 9, 15, 23)), // 15 days ago: newest of its week, kept
+      backupFileName(at(2026, 9, 15, 8)), // same week, older: removed
+      backupFileName(at(2025, 8, 1)) // more than a year ago: removed
     ]
     for (const n of names) writeFileSync(join(dir, n), '')
     writeFileSync(join(dir, 'my-notes.txt'), '')
     mkdirSync(join(dir, 'data-subfolder'))
     const removed = pruneBackups(dir, 14, now)
-    expect(removed.sort()).toEqual([names[2], names[3]].sort())
+    expect(removed.sort()).toEqual([names[3], names[4]].sort())
     expect(readdirSync(dir).sort()).toEqual(
-      [names[0], names[1], 'data-subfolder', 'my-notes.txt'].sort()
+      [names[0], names[1], names[2], 'data-subfolder', 'my-notes.txt'].sort()
     )
+  })
+})
+
+describe('backupsToKeep', () => {
+  const b = (d: Date): { name: string; createdAt: string } => ({
+    name: backupFileName(d),
+    createdAt: d.toISOString()
+  })
+  const now = at(2026, 9, 30, 12) // a Wednesday
+
+  it('keeps every backup from the last 14 days', () => {
+    const recent = [at(2026, 9, 30, 8), at(2026, 9, 30, 9), at(2026, 9, 20), at(2026, 9, 16)]
+    expect(backupsToKeep(recent.map(b), now).size).toBe(4)
+  })
+
+  it('keeps the newest of each week for 16 weeks, then the newest of each month for a year', () => {
+    const list = [
+      at(2026, 9, 9), // Wed: newest of the week of Sep 7
+      at(2026, 9, 7), // Mon, same week: dropped
+      at(2026, 8, 30), // Sun: newest of the week of Aug 24
+      at(2026, 6, 10), // 16 weeks back is Jun 10: newest of its week
+      at(2026, 5, 20), // past the weekly window: newest of May
+      at(2026, 5, 2), // May again: dropped
+      at(2025, 10, 15), // newest of October 2025: within 12 months
+      at(2025, 9, 1) // September 2025: past 12 months, dropped
+    ].map(b)
+    const keep = backupsToKeep(list, now)
+    expect([...keep].sort()).toEqual(
+      [list[0], list[2], list[3], list[4], list[6]].map((x) => x.name).sort()
+    )
+  })
+})
+
+describe('assertSoundDatabase', () => {
+  it('passes a real database and rejects a damaged one', async () => {
+    const env = makeEnv()
+    seedClass(env, 1)
+    const dir = tmp()
+    const info = await runBackup(env.db, { dir, now: at(2026, 9, 30) })
+    expect(() => assertSoundDatabase(info.path)).not.toThrow()
+    expect(readdirSync(dir)).toEqual([info.name]) // no -wal or -shm left behind
+    const junk = join(dir, 'junk.sqlite')
+    writeFileSync(junk, 'not a database at all, just some text that is long enough'.repeat(100))
+    expect(() => assertSoundDatabase(junk)).toThrow()
   })
 })
 

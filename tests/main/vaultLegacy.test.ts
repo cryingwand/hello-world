@@ -17,6 +17,10 @@ afterEach(() => {
 })
 
 /** A database exactly as the single-database version left it, with some real-looking data. */
+/**
+ * Every timestamp is written out: two copies built a second apart must be identical, as the rows of
+ * one real database are, or the interrupted-import test fails whenever it crosses a second.
+ */
 function legacyDb(path = ':memory:'): Database.Database {
   const db = new Database(path)
   db.pragma('foreign_keys = ON')
@@ -27,12 +31,12 @@ function legacyDb(path = ':memory:'): Database.Database {
     INSERT INTO students (id, first_name, last_name, preferred_name, email, notes, tags, created_at)
       VALUES (3, 'Zephyrine', 'Quillfeather', 'Zee', 'z@example.org', 'note', '["advisee"]', '2026-09-02 10:00:00'),
              (9, 'Bartholomew', 'Oddfellow', '', '', '', '[]', '2026-09-03 11:30:00');
-    INSERT INTO classes (id, term_id, course, section, period, grading_mode) VALUES (5, 1, 'History', 'B', '3', 'weighted');
+    INSERT INTO classes (id, term_id, course, section, period, grading_mode, created_at) VALUES (5, 1, 'History', 'B', '3', 'weighted', '2026-09-01 08:00:00');
     INSERT INTO enrollments (id, class_id, student_id) VALUES (2, 5, 3), (4, 5, 9);
     INSERT INTO grade_categories (id, class_id, name, weight, sort_order) VALUES (8, 5, 'Tests', 60, 0);
     INSERT INTO assignments (id, class_id, category_id, title, points_possible, sort_order) VALUES (6, 5, 8, 'Quiz', 20, 0);
     INSERT INTO scores (id, assignment_id, student_id, points, status, comment) VALUES (11, 6, 3, 17.5, 'late', 'handed in Tuesday'), (12, 6, 9, NULL, 'missing', '');
-    INSERT INTO file_links (id, path, record_type, record_id) VALUES (1, '/Users/t/iep.pdf', 'student', 3);
+    INSERT INTO file_links (id, path, record_type, record_id, created_at) VALUES (1, '/Users/t/iep.pdf', 'student', 3, '2026-09-04 09:00:00');
     INSERT INTO settings (key, value) VALUES ('teachingFolders', '["/Users/t/Courses"]');
   `)
   return db

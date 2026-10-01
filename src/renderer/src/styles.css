@@ -1446,6 +1446,69 @@ td .badge:first-child {
   font-size: 3vh;
 }
 
+.stage-timer {
+  position: fixed;
+  top: 2.5vh;
+  right: 2.5vw;
+  padding: 0.6vh 1.6vw;
+  border-radius: 1.2vh;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font-size: 9vh;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0.4vh 2vh rgba(0, 0, 0, 0.35);
+}
+.stage-timer-paused {
+  color: #b9bfcc;
+}
+.stage-pick {
+  margin: 0;
+  padding: 0 6vw;
+  font-size: 16vh;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.1;
+  animation: stage-pop 0.35s ease-out;
+}
+@keyframes stage-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-pick {
+    animation: none;
+  }
+}
+.stage-groups {
+  align-self: stretch;
+  justify-self: stretch;
+  display: grid;
+  align-content: center;
+  gap: 2.5vh 2vw;
+  /* The top clears the timer in the corner. */
+  padding: 14vh 4vw 4vh;
+}
+.stage-group h2 {
+  margin: 0 0 0.6em;
+  font-size: 1.15em;
+  color: #9fc2ff;
+}
+.stage-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.35;
+}
+.stage-group li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- advising ---- */
 .adv-section {
   margin: 0 0 20px;

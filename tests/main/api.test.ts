@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -21,6 +21,7 @@ import { createScoreService } from '../../src/main/scoreService'
 import { createStageService } from '../../src/main/stage'
 import { createVaultGate } from '../../src/main/vault/gate'
 import { createVaultManager } from '../../src/main/vault/manager'
+import { createVaultRestore } from '../../src/main/vault/restore'
 import { makePublicEnv, type TestEnv } from './helpers'
 
 const dirs: string[] = []
@@ -87,6 +88,22 @@ function env(opts: { unlocked?: boolean } = {}) {
     externalDisplays: () => 0,
     confirmExternalDisplay: async () => true
   })
+  let clock = new Date(2026, 9, 1, 9, 0, 0)
+  const backups = createBackupService({
+    dir: join(dir, 'backups'),
+    publicDb: () => pub.db,
+    vault: {
+      open: () => (manager.isUnlocked() ? manager.database() : null),
+      dbPath: manager.paths.db
+    },
+    extraDir: () => null,
+    now: () => clock
+  })
+  const restore = createVaultRestore({
+    backups,
+    stagingPath: `${manager.paths.db}.restoring`,
+    replace: (staged) => manager.replaceDatabase(staged)
+  })
   const api = createApi({
     vault: {
       repos: () => manager.session().repos,
@@ -103,12 +120,8 @@ function env(opts: { unlocked?: boolean } = {}) {
       paths: createProtectedPaths({ folders: () => pub.repos.protection.list() }),
       chooseFolder: async () => null
     }),
-    backups: createBackupService({
-      dir: join(dir, 'backups'),
-      publicDb: () => pub.db,
-      vault: { open: () => null, dbPath: manager.paths.db },
-      extraDir: () => null
-    }),
+    backups,
+    restore,
     gate,
     stage,
     files: createFilesApi({
@@ -140,7 +153,10 @@ function env(opts: { unlocked?: boolean } = {}) {
     }
   })
   const ready = opts.unlocked === false ? Promise.resolve() : manager.setup('a long passcode', {})
-  return { api, manager, pub, vaultEvents, ready }
+  const tick = (seconds: number): void => {
+    clock = new Date(clock.getTime() + seconds * 1000)
+  }
+  return { api, manager, pub, vaultEvents, ready, backups, tick }
 }
 
 describe('api wiring', () => {
@@ -150,6 +166,50 @@ describe('api wiring', () => {
       expect(Object.keys(api[ns]).sort(), ns).toEqual([...API_METHODS[ns]].sort())
     }
     expect(Object.keys(api).sort()).toEqual(Object.keys(API_METHODS).sort())
+  })
+
+  it('restores the Vault from a backup, keeping a backup of how it was', async () => {
+    const { api, manager, backups, ready, tick } = env()
+    await ready
+    await api.terms.create({ name: 'Before' })
+    const chosen = await backups.vaultNow()
+    tick(60)
+    await api.terms.create({ name: 'After' })
+    expect((await api.vault.backups()).map((b) => b.name)).toEqual([chosen?.name])
+
+    const res = await api.vault.restore(chosen!.name)
+    expect(manager.isUnlocked()).toBe(false) // the Vault closes so every window starts afresh
+    expect(res.safetyBackup).toMatch(/^vault-.*\.sqlite$/)
+
+    await manager.unlock('a long passcode')
+    expect((await api.terms.list()).map((t) => t.name)).toEqual(['Before'])
+
+    // The safety backup holds what the restore replaced, so the restore can itself be undone.
+    await api.vault.restore(res.safetyBackup!)
+    await manager.unlock('a long passcode')
+    expect((await api.terms.list()).map((t) => t.name).sort()).toEqual(['After', 'Before'])
+  })
+
+  it('refuses to restore a backup that is not in the folder, or is damaged', async () => {
+    const { api, manager, backups, ready } = env()
+    await ready
+    await expect(api.vault.restore('../../etc/passwd')).rejects.toThrow(/no longer in the backup/)
+    const b = await backups.vaultNow()
+    writeFileSync(b!.path, 'not a database'.repeat(200))
+    await expect(api.vault.restore(b!.name)).rejects.toThrow(/damaged/)
+    expect(manager.isUnlocked()).toBe(true) // nothing happened
+    expect(existsSync(`${manager.paths.db}.restoring`)).toBe(false)
+  })
+
+  it('takes at most one safety backup a minute', async () => {
+    const { backups, ready, tick } = env()
+    await ready
+    expect(await backups.snapshotVault()).not.toBeNull()
+    tick(30)
+    expect(await backups.snapshotVault()).toBeNull()
+    tick(31)
+    expect(await backups.snapshotVault()).not.toBeNull()
+    expect(backups.listVault()).toHaveLength(2)
   })
 
   it('routes calls through to the repositories once the vault is unlocked', async () => {

@@ -16,6 +16,9 @@ export interface BackupServiceDeps {
   now?: () => Date
 }
 
+/** A safety backup is skipped when the newest Vault backup is younger than this. */
+export const SNAPSHOT_GAP_MS = 60_000
+
 /**
  * Backs up both databases. The vault is backed up even while locked: this runs in the main process
  * and opens its own short-lived connection, so no passcode is involved and nothing is shown.
@@ -62,6 +65,22 @@ export function createBackupService(deps: BackupServiceDeps) {
 
     list: (): BackupInfo[] => listBackups(deps.dir),
     listVault: (): BackupInfo[] => listBackups(deps.dir, 'vault'),
+
+    /** A Vault backup right now. Throws if it cannot be taken; null if there is no Vault yet. */
+    vaultNow: (): Promise<BackupInfo | null> => vaultBackup(deps.now?.() ?? new Date()),
+
+    /**
+     * Before something that deletes or overwrites Vault data: a backup, unless one was taken in the
+     * last minute (which already holds everything the change could remove). Throws if it cannot be
+     * taken, so the caller can refuse the change rather than make it without a way back.
+     */
+    async snapshotVault(): Promise<BackupInfo | null> {
+      const now = deps.now?.() ?? new Date()
+      const latest = listBackups(deps.dir, 'vault')[0]
+      if (latest && Math.abs(now.getTime() - Date.parse(latest.createdAt)) < SNAPSHOT_GAP_MS)
+        return null
+      return vaultBackup(now)
+    },
 
     /** True if either database has no backup yet today. */
     needsDaily(now: Date = deps.now?.() ?? new Date()): boolean {

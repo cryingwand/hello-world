@@ -46,7 +46,9 @@ export default function AssignmentForm({
   const remove = async (): Promise<void> => {
     if (
       !assignment ||
-      !window.confirm(`Delete “${assignment.title}” and every score entered for it?`)
+      !window.confirm(
+        `Delete “${assignment.title}” and every score entered for it? A backup is taken first, so this can be undone from Settings in the Vault.`
+      )
     )
       return
     try {

@@ -239,7 +239,7 @@ export default function ClassesApp({ intent, intentNonce }: AppProps): React.JSX
               onRemove={(s) => {
                 if (
                   window.confirm(
-                    'Remove this student from the class? Their scores in this class are deleted; they stay in your student list.'
+                    'Remove this student from the class? Their scores in this class are deleted; they stay in your student list. A backup is taken first, so this can be undone from Settings in the Vault.'
                   )
                 ) {
                   guard(window.api.classes.unenroll(cls.id, s.id))

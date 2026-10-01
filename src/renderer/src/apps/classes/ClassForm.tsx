@@ -46,7 +46,7 @@ export default function ClassForm({
   const remove = async (): Promise<void> => {
     if (!cls) return
     const ok = window.confirm(
-      `Delete ${cls.course}? This removes its roster links, assignments and scores. Students stay in your student list.`
+      `Delete ${cls.course}? This removes its roster links, assignments and scores. Students stay in your student list. A backup is taken first, so this can be undone from Settings in the Vault.`
     )
     if (!ok) return
     try {

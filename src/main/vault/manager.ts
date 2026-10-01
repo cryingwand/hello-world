@@ -1,4 +1,12 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { join } from 'node:path'
 import {
   AUTO_LOCK_CHOICES,
@@ -352,6 +360,18 @@ export function createVaultManager<S>(deps: VaultManagerDeps<S>) {
       writeMeta({ ...m, autoLockMinutes: minutes })
       armTimer()
       announce()
+    },
+
+    /**
+     * Locks the Vault and puts `source` (a checked copy of a backup) in place of its database. Any
+     * write-ahead log left beside the old file is removed first: replayed onto the restored file, it
+     * would corrupt it. The next unlock opens the restored data and runs any newer migrations.
+     */
+    replaceDatabase(source: string): void {
+      if (opening) throw new ValidationError('The Vault is busy. Try again in a moment.')
+      lock('restore')
+      for (const f of [`${dbPath}-wal`, `${dbPath}-shm`]) rmSync(f, { force: true })
+      renameSync(source, dbPath)
     },
 
     /** True if a vault database file exists, whether or not a passcode has been chosen. */

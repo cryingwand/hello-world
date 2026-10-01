@@ -5,6 +5,8 @@ movable windows, where apps (Classes & Rosters, Files, Gradebook, Advising, Quiz
 Planner, and later the In-class Tools and so on) share local SQLite data. Student data never leaves the machine, and it is kept in a separate,
 passcode-locked **Vault** so that nothing you present can reach it.
 
+**To install it on your Mac and start using it, follow [`docs/START_HERE.md`](./docs/START_HERE.md).**
+
 Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
 
 ## What is in Phases 1 to 5
@@ -51,13 +53,18 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   picker** (everyone goes once before anyone repeats), a **group maker** (by number of groups or people per
   group, sizes never differ by more than one) and a **seating chart** (random seats, click two desks to swap,
   resize without moving anyone). The picker, groups and seating chart take names you type or paste, or load a
-  whole class. The names are kept in memory only, never saved by the tool, and are gone when you quit.
+  whole class. The names are kept in memory only, never saved by the tool, and are gone when you quit. While the Stage is showing,
+  the timer can go in its corner (over whatever file is up) and a picked name or the groups can go up full
+  screen in place of the file; Esc or Next goes back to the file.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
   inside the Vault.
-- **Backups**: a SQLite backup of both databases at launch and daily, the last 14 days kept, optionally
-  copied to a second folder. The Vault is backed up even while it is locked.
+- **Backups**: a SQLite backup of both databases at launch and daily, optionally copied to a second
+  folder. Every backup from the last 14 days is kept, then one a week for 16 weeks and one a month for a
+  year. The Vault is backed up even while it is locked, and again just before anything in it is deleted
+  or imported over. **Restore** the Vault to any of its backups from Settings inside the Vault (the Vault
+  as it is now is backed up first, so a restore can be undone).
 
 ## The Vault and the Stage
 
@@ -73,13 +80,16 @@ presenting window cannot reach.
   The one exception is a **names-only copy of your class rosters** in the everyday database, so the
   In-class Tools can load a class even while the Vault is locked or you are presenting. It holds each
   student's name and which class they are in, and nothing else: no email, notes, tags (so nothing shows who
-  you advise) or grades, and a student in no class is not copied at all. You still edit rosters only in the
+  you advise) or grades, and a student in no class is not copied at all. Only the classes you are
+  teaching are copied: those in the current term, and in any term whose end date has not passed. You still edit rosters only in the
   Vault; the copy is rewritten from it whenever they change and every time the Vault is unlocked.
 - **Stage**: a full-screen window on the other display (or this screen if there is none) that can call
   exactly one thing: "what should I show?". In the Presenter, search for PDFs, images, Word and text
   files, click to queue them, then Start the Stage. Keys: `]` and `[` for next and previous, `B` to blank,
   `Esc` to end; arrows and space also move between files, except inside a PDF, where they page through
   it. Open slides and spreadsheets from Files in PowerPoint or Excel instead; the Stage does not show them.
+  From In-class Tools you can add a timer in the corner, or show a picked name or groups instead of the
+  file.
 - **Protected folders**: in the Vault, open Protected Files and choose the folders that hold exams,
   quizzes and answer keys. Outside the Vault those files are missing from search, refused by every preview
   and by the file picker, and cannot be queued on the Stage, whether or not the Vault is locked. Inside the
@@ -98,12 +108,11 @@ presenting window cannot reach.
   opening one in another app is refused while a display is connected.
 - Protected folders are matched by where a file really is, so symlinks and `..` do not get around them.
   Hard links and Finder aliases point at the same data without a path inside the folder, and are not seen.
-- A Word file exported from Quizzes & Exams is an ordinary file in the folder you choose. Save it inside a
-  protected folder if it should stay out of file search and the Presenter; the question bank itself stays
-  in the Vault database either way.
-- A PowerPoint exported from the Lesson Planner is also an ordinary file, with your lesson notes as speaker
-  notes and the names of any quizzes. Save it inside a protected folder if it should stay out of file
-  search. The Stage does not show slides: open the deck in PowerPoint.
+- Anything exported from the Vault (a gradebook or roster spreadsheet, a meeting write-up, a quiz or answer
+  key, a lesson deck) is an ordinary file. The save dialog opens in a protected folder (the last one you
+  used), and choosing anywhere else asks first, because a file there shows up in everyday file search and
+  can be queued on the Stage. A lesson deck has your notes as speaker notes and the names of any quizzes;
+  the Stage does not show slides, so open the deck in PowerPoint.
 - A mirrored projector can look like a single display, so "a display was connected" may not fire. Starting
   the Stage always locks the Vault, so start it before you put anything on the screen.
 
@@ -128,6 +137,9 @@ npm test           # Vitest suites
 npm run lint       # ESLint
 npm run typecheck  # main/preload and renderer
 npm run build      # typecheck, bundle, and produce an unsigned .app in release/
+npm run check      # format, lint, typecheck and tests
+npm run smoke      # launch the real app with throwaway data and drive it
+npm run install:mac  # build, sign and install in /Applications (see docs/START_HERE.md)
 ```
 
 `npm run build` writes `release/mac-arm64/Teaching OS.app` (or `mac/` on Intel). If macOS refuses to open
@@ -163,12 +175,12 @@ Then drag it to `/Applications` and, on the first launch, right-click it and cho
 
 ## Where things live
 
-| Path                                                          | What                                                     |
-| ------------------------------------------------------------- | -------------------------------------------------------- |
-| `~/Library/Application Support/TeachingOS/data.sqlite`        | Settings and the protected folder list                   |
-| `~/Library/Application Support/TeachingOS/vault/vault.sqlite` | Students, classes, grades, attachments                   |
-| `~/Library/Application Support/TeachingOS/vault/vault.json`   | Passcode hash, Touch ID, idle time, failed attempts      |
-| `~/Library/Application Support/TeachingOS/backups/`           | `data-` and `vault-` backups (launch and daily, 14 days) |
+| Path                                                          | What                                                |
+| ------------------------------------------------------------- | --------------------------------------------------- |
+| `~/Library/Application Support/TeachingOS/data.sqlite`        | Settings and the protected folder list              |
+| `~/Library/Application Support/TeachingOS/vault/vault.sqlite` | Students, classes, grades, attachments              |
+| `~/Library/Application Support/TeachingOS/vault/vault.json`   | Passcode hash, Touch ID, idle time, failed attempts |
+| `~/Library/Application Support/TeachingOS/backups/`           | `data-` and `vault-` backups (see Backups above)    |
 
 ## Permissions
 

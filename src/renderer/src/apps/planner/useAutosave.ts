@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 /**
  * Text fields that save themselves: a moment after typing stops, when the field is left, and when the
  * editor goes away (so closing the window or switching lessons never drops what was just typed). Only
- * the fields that differ from what is saved are sent. A refused save puts the saved text back, so the
- * screen never claims something the database does not have.
+ * the fields that differ from what is saved are sent. A refused save keeps the typing on screen and
+ * reports the error, so nothing typed is lost; it is sent again with the next save.
  */
 export function useAutosave<T extends Record<string, string>>(
   saved: T,
@@ -39,11 +39,9 @@ export function useAutosave<T extends Record<string, string>>(
     if (Object.keys(patch).length === 0) return inflight.current
     const sent = saveRef.current(patch).then(
       () => undefined,
-      (e: unknown) => {
-        errorRef.current(e)
-        draftRef.current = savedRef.current
-        setDraft(savedRef.current)
-      }
+      // The typing stays on screen and the error says it was not saved; the next edit, blur or
+      // flush sends it again. Putting the saved text back would throw away what was just typed.
+      (e: unknown) => errorRef.current(e)
     )
     // Anything that waits on this waits for the saves before it too, so a copy never misses an edit.
     inflight.current = Promise.all([inflight.current, sent]).then(() => undefined)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { newPicker, pickNext, type PickerState } from '@shared/tools'
+import { showOnStage, useStageLink } from './stageLink'
 
 const SPIN_MS = 700
 
@@ -12,6 +13,9 @@ export default function PickerTool({ names }: { names: string[] }): React.JSX.El
   const [repeats, setRepeats] = useState(false)
   const [shown, setShown] = useState<string | null>(null)
   const [spinning, setSpinning] = useState(false)
+  const [toStage, setToStage] = useState(false)
+  const stage = useStageLink()
+  const sending = toStage && stage.showing
   const spin = useRef<{
     tick: ReturnType<typeof setInterval>
     stop: ReturnType<typeof setTimeout>
@@ -37,6 +41,8 @@ export default function PickerTool({ names }: { names: string[] }): React.JSX.El
       setState(next)
       setShown(names[next.last!])
       setSpinning(false)
+      // Only the name that was drawn goes up, never the spin or the rest of the list.
+      if (sending) showOnStage({ kind: 'picker', name: names[next.last!] }).catch(() => undefined)
     }, SPIN_MS)
     spin.current = { tick, stop }
   }
@@ -77,6 +83,24 @@ export default function PickerTool({ names }: { names: string[] }): React.JSX.El
                 onChange={(e) => setRepeats(e.target.checked)}
               />
               Allow the same person again
+            </label>
+            <label
+              className="check"
+              title={stage.showing ? undefined : 'Start the Stage in the Presenter first'}
+            >
+              <input
+                type="checkbox"
+                checked={sending}
+                disabled={!stage.showing}
+                onChange={(e) => {
+                  setToStage(e.target.checked)
+                  if (e.target.checked && shown && !spinning)
+                    showOnStage({ kind: 'picker', name: shown }).catch(() => undefined)
+                  if (!e.target.checked && stage.tool === 'picker')
+                    showOnStage(null).catch(() => undefined)
+                }}
+              />
+              Show each pick on the Stage
             </label>
           </div>
           {!repeats && (

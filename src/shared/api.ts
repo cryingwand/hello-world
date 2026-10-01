@@ -12,7 +12,8 @@ import type {
 import type { QuizVersion } from './quiz'
 import type { QuizForm } from './quizForms'
 import type { CopyDates } from './lesson'
-import type { StageState, StageView } from './stage'
+import type { StageState, StageTool, StageView } from './stage'
+import type { TimerState } from './tools'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
@@ -414,6 +415,13 @@ export interface ApiContract {
       autoLockMinutes?: number
       touchIdEnabled?: boolean
     }): Awaitable<VaultSettings>
+    /** The Vault's backups, newest first. */
+    backups(): Awaitable<BackupInfo[]>
+    /**
+     * Puts the Vault back to the named backup, after backing up how it is now. The Vault then locks,
+     * so the window asking goes away; it opens on the restored data.
+     */
+    restore(name: string): Awaitable<{ safetyBackup: string | null }>
   }
   stage: {
     /** Presenter: the queue, and whether the Stage is showing. No paths are returned. */
@@ -430,6 +438,13 @@ export interface ApiContract {
     previous(): Awaitable<StageState>
     goto(index: number): Awaitable<StageState>
     blank(on?: boolean): Awaitable<StageState>
+    /**
+     * In-class Tools: shows the picked name or the groups full screen in place of the file, or with
+     * null goes back to the file. Only while the Stage is showing.
+     */
+    showTool(tool: StageTool | null): Awaitable<StageState>
+    /** In-class Tools: the timer in the corner of the Stage (pushed on every change), or null to hide it. */
+    setTimer(timer: TimerState | null): Awaitable<StageState>
     /** The Stage window only: what to show right now. */
     view(): Awaitable<StageView>
   }
@@ -588,7 +603,7 @@ export const API_METHODS = {
   ],
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
   vaultGate: ['openWindow', 'status', 'setup', 'unlock', 'unlockWithTouchId', 'lock'],
-  vault: ['touch', 'changePasscode', 'settings', 'updateSettings'],
+  vault: ['touch', 'changePasscode', 'settings', 'updateSettings', 'backups', 'restore'],
   stage: [
     'state',
     'add',
@@ -601,6 +616,8 @@ export const API_METHODS = {
     'previous',
     'goto',
     'blank',
+    'showTool',
+    'setTimer',
     'view'
   ],
   gradebook: ['previewScores', 'commitScores', 'exportClass'],

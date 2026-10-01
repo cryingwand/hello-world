@@ -3,6 +3,7 @@ import { basename } from 'node:path'
 import type { DisplayOffer } from '@shared/events'
 import { DISPLAY_OFFER_CHANNEL } from '@shared/events'
 import { kindOf, toFileUrl } from '@shared/files'
+import { MAX_NAMES, MAX_NAME_LENGTH, MAX_TIMER_MS, type TimerState } from '@shared/tools'
 import {
   MAX_STAGE_ITEMS,
   STAGE_HOST,
@@ -15,6 +16,7 @@ import {
   type StageKeyInput,
   type StageKind,
   type StageState,
+  type StageTool,
   type StageView
 } from '@shared/stage'
 import * as files from './files'
@@ -64,12 +66,72 @@ export interface StageDeps {
   sendToLauncher: (channel: string, payload: unknown) => void
   /** Called whenever the Stage opens or closes, for example to tick the View menu item. */
   onActiveChange?: (on: boolean) => void
+  /** The clock, for checking a timer's end time. Overridable for tests. */
+  now?: () => number
 }
 
 interface Item {
   path: string
   name: string
   kind: StageKind
+}
+
+const NOT_SHOWING = 'Start the Stage in the Presenter first.'
+
+const stageName = (raw: unknown): string => {
+  if (typeof raw !== 'string') throw new ValidationError('A name must be text')
+  const name = raw.trim()
+  if (name === '' || name.length > MAX_NAME_LENGTH)
+    throw new ValidationError('That name cannot be shown')
+  return name
+}
+
+/** Checks a tool sent from the In-class Tools before anything of it reaches the projector. */
+export function parseStageTool(raw: unknown): StageTool {
+  const t = raw as Partial<Record<string, unknown>> | null
+  if (t?.kind === 'picker') return { kind: 'picker', name: stageName(t.name) }
+  if (t?.kind === 'groups') {
+    const groups = t.groups
+    if (!Array.isArray(groups) || groups.length === 0 || groups.length > MAX_NAMES)
+      throw new ValidationError('Make some groups first')
+    const out = groups.map((g) => {
+      if (!Array.isArray(g) || g.length === 0) throw new ValidationError('A group is empty')
+      return g.map(stageName)
+    })
+    if (out.reduce((n, g) => n + g.length, 0) > MAX_NAMES)
+      throw new ValidationError('Too many names to show')
+    return { kind: 'groups', groups: out }
+  }
+  throw new ValidationError('That tool cannot be shown on the Stage')
+}
+
+const TIMER_STATUSES: readonly TimerState['status'][] = ['idle', 'running', 'paused', 'done']
+const ms = (v: unknown): number => {
+  if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > MAX_TIMER_MS)
+    throw new ValidationError('That timer cannot be shown')
+  return Math.round(v)
+}
+
+/** Checks a timer from the In-class Tools. A running one must end within a day of now. */
+export function parseStageTimer(raw: unknown, now: number): TimerState {
+  const t = raw as Partial<Record<string, unknown>> | null
+  const status = t?.status as TimerState['status']
+  if (!TIMER_STATUSES.includes(status)) throw new ValidationError('That timer cannot be shown')
+  const endsAt = t?.endsAt
+  if (status === 'running') {
+    if (
+      typeof endsAt !== 'number' ||
+      !Number.isFinite(endsAt) ||
+      Math.abs(endsAt - now) > MAX_TIMER_MS
+    )
+      throw new ValidationError('That timer cannot be shown')
+  }
+  return {
+    status,
+    durationMs: ms(t?.durationMs),
+    remainingMs: ms(t?.remainingMs),
+    endsAt: status === 'running' ? (endsAt as number) : null
+  }
 }
 
 const STAGEABLE_HINT =
@@ -81,11 +143,15 @@ const STAGEABLE_HINT =
  * refuses to open until the Stage ends. While it runs, system notifications are held.
  */
 export function createStageService(deps: StageDeps) {
+  const now = deps.now ?? Date.now
   let active = false
   let queue: Item[] = []
   let index = -1
   let blanked = false
   let win: StageWindowLike | null = null
+  // Names from the In-class Tools, held in memory only and dropped when the Stage ends.
+  let tool: StageTool | null = null
+  let timer: TimerState | null = null
 
   const displays = (): DisplayLike[] => deps.screen.getAllDisplays()
   const externalDisplays = (): number => countExternalDisplays(deps.screen)
@@ -96,7 +162,9 @@ export function createStageService(deps: StageDeps) {
     index,
     blanked,
     externalDisplays: externalDisplays(),
-    offerEnabled: deps.offerEnabled()
+    offerEnabled: deps.offerEnabled(),
+    tool: tool?.kind ?? null,
+    timer: timer !== null
   })
 
   async function contentFor(item: Item, at: number): Promise<StageContent> {
@@ -128,12 +196,15 @@ export function createStageService(deps: StageDeps) {
 
   async function view(): Promise<StageView> {
     const item = index >= 0 ? queue[index] : undefined
+    const showing = active && !blanked
     return {
       active,
       blanked,
       index,
       count: queue.length,
-      content: active && item && !blanked ? await contentFor(item, index) : null
+      content: showing && item && !tool ? await contentFor(item, index) : null,
+      tool: showing ? tool : null,
+      timer: showing ? timer : null
     }
   }
 
@@ -237,6 +308,7 @@ export function createStageService(deps: StageDeps) {
         throw new ValidationError('That file is not in the queue')
       index = at
       blanked = false
+      tool = null
       publish()
       return state()
     },
@@ -244,6 +316,7 @@ export function createStageService(deps: StageDeps) {
     next(): StageState {
       index = clamp(index + 1)
       blanked = false
+      tool = null
       publish()
       return state()
     },
@@ -251,12 +324,36 @@ export function createStageService(deps: StageDeps) {
     previous(): StageState {
       index = clamp(index - 1)
       blanked = false
+      tool = null
       publish()
       return state()
     },
 
     blank(on?: unknown): StageState {
       blanked = typeof on === 'boolean' ? on : !blanked
+      publish()
+      return state()
+    },
+
+    /** Shows a tool full screen in place of the file; null goes back to the file. */
+    showTool(raw: unknown): StageState {
+      if (raw === null) tool = null
+      else {
+        if (!active) throw new ValidationError(NOT_SHOWING)
+        tool = parseStageTool(raw)
+        blanked = false
+      }
+      publish()
+      return state()
+    },
+
+    /** The timer in the corner of the Stage; null hides it. */
+    setTimer(raw: unknown): StageState {
+      if (raw === null) timer = null
+      else {
+        if (!active) throw new ValidationError(NOT_SHOWING)
+        timer = parseStageTimer(raw, now())
+      }
       publish()
       return state()
     },
@@ -289,6 +386,8 @@ export function createStageService(deps: StageDeps) {
       const closing = win
       active = false
       blanked = false
+      tool = null
+      timer = null
       win = null
       closing?.close()
       deps.notifier.setPresenting(false)
@@ -314,7 +413,10 @@ export function createStageService(deps: StageDeps) {
       const kind = index >= 0 ? (queue[index]?.kind ?? null) : null
       switch (stageKeyAction(input, kind)) {
         case 'end':
-          service.end()
+          // Escape first puts a tool away, then ends the Stage. While blanked the tool cannot be seen,
+          // so Escape ends it as it always has.
+          if (tool && !blanked) service.showTool(null)
+          else service.end()
           return true
         case 'next':
           service.next()

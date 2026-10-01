@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Format, lint, typecheck, tests, smoke (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Electron fetches its binary on first use; the smoke test needs it up front.
+      - run: node node_modules/electron/install.js
+      - run: npm run check
+      - run: npx electron-vite build
+      - name: Smoke test (launches the app under xvfb)
+        run: xvfb-run -a node scripts/smoke.mjs
+        env:
+          SMOKE_SHOTS: ${{ runner.temp }}/smoke-linux
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: smoke-linux
+          path: ${{ runner.temp }}/smoke-linux
+          if-no-files-found: ignore
+
+  mac:
+    name: Tests, smoke and package (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Electron fetches its binary on first use; the smoke test needs it up front.
+      - run: node node_modules/electron/install.js
+      - run: npm test
+      - run: npx electron-vite build
+      - name: Smoke test (launches the app on a real Mac)
+        run: node scripts/smoke.mjs
+        env:
+          SMOKE_SHOTS: ${{ runner.temp }}/smoke-mac
+      - name: Package the unsigned .app
+        run: npx electron-builder --mac --dir
+      - name: Smoke test the packaged app
+        run: |
+          app=$(ls -d release/mac*/"Teaching OS.app" | head -1)
+          SMOKE_APP_BINARY="$app/Contents/MacOS/Teaching OS" node scripts/smoke.mjs
+        env:
+          SMOKE_SHOTS: ${{ runner.temp }}/smoke-mac-packaged
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: smoke-mac
+          path: |
+            ${{ runner.temp }}/smoke-mac
+            ${{ runner.temp }}/smoke-mac-packaged
+          if-no-files-found: ignore

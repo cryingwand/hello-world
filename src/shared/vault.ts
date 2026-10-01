@@ -5,7 +5,7 @@ export const VAULT_LOCKED_MESSAGE = 'The Vault is locked.'
 export const VAULT_STATUS_CHANNEL = 'teachingos:vault-status'
 
 export type LockReason =
-  'manual' | 'idle' | 'presenting' | 'display' | 'screen-lock' | 'sleep' | 'quit'
+  'manual' | 'idle' | 'presenting' | 'display' | 'screen-lock' | 'sleep' | 'quit' | 'restore'
 
 export interface VaultStatus {
   /** A passcode has been chosen. False on first run (and after the passcode file is removed). */

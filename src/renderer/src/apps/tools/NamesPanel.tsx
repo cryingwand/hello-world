@@ -46,7 +46,9 @@ export default function NamesPanel(): React.JSX.Element {
       </label>
       {list.length === 0 && !classes.loading && (
         <p className="hint">
-          Your class rosters are copied here, names only, each time the Vault is unlocked.
+          The classes you are teaching are copied here, names only, each time the Vault is unlocked:
+          those in the current term, and in any term whose end date has not passed. Mark a term as
+          current in Classes &amp; Rosters.
         </p>
       )}
       {error && (

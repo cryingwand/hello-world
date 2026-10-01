@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { API_ACCESS, accessFor, canCall, methodsFor, type Role } from '@shared/access'
+import { API_ACCESS, accessFor, canCall, methodsFor, type Access, type Role } from '@shared/access'
 import { API_METHODS } from '@shared/api'
 import { CHANGE_AUDIENCE, CHANGE_NAMES } from '@shared/events'
 
@@ -33,6 +33,15 @@ describe('access policy', () => {
       for (const [method, access] of Object.entries(API_ACCESS[ns as keyof typeof API_ACCESS])) {
         expect(access.roles, `${ns}.${method}`).toEqual(['vault'])
         expect((access as { needsVault?: boolean }).needsVault, `${ns}.${method}`).toBe(true)
+      }
+    }
+  })
+
+  it('backs up the Vault before every call that deletes or imports over its data', () => {
+    for (const [ns, group] of Object.entries(API_ACCESS)) {
+      for (const [method, access] of Object.entries(group) as [string, Access][]) {
+        const destructive = access.needsVault === true && /^(delete|commit|unenroll$)/.test(method)
+        expect(access.backupFirst === true, `${ns}.${method}`).toBe(destructive)
       }
     }
   })

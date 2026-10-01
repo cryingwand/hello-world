@@ -25,8 +25,11 @@ export interface IpcDeps {
   /** One implementation per role; a role with no entry can call nothing. */
   apis: Partial<Record<Role, ApiContract>>
   roleOf: (sender: { id: number }) => Role | undefined
-  /** Extra checks that depend on state (for example "the vault is locked"); throw to refuse. */
-  beforeCall?: (role: Role, ns: string, method: string, access: Access) => void
+  /**
+   * Extra checks and work that depend on state (for example "the vault is locked", or a backup
+   * before a delete); throw or reject to refuse.
+   */
+  beforeCall?: (role: Role, ns: string, method: string, access: Access) => void | Promise<void>
 }
 
 /**
@@ -64,7 +67,7 @@ export function registerIpc(deps: IpcDeps): void {
           throw new AccessDeniedError()
         }
         try {
-          deps.beforeCall?.(role, ns, method, access)
+          await deps.beforeCall?.(role, ns, method, access)
           const fn = (api[ns] as unknown as Record<string, (...a: unknown[]) => unknown>)[method]
           return await fn(...args)
         } catch (err) {
