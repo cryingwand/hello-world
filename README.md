@@ -1,16 +1,16 @@
 # Teaching OS
 
 A desktop-style teaching suite for one teacher on one Mac: a full-screen shell with a top bar, dock and
-movable windows, where apps (Classes & Rosters, Files, Gradebook, Advising, and later Quiz Builder and
-so on) share local SQLite data. Student data never leaves the machine, and it is kept in a separate,
+movable windows, where apps (Classes & Rosters, Files, Gradebook, Advising, Quizzes & Exams, and later the
+Lesson Planner and so on) share local SQLite data. Student data never leaves the machine, and it is kept in a separate,
 passcode-locked **Vault** so that nothing you present can reach it.
 
 Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
 
-## What is in Phases 1 and 2
+## What is in Phases 1 to 3
 
 - **Two spaces**: the everyday window (Files and the Presenter) and the **Vault** window (Classes &
-  Rosters, Gradebook, Advising, Files with attachments, Protected Files). They are separate windows with separate
+  Rosters, Gradebook, Advising, Quizzes & Exams, Files with attachments, Protected Files). They are separate windows with separate
   data; see [The Vault and the Stage](#the-vault-and-the-stage).
 - **Shell**: top bar (clock, file search, current-class picker in the Vault, Present and Lock buttons), a
   dock, and movable, resizable, snappable windows whose layout is restored on relaunch.
@@ -25,6 +25,14 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   student's, with due dates and an overdue flag), a meeting history and grades earned elsewhere (entered
   by hand). Start meeting opens meeting mode: last time's summary, what is still open and the goals beside
   this meeting's notes, saved as you type, with a copy-ready summary. It lives in the Vault.
+- **Quizzes & Exams** (Phase 3): a question bank (multiple choice, true/false, short answer, essay; with
+  tags, search and a model answer for the key) and quizzes built from it, in order, with points that can
+  differ per quiz. Export a **student copy** or an **answer key** as a Word file in your house style:
+  Palatino Linotype 12pt, a centered Course • Title • Date line, numbered questions with lettered choices
+  kept together on a page, Part headings when a quiz mixes kinds, ruled lines for written answers. **Add to
+  Gradebook** creates the assignment in a class (one per class, worth the quiz's total points) and flags it
+  if the quiz's points change later. It lives in the Vault, so the question bank is never reachable from
+  the presenting window. A question that is in a quiz cannot be deleted until it is taken out.
 - **Presenting**: a separate **Stage** window on the other display that can show only the files you queue in
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
@@ -63,6 +71,9 @@ presenting window cannot reach.
   opening one in another app is refused while a display is connected.
 - Protected folders are matched by where a file really is, so symlinks and `..` do not get around them.
   Hard links and Finder aliases point at the same data without a path inside the folder, and are not seen.
+- A Word file exported from Quizzes & Exams is an ordinary file in the folder you choose. Save it inside a
+  protected folder if it should stay out of file search and the Presenter; the question bank itself stays
+  in the Vault database either way.
 - A mirrored projector can look like a single display, so "a display was connected" may not fire. Starting
   the Stage always locks the Vault, so start it before you put anything on the screen.
 

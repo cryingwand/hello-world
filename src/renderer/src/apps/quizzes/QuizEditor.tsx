@@ -171,6 +171,10 @@ export default function QuizEditor({
 
       <section className="adv-section">
         <h3>Word documents</h3>
+        <p className="hint">
+          A saved exam is an ordinary file. Save it inside a protected folder to keep it out of file
+          search and the Presenter.
+        </p>
         <div className="adv-add">
           <button
             className="btn btn-primary"
