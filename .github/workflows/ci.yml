@@ -14,19 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Electron fetches its binary on first use; the smoke test needs it up front.
+      - run: node node_modules/electron/install.js
       - run: npm run check
       - run: npx electron-vite build
       - name: Smoke test (launches the app under xvfb)
         run: xvfb-run -a node scripts/smoke.mjs
         env:
           SMOKE_SHOTS: ${{ runner.temp }}/smoke-linux
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: smoke-linux
@@ -38,12 +40,14 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Electron fetches its binary on first use; the smoke test needs it up front.
+      - run: node node_modules/electron/install.js
       - run: npm test
       - run: npx electron-vite build
       - name: Smoke test (launches the app on a real Mac)
@@ -58,7 +62,7 @@ jobs:
           SMOKE_APP_BINARY="$app/Contents/MacOS/Teaching OS" node scripts/smoke.mjs
         env:
           SMOKE_SHOTS: ${{ runner.temp }}/smoke-mac-packaged
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: smoke-mac
