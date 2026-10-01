@@ -23,8 +23,9 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   and late flags, averages, a per-student view, and Excel/CSV import and export of scores.
 - **Advising** (Phase 2): students tagged `advisee` get a profile with goals, follow-ups (yours or the
   student's, with due dates and an overdue flag), a meeting history and grades earned elsewhere (entered
-  by hand). Start meeting opens meeting mode: last time's summary, what is still open and the goals beside
-  this meeting's notes, saved as you type, with a copy-ready summary. It lives in the Vault.
+  by hand, or imported from a spreadsheet or CSV for all advisees at once, with a preview). Start meeting
+  opens meeting mode: last time's summary, what is still open and the goals beside this meeting's notes,
+  saved as you type, with a copy-ready summary. It lives in the Vault.
 - **Quizzes & Exams** (Phase 3): a question bank (multiple choice, true/false, short answer, essay; with
   tags, search and a model answer for the key) and quizzes built from it, in order, with points that can
   differ per quiz. Export a **student copy** or an **answer key** as a Word file in your house style:

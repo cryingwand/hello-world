@@ -1,5 +1,6 @@
 import type { ApiContract, SystemInfo } from '@shared/api'
 import type { BackupService } from './backupService'
+import type { ProgressService } from './progressService'
 import type { ProtectionService } from './protectionService'
 import type { QuizService } from './quizService'
 import type { LessonService } from './lessonService'
@@ -26,6 +27,7 @@ export interface ApiDeps {
   vault: {
     repos: () => Repositories
     roster: () => RosterService
+    progress: () => ProgressService
     scores: () => ScoreService
     quizzes: () => QuizService
     lessons: () => LessonService
@@ -44,6 +46,7 @@ export function createApi(deps: ApiDeps): ApiContract {
   const { env, stage, gate } = deps
   const repos = (): Repositories => deps.vault.repos()
   const roster = (): RosterService => deps.vault.roster()
+  const progress = (): ProgressService => deps.vault.progress()
   const scores = (): ScoreService => deps.vault.scores()
   const quizzes = (): QuizService => deps.vault.quizzes()
   const lessons = (): LessonService => deps.vault.lessons()
@@ -90,7 +93,9 @@ export function createApi(deps: ApiDeps): ApiContract {
       progress: (studentId) => repos().advising.progress(studentId),
       createProgress: (input) => repos().advising.createProgress(input),
       updateProgress: (id, patch) => repos().advising.updateProgress(id, patch),
-      deleteProgress: (id) => repos().advising.deleteProgress(id)
+      deleteProgress: (id) => repos().advising.deleteProgress(id),
+      previewProgressImport: (request) => progress().previewImport(request),
+      commitProgressImport: (request) => progress().commitImport(request)
     },
     questions: {
       list: (query) => repos().questions.list(query),

@@ -13,6 +13,7 @@ import { createFileGuard, createProtectedPaths } from '../../src/main/protected'
 import { createProtectionService } from '../../src/main/protectionService'
 import { createVaultRepositories } from '../../src/main/repos'
 import { createLessonService } from '../../src/main/lessonService'
+import { createProgressService } from '../../src/main/progressService'
 import { createQuizService } from '../../src/main/quizService'
 import { createRosterService } from '../../src/main/rosterService'
 import { createScoreService } from '../../src/main/scoreService'
@@ -29,6 +30,7 @@ afterEach(() => {
 interface Session {
   repos: ReturnType<typeof createVaultRepositories>
   roster: ReturnType<typeof createRosterService>
+  progress: ReturnType<typeof createProgressService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
   lessons: ReturnType<typeof createLessonService>
@@ -51,10 +53,11 @@ function env(opts: { unlocked?: boolean } = {}) {
         pickOpenFile: async () => null,
         pickSaveFile: async () => null
       })
+      const progress = createProgressService(repos, roster.tokens)
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: async () => null })
       const quizzes = createQuizService(repos, { pickSaveFile: async () => null })
       const lessons = createLessonService(repos, { pickSaveFile: async () => null })
-      return { repos, roster, scores, quizzes, lessons }
+      return { repos, roster, progress, scores, quizzes, lessons }
     },
     scrypt: { N: 1 << 4, r: 8, p: 1, keylen: 32 }
   })
@@ -85,6 +88,7 @@ function env(opts: { unlocked?: boolean } = {}) {
     vault: {
       repos: () => manager.session().repos,
       roster: () => manager.session().roster,
+      progress: () => manager.session().progress,
       scores: () => manager.session().scores,
       quizzes: () => manager.session().quizzes,
       lessons: () => manager.session().lessons

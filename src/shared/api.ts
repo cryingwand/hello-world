@@ -15,6 +15,11 @@ import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
 import type {
+  ProgressImportPlan,
+  ProgressImportRequest,
+  ProgressImportResult
+} from './progressImport'
+import type {
   ActionItem,
   ActionOwner,
   AdviseeSummary,
@@ -265,6 +270,9 @@ export interface ApiContract {
     createProgress(input: ProgressInput): ExternalProgress
     updateProgress(id: number, patch: Patch<Omit<ProgressInput, 'studentId'>>): ExternalProgress
     deleteProgress(id: number): void
+    /** What importing this spreadsheet of outside grades would do, without writing anything. */
+    previewProgressImport(request: ProgressImportRequest): Awaitable<ProgressImportPlan>
+    commitProgressImport(request: ProgressImportRequest): Awaitable<ProgressImportResult>
   }
   questions: {
     /** Newest first. */
@@ -475,7 +483,9 @@ export const API_METHODS = {
     'progress',
     'createProgress',
     'updateProgress',
-    'deleteProgress'
+    'deleteProgress',
+    'previewProgressImport',
+    'commitProgressImport'
   ],
   questions: ['list', 'get', 'create', 'update', 'delete'],
   quizzes: [

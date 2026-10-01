@@ -34,6 +34,7 @@ import { registerIpc } from './ipc'
 import { PRESENTATION_MENU_ID, buildMenuTemplate } from './menu'
 import { createNotifier, type Notifier } from './notifier'
 import { createFileGuard, createProtectedPaths } from './protected'
+import { createProgressService } from './progressService'
 import { createProtectionService } from './protectionService'
 import { createRoleRegistry } from './roles'
 import { countExternalDisplays, createStageService } from './stage'
@@ -133,6 +134,7 @@ function startBackups(backups: BackupService, notifier: Notifier): void {
 interface VaultSession {
   repos: ReturnType<typeof createVaultRepositories>
   roster: ReturnType<typeof createRosterService>
+  progress: ReturnType<typeof createProgressService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
   lessons: ReturnType<typeof createLessonService>
@@ -174,10 +176,11 @@ void app.whenReady().then(() => {
         pickOpenFile: pickTableFile,
         pickSaveFile: pickSaveTableFile
       })
+      const progress = createProgressService(repos, roster.tokens)
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
       const quizzes = createQuizService(repos, { pickSaveFile: pickSaveDocxFile })
       const lessons = createLessonService(repos, { pickSaveFile: pickSavePptxFile })
-      return { repos, roster, scores, quizzes, lessons }
+      return { repos, roster, progress, scores, quizzes, lessons }
     },
     // A database from before the vault existed is moved in the first time the vault opens.
     afterOpen: (vdb) => void importLegacyData(db, vdb, { backupDir }),
@@ -379,6 +382,7 @@ void app.whenReady().then(() => {
       vault: {
         repos: () => manager.session().repos,
         roster: () => manager.session().roster,
+        progress: () => manager.session().progress,
         scores: () => manager.session().scores,
         quizzes: () => manager.session().quizzes,
         lessons: () => manager.session().lessons

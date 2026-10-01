@@ -7,6 +7,7 @@ import { useApiQuery } from '@renderer/data/hooks'
 import { studentName } from '@renderer/lib/labels'
 import AddAdviseeDialog from './AddAdviseeDialog'
 import AdviseeView from './AdviseeView'
+import ProgressImportWizard from './ProgressImportWizard'
 
 type Selection = { kind: 'followups' } | { kind: 'advisee'; id: number } | null
 
@@ -15,6 +16,8 @@ const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 export default function AdvisingApp({ intent, intentNonce }: AppProps): React.JSX.Element {
   const [selected, setSelected] = useState<Selection>(null)
   const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const advisees = useApiQuery(
@@ -42,6 +45,14 @@ export default function AdvisingApp({ intent, intentNonce }: AppProps): React.JS
         <div className="sidebar-actions">
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
             + Advisee
+          </button>
+          <button
+            className="btn"
+            onClick={() => setImporting(true)}
+            disabled={list.length === 0}
+            title="Bring in grades earned elsewhere from a spreadsheet or CSV"
+          >
+            Import grades…
           </button>
         </div>
         <button
@@ -80,6 +91,14 @@ export default function AdvisingApp({ intent, intentNonce }: AppProps): React.JS
 
       <section className="pane">
         <ErrorBanner message={error ?? advisees.error} onDismiss={() => setError(null)} />
+        {notice && (
+          <div className="summary" role="status">
+            {notice}{' '}
+            <button className="btn btn-quiet" onClick={() => setNotice(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
         {selected?.kind === 'followups' ? (
           <AllFollowUps
             advisees={list.map((a) => a.student)}
@@ -101,6 +120,18 @@ export default function AdvisingApp({ intent, intentNonce }: AppProps): React.JS
         )}
       </section>
 
+      {importing && (
+        <ProgressImportWizard
+          onClose={() => setImporting(false)}
+          onDone={(r) => {
+            setImporting(false)
+            setNotice(
+              `Imported ${r.created} new and ${r.updated} updated grades` +
+                (r.skipped > 0 ? `; ${r.skipped} rows were skipped.` : '.')
+            )
+          }}
+        />
+      )}
       {adding && (
         <AddAdviseeDialog
           onClose={() => setAdding(false)}
