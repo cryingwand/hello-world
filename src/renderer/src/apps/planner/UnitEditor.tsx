@@ -6,9 +6,12 @@ import { useApiQuery } from '@renderer/data/hooks'
 import AttachedFiles from './AttachedFiles'
 import CopyUnitDialog from './CopyUnitDialog'
 import LessonEditor from './LessonEditor'
+import { KindMix, RoadmapBar } from './RoadmapBar'
 import { useAutosave } from './useAutosave'
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+const openTasks = (l: { tasks: { done: boolean }[] }): number =>
+  l.tasks.filter((t) => !t.done).length
 
 /** One unit: its details, its lessons in order, the PowerPoint export and the selected lesson. */
 export default function UnitEditor({
@@ -36,7 +39,14 @@ export default function UnitEditor({
   const unit = useApiQuery(
     () => window.api.units.get(unitId),
     [unitId],
-    ['planner.changed', 'quizzes.changed', 'classes.changed', 'assignments.changed']
+    // A deleted term clears the unit's semester without a planner event.
+    [
+      'planner.changed',
+      'quizzes.changed',
+      'classes.changed',
+      'assignments.changed',
+      'terms.changed'
+    ]
   )
   const u = unit.data
   if (!u) {
@@ -124,6 +134,7 @@ export default function UnitEditor({
             + Lesson
           </button>
         </h3>
+        <KindMix blocks={u.lessons.flatMap((l) => l.blocks)} />
         {u.lessons.length === 0 ? (
           <p className="hint">No lessons yet. Add one to start planning.</p>
         ) : (
@@ -140,7 +151,9 @@ export default function UnitEditor({
                     {l.date ? formatDate(l.date) : 'No date'}
                     {l.quizzes.length > 0 &&
                       ` · ${l.quizzes.length} ${l.quizzes.length === 1 ? 'quiz' : 'quizzes'}`}
+                    {openTasks(l) > 0 && ` · ${openTasks(l)} to do`}
                   </span>
+                  <RoadmapBar blocks={l.blocks} classMinutes={l.classMinutes} />
                 </button>
                 <button
                   className="btn btn-quiet"
@@ -213,6 +226,7 @@ function UnitDetails({
     (patch) => window.api.units.update(unit.id, patch),
     onError
   )
+  const terms = useApiQuery(() => window.api.terms.list(), [], ['terms.changed'])
   return (
     <section className="adv-section">
       <h3>Unit details</h3>
@@ -233,6 +247,24 @@ function UnitDetails({
               onChange={(e) => set('course', e.target.value)}
               onBlur={flush}
             />
+          </label>
+          <label>
+            Semester
+            <select
+              value={unit.termId ?? ''}
+              onChange={(e) =>
+                window.api.units
+                  .update(unit.id, { termId: e.target.value ? Number(e.target.value) : null })
+                  .catch(onError)
+              }
+            >
+              <option value="">None</option>
+              {(terms.data ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
         <label>

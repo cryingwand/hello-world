@@ -1,13 +1,15 @@
 import PptxGenJS from 'pptxgenjs'
 import type { Lesson, UnitDetail } from '@shared/models'
 import { chunkBullets, dateSpan, linesOf } from '@shared/lesson'
+import { agendaLine } from '@shared/lessonBlocks'
 import { longDate } from '@shared/quiz'
 
 /**
  * The deck a unit (or one lesson) is exported as: 16:9, white, Palatino Linotype throughout to match
  * the Word house style. A unit deck opens with a title slide, then an overview and a list of lessons.
- * Each lesson gets a slide with its title, date and objectives, then its plan, its homework and the
- * quizzes it uses. Bullets that would not fit are continued on another slide instead of running off
+ * Each lesson gets a slide with its title, date and objectives, then its agenda (the blocks it is
+ * built from, by name and length; a block's own notes stay off the slides), its plan, its homework
+ * and the quizzes it uses. Bullets that would not fit are continued on another slide instead of running off
  * the bottom. A lesson's private notes become speaker notes on each of its slides, so they never show
  * on the projector.
  *
@@ -138,6 +140,8 @@ function lessonSlides(frame: Frame, lesson: Lesson): void {
     })
   }
 
+  const agenda = lesson.blocks.map(agendaLine)
+  if (agenda.length > 0) listSlides(frame, lesson.title, 'Agenda', agenda, notes)
   const plan = linesOf(lesson.plan)
   if (plan.length > 0) listSlides(frame, lesson.title, 'Plan', plan, notes)
   const homework = linesOf(lesson.homework)

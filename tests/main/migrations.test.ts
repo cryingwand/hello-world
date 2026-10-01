@@ -34,8 +34,10 @@ const ADVISING_TABLES = ['action_items', 'advising_meetings', 'external_progress
 const QUIZ_TABLES = ['questions', 'quiz_items', 'quizzes']
 const PLANNER_TABLES = [
   'lesson_assignments',
+  'lesson_blocks',
   'lesson_classes',
   'lesson_quizzes',
+  'lesson_tasks',
   'lessons',
   'units'
 ]
@@ -184,6 +186,23 @@ describe('migrations', () => {
     expect(db.prepare('SELECT lesson_id, quiz_id FROM lesson_quizzes').get()).toEqual({
       lesson_id: 1,
       quiz_id: 1
+    })
+  })
+
+  it('add lesson blocks and tasks to a version 5 vault, keeping its lessons and units', () => {
+    const db = new Database(':memory:')
+    migrate(db, VAULT_MIGRATIONS.slice(0, 5))
+    db.prepare("INSERT INTO units (title) VALUES ('Ethics')").run()
+    db.prepare("INSERT INTO lessons (unit_id, position, title) VALUES (1, 0, 'Day 1')").run()
+    migrate(db, VAULT_MIGRATIONS)
+    expect(tables(db)).toEqual(VAULT_TABLES)
+    expect(db.prepare('SELECT title, class_minutes FROM lessons').get()).toEqual({
+      title: 'Day 1',
+      class_minutes: null
+    })
+    expect(db.prepare('SELECT title, term_id FROM units').get()).toEqual({
+      title: 'Ethics',
+      term_id: null
     })
   })
 

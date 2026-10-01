@@ -1,5 +1,19 @@
 import { localToday } from '@shared/advising'
-import type { LessonCopyInput, LessonInput, UnitCopyInput, UnitInput } from '@shared/api'
+import type {
+  BlockInput,
+  LessonCopyInput,
+  LessonInput,
+  TaskInput,
+  UnitCopyInput,
+  UnitInput
+} from '@shared/api'
+import {
+  BLOCK_INFO,
+  BLOCK_KINDS,
+  MAX_BLOCKS,
+  MAX_BLOCK_MINUTES,
+  MAX_TASKS
+} from '@shared/lessonBlocks'
 import {
   MAX_LESSONS,
   MAX_SHIFT_DAYS,
@@ -10,10 +24,13 @@ import {
 } from '@shared/lesson'
 import type {
   Lesson,
+  LessonBlock,
+  LessonTask,
   LinkedAssignment,
   LinkedClass,
   LinkedQuiz,
   QuizKind,
+  TodoItem,
   Unit,
   UnitDetail,
   UnitSummary,
@@ -27,6 +44,7 @@ interface UnitRow {
   title: string
   course: string
   summary: string
+  term_id: number | null
 }
 interface SummaryRow extends UnitRow {
   lesson_count: number
@@ -43,6 +61,24 @@ interface LessonRow {
   plan: string
   homework: string
   notes: string
+  class_minutes: number | null
+}
+interface BlockRow {
+  id: number
+  lesson_id: number
+  position: number
+  kind: string
+  title: string
+  minutes: number | null
+  details: string
+}
+interface TaskRow {
+  id: number
+  lesson_id: number
+  block_id: number | null
+  position: number
+  text: string
+  done: number
 }
 interface QuizLinkRow {
   lesson_id: number
@@ -73,12 +109,53 @@ const toUnit = (r: UnitRow): Unit => ({
   id: r.id,
   title: r.title,
   course: r.course,
-  summary: r.summary
+  summary: r.summary,
+  termId: r.term_id
 })
+const toBlock = (r: BlockRow): LessonBlock => ({
+  id: r.id,
+  lessonId: r.lesson_id,
+  position: r.position,
+  kind: r.kind,
+  title: r.title,
+  minutes: r.minutes,
+  details: r.details
+})
+const toTask = (r: TaskRow): LessonTask => ({
+  id: r.id,
+  lessonId: r.lesson_id,
+  blockId: r.block_id,
+  position: r.position,
+  text: r.text,
+  done: r.done === 1
+})
+
+interface TodoRow extends TaskRow {
+  lesson_title: string
+  lesson_date: string | null
+  unit_id: number
+  unit_title: string
+  course: string
+  block_kind: string | null
+  block_title: string | null
+}
+
+/** Done tasks shown at most, newest first. */
+const DONE_LIMIT = 300
 
 // A lesson's plan can run to a page of steps; the rest are short.
 const MAX_PLAN = 20000
 const MAX_TEXT = 10000
+
+/** Whole minutes from 0 (or 1 for a class) up to a long day, or null for none given. */
+function minutesOrNull(value: unknown, field: string, min = 0): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = v.num(value, field, min)
+  if (!Number.isInteger(n) || n > MAX_BLOCK_MINUTES) {
+    throw new v.ValidationError(`${field} must be whole minutes, up to ${MAX_BLOCK_MINUTES}`)
+  }
+  return n
+}
 
 /** The date rule for a copy. Nothing given means clear them: a copy is for later. */
 function copyDates(value: unknown): CopyDates {
@@ -107,11 +184,23 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
     return u
   }
 
+  /** A semester to put a unit in: an existing term, or null for none. */
+  const termOrNull = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null
+    const id = v.id(value, 'Semester')
+    if (!db.prepare('SELECT 1 FROM terms WHERE id = ?').get(id)) {
+      throw new v.ValidationError('That semester no longer exists')
+    }
+    return id
+  }
+
   /** Attaches each lesson's quizzes, classes and assignments with one query each, whatever the number of lessons. */
   const withLinks = (rows: LessonRow[]): Lesson[] => {
     const quizzesBy = new Map<number, LinkedQuiz[]>()
     const classesBy = new Map<number, LinkedClass[]>()
     const assignmentsBy = new Map<number, LinkedAssignment[]>()
+    const blocksBy = new Map<number, LessonBlock[]>()
+    const tasksBy = new Map<number, LessonTask[]>()
     const push = <T>(map: Map<number, T[]>, key: number, item: T): void => {
       map.set(key, [...(map.get(key) ?? []), item])
     }
@@ -164,6 +253,18 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
           dueDate: l.due_date
         })
       }
+      const blocks = db
+        .prepare(
+          `SELECT * FROM lesson_blocks WHERE lesson_id IN (${marks}) ORDER BY lesson_id, position, id`
+        )
+        .all(...ids) as BlockRow[]
+      for (const b of blocks) push(blocksBy, b.lesson_id, toBlock(b))
+      const tasks = db
+        .prepare(
+          `SELECT * FROM lesson_tasks WHERE lesson_id IN (${marks}) ORDER BY lesson_id, position, id`
+        )
+        .all(...ids) as TaskRow[]
+      for (const t of tasks) push(tasksBy, t.lesson_id, toTask(t))
     }
     return rows.map((r) => ({
       id: r.id,
@@ -177,7 +278,10 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
       notes: r.notes,
       quizzes: quizzesBy.get(r.id) ?? [],
       classes: classesBy.get(r.id) ?? [],
-      assignments: assignmentsBy.get(r.id) ?? []
+      assignments: assignmentsBy.get(r.id) ?? [],
+      classMinutes: r.class_minutes,
+      blocks: blocksBy.get(r.id) ?? [],
+      tasks: tasksBy.get(r.id) ?? []
     }))
   }
   const lessonsOf = (unitId: number): Lesson[] =>
@@ -216,7 +320,8 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
 
   /**
    * Copies one lesson row into a unit at a position, with the same quizzes linked and the same files
-   * attached (a quiz is shared, not copied). Returns the new lesson and how many file links were made.
+   * attached (a quiz is shared, not copied), and its blocks and prep tasks, the tasks not done yet.
+   * Returns the new lesson and how many file links were made.
    */
   const copyLesson = (
     row: LessonRow,
@@ -227,8 +332,9 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
   ): { id: number; links: number } => {
     const res = db
       .prepare(
-        `INSERT INTO lessons (unit_id, position, title, lesson_date, objectives, plan, homework, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO lessons (unit_id, position, title, lesson_date, objectives, plan, homework, notes,
+           class_minutes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         unitId,
@@ -238,9 +344,36 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         row.objectives,
         row.plan,
         row.homework,
-        row.notes
+        row.notes,
+        row.class_minutes
       )
     const newId = Number(res.lastInsertRowid)
+    // Each block's tasks follow it to its copy; a task added by hand has no block.
+    const blockIds = new Map<number, number>()
+    const blocks = db
+      .prepare('SELECT * FROM lesson_blocks WHERE lesson_id = ? ORDER BY position, id')
+      .all(row.id) as BlockRow[]
+    const addBlock = db.prepare(
+      'INSERT INTO lesson_blocks (lesson_id, position, kind, title, minutes, details) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+    for (const b of blocks) {
+      const made = addBlock.run(newId, b.position, b.kind, b.title, b.minutes, b.details)
+      blockIds.set(b.id, Number(made.lastInsertRowid))
+    }
+    const tasks = db
+      .prepare('SELECT * FROM lesson_tasks WHERE lesson_id = ? ORDER BY position, id')
+      .all(row.id) as TaskRow[]
+    const addTask = db.prepare(
+      'INSERT INTO lesson_tasks (lesson_id, block_id, position, text, done) VALUES (?, ?, ?, ?, 0)'
+    )
+    for (const t of tasks) {
+      addTask.run(
+        newId,
+        t.block_id === null ? null : (blockIds.get(t.block_id) ?? null),
+        t.position,
+        t.text
+      )
+    }
     db.prepare(
       'INSERT INTO lesson_quizzes (lesson_id, quiz_id) SELECT ?, quiz_id FROM lesson_quizzes WHERE lesson_id = ?'
     ).run(newId, row.id)
@@ -263,6 +396,48 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         n: number
       }
     ).n
+
+  const blockRow = (id: number): BlockRow => {
+    const r = db.prepare('SELECT * FROM lesson_blocks WHERE id = ?').get(id) as BlockRow | undefined
+    if (!r) throw new v.ValidationError('That part of the lesson no longer exists')
+    return r
+  }
+  const taskRow = (id: number): TaskRow => {
+    const r = db.prepare('SELECT * FROM lesson_tasks WHERE id = ?').get(id) as TaskRow | undefined
+    if (!r) throw new v.ValidationError('That task no longer exists')
+    return r
+  }
+  const renumberBlocks = (lessonId: number): void => {
+    const ids = db
+      .prepare('SELECT id FROM lesson_blocks WHERE lesson_id = ? ORDER BY position, id')
+      .all(lessonId) as { id: number }[]
+    const set = db.prepare('UPDATE lesson_blocks SET position = ? WHERE id = ?')
+    ids.forEach((r, i) => set.run(i, r.id))
+  }
+  const renumberTasks = (lessonId: number): void => {
+    const ids = db
+      .prepare('SELECT id FROM lesson_tasks WHERE lesson_id = ? ORDER BY position, id')
+      .all(lessonId) as { id: number }[]
+    const set = db.prepare('UPDATE lesson_tasks SET position = ? WHERE id = ?')
+    ids.forEach((r, i) => set.run(i, r.id))
+  }
+  const countOf = (table: 'lesson_blocks' | 'lesson_tasks', lessonId: number): number =>
+    (
+      db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE lesson_id = ?`).get(lessonId) as {
+        n: number
+      }
+    ).n
+  const appendTask = (
+    lessonId: number,
+    blockId: number | null,
+    text: string,
+    done = false
+  ): void => {
+    db.prepare(
+      `INSERT INTO lesson_tasks (lesson_id, block_id, position, text, done)
+       VALUES (?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM lesson_tasks WHERE lesson_id = ?), ?, ?)`
+    ).run(lessonId, blockId, lessonId, text, done ? 1 : 0)
+  }
 
   return {
     units: {
@@ -299,11 +474,12 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
 
       create(input: UnitInput): UnitDetail {
         const res = db
-          .prepare('INSERT INTO units (title, course, summary) VALUES (?, ?, ?)')
+          .prepare('INSERT INTO units (title, course, summary, term_id) VALUES (?, ?, ?, ?)')
           .run(
             v.reqStr(input?.title, 'Title', 200),
             v.optStr(input.course, 'Course', 200),
-            v.optStr(input.summary, 'Summary', MAX_TEXT)
+            v.optStr(input.summary, 'Summary', MAX_TEXT),
+            termOrNull(input.termId)
           )
         emit('planner.changed')
         return detail(Number(res.lastInsertRowid))
@@ -312,10 +488,13 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
       update(rawId: number, patch: Partial<UnitInput>): UnitDetail {
         const id = v.id(rawId)
         const cur = mustUnit(id)
-        db.prepare('UPDATE units SET title = ?, course = ?, summary = ? WHERE id = ?').run(
+        db.prepare(
+          'UPDATE units SET title = ?, course = ?, summary = ?, term_id = ? WHERE id = ?'
+        ).run(
           patch.title !== undefined ? v.reqStr(patch.title, 'Title', 200) : cur.title,
           patch.course !== undefined ? v.optStr(patch.course, 'Course', 200) : cur.course,
           patch.summary !== undefined ? v.optStr(patch.summary, 'Summary', MAX_TEXT) : cur.summary,
+          patch.termId !== undefined ? termOrNull(patch.termId) : cur.termId,
           id
         )
         emit('planner.changed')
@@ -418,6 +597,79 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
           unitTitle: r.unit_title,
           course: r.unit_course
         }))
+      },
+
+      /** A semester's units in the order they are taught (by first lesson date, undated last). */
+      roadmap(rawTermId: number | null): UnitDetail[] {
+        const termId = rawTermId === null ? null : v.id(rawTermId, 'Semester')
+        const rows = db
+          .prepare(
+            `SELECT u.*, (SELECT MIN(l.lesson_date) FROM lessons l WHERE l.unit_id = u.id) AS first_date
+             FROM units u WHERE u.term_id IS ?
+             ORDER BY COALESCE(first_date, '9999'), u.course COLLATE NOCASE, u.id`
+          )
+          .all(termId) as (UnitRow & { first_date: string | null })[]
+        if (rows.length === 0) return []
+        const marks = rows.map(() => '?').join(', ')
+        const lessons = withLinks(
+          db
+            .prepare(
+              `SELECT * FROM lessons WHERE unit_id IN (${marks}) ORDER BY unit_id, position, id`
+            )
+            .all(...rows.map((r) => r.id)) as LessonRow[]
+        )
+        return rows.map((r) => ({
+          ...toUnit(r),
+          lessons: lessons.filter((l) => l.unitId === r.id)
+        }))
+      },
+
+      /**
+       * Prep for every lesson, soonest lesson first (undated last), in the order the lesson lists
+       * it. Done tasks only when asked for, and then only the most recent few hundred.
+       */
+      todo(includeDone?: boolean): TodoItem[] {
+        const rows = db
+          .prepare(
+            `SELECT t.*, l.title AS lesson_title, l.lesson_date, l.position AS lesson_position,
+               u.id AS unit_id, u.title AS unit_title, u.course,
+               b.kind AS block_kind, b.title AS block_title
+             FROM lesson_tasks t
+               JOIN lessons l ON l.id = t.lesson_id
+               JOIN units u ON u.id = l.unit_id
+               LEFT JOIN lesson_blocks b ON b.id = t.block_id
+             WHERE t.done = 0
+             ORDER BY COALESCE(l.lesson_date, '9999'), u.course COLLATE NOCASE, u.id,
+               l.position, t.position, t.id`
+          )
+          .all() as TodoRow[]
+        const done =
+          includeDone === true
+            ? (db
+                .prepare(
+                  `SELECT t.*, l.title AS lesson_title, l.lesson_date, l.position AS lesson_position,
+                     u.id AS unit_id, u.title AS unit_title, u.course,
+                     b.kind AS block_kind, b.title AS block_title
+                   FROM lesson_tasks t
+                     JOIN lessons l ON l.id = t.lesson_id
+                     JOIN units u ON u.id = l.unit_id
+                     LEFT JOIN lesson_blocks b ON b.id = t.block_id
+                   WHERE t.done = 1
+                   ORDER BY COALESCE(l.lesson_date, '0000') DESC, t.id DESC
+                   LIMIT ?`
+                )
+                .all(DONE_LIMIT) as TodoRow[])
+            : []
+        return [...rows, ...done].map((r) => ({
+          ...toTask(r),
+          lessonTitle: r.lesson_title,
+          lessonDate: r.lesson_date,
+          unitId: r.unit_id,
+          unitTitle: r.unit_title,
+          course: r.course,
+          blockKind: r.block_kind,
+          blockTitle: r.block_title
+        }))
       }
     },
 
@@ -431,6 +683,7 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         const plan = v.optStr(input.plan, 'Plan', MAX_PLAN)
         const homework = v.optStr(input.homework, 'Homework', MAX_TEXT)
         const notes = v.optStr(input.notes, 'Notes', MAX_TEXT)
+        const classMinutes = minutesOrNull(input.classMinutes, 'Class length', 1)
         const count = (
           db.prepare('SELECT COUNT(*) AS n FROM lessons WHERE unit_id = ?').get(unitId) as {
             n: number
@@ -439,10 +692,11 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         if (count >= MAX_LESSONS) throw new v.ValidationError('That unit has too many lessons')
         const res = db
           .prepare(
-            `INSERT INTO lessons (unit_id, position, title, lesson_date, objectives, plan, homework, notes)
-             VALUES (?, (SELECT COALESCE(MAX(position), -1) + 1 FROM lessons WHERE unit_id = ?), ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO lessons (unit_id, position, title, lesson_date, objectives, plan, homework, notes,
+               class_minutes)
+             VALUES (?, (SELECT COALESCE(MAX(position), -1) + 1 FROM lessons WHERE unit_id = ?), ?, ?, ?, ?, ?, ?, ?)`
           )
-          .run(unitId, unitId, title, date, objectives, plan, homework, notes)
+          .run(unitId, unitId, title, date, objectives, plan, homework, notes, classMinutes)
         emit('planner.changed')
         return mustLesson(Number(res.lastInsertRowid))
       },
@@ -451,7 +705,8 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         const id = v.id(rawId)
         const cur = mustLesson(id)
         db.prepare(
-          `UPDATE lessons SET title = ?, lesson_date = ?, objectives = ?, plan = ?, homework = ?, notes = ?
+          `UPDATE lessons SET title = ?, lesson_date = ?, objectives = ?, plan = ?, homework = ?, notes = ?,
+             class_minutes = ?
            WHERE id = ?`
         ).run(
           patch.title !== undefined ? v.reqStr(patch.title, 'Title', 200) : cur.title,
@@ -464,6 +719,9 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
             ? v.optStr(patch.homework, 'Homework', MAX_TEXT)
             : cur.homework,
           patch.notes !== undefined ? v.optStr(patch.notes, 'Notes', MAX_TEXT) : cur.notes,
+          patch.classMinutes !== undefined
+            ? minutesOrNull(patch.classMinutes, 'Class length', 1)
+            : cur.classMinutes,
           id
         )
         emit('planner.changed')
@@ -626,6 +884,132 @@ export function plannerRepo(db: Db, emit: Emit, today: () => string = localToday
         db.prepare('DELETE FROM lesson_quizzes WHERE lesson_id = ? AND quiz_id = ?').run(id, quizId)
         emit('planner.changed')
         return mustLesson(id)
+      },
+
+      /** A new block, at the end or at a given place, with the prep its kind needs added as tasks. */
+      addBlock(rawId: number, input: BlockInput): Lesson {
+        const id = v.id(rawId)
+        mustLesson(id)
+        const kind = v.oneOf(input?.kind, BLOCK_KINDS, 'Kind')
+        const info = BLOCK_INFO[kind]
+        const title = input.title !== undefined ? v.optStr(input.title, 'Title', 200) : info.label
+        const minutes =
+          input.minutes !== undefined ? minutesOrNull(input.minutes, 'Minutes') : info.minutes
+        const details = v.optStr(input.details, 'Details', MAX_TEXT)
+        const count = countOf('lesson_blocks', id)
+        if (count >= MAX_BLOCKS) throw new v.ValidationError('That lesson has too many parts')
+        if (countOf('lesson_tasks', id) + info.tasks.length > MAX_TASKS) {
+          throw new v.ValidationError('That lesson has too many tasks')
+        }
+        let position = count
+        if (input.position !== undefined) {
+          const p = v.num(input.position, 'Position')
+          position = Number.isInteger(p) ? Math.min(p, count) : count
+        }
+        db.transaction(() => {
+          db.prepare(
+            'UPDATE lesson_blocks SET position = position + 1 WHERE lesson_id = ? AND position >= ?'
+          ).run(id, position)
+          const made = db
+            .prepare(
+              'INSERT INTO lesson_blocks (lesson_id, position, kind, title, minutes, details) VALUES (?, ?, ?, ?, ?, ?)'
+            )
+            .run(id, position, kind, title, minutes, details)
+          const blockId = Number(made.lastInsertRowid)
+          for (const text of info.tasks) appendTask(id, blockId, text)
+          renumberBlocks(id)
+        })()
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
+      updateBlock(
+        rawBlockId: number,
+        patch: Partial<Omit<BlockInput, 'kind' | 'position'>>
+      ): Lesson {
+        const cur = blockRow(v.id(rawBlockId))
+        db.prepare('UPDATE lesson_blocks SET title = ?, minutes = ?, details = ? WHERE id = ?').run(
+          patch?.title !== undefined ? v.optStr(patch.title, 'Title', 200) : cur.title,
+          patch?.minutes !== undefined ? minutesOrNull(patch.minutes, 'Minutes') : cur.minutes,
+          patch?.details !== undefined ? v.optStr(patch.details, 'Details', MAX_TEXT) : cur.details,
+          cur.id
+        )
+        emit('planner.changed')
+        return mustLesson(cur.lesson_id)
+      },
+
+      /** Its prep tasks go with it, done or not. */
+      deleteBlock(rawBlockId: number): Lesson {
+        const cur = blockRow(v.id(rawBlockId))
+        db.transaction(() => {
+          db.prepare('DELETE FROM lesson_blocks WHERE id = ?').run(cur.id)
+          renumberBlocks(cur.lesson_id)
+          renumberTasks(cur.lesson_id)
+        })()
+        emit('planner.changed')
+        return mustLesson(cur.lesson_id)
+      },
+
+      reorderBlocks(rawId: number, rawBlockIds: number[]): Lesson {
+        const id = v.id(rawId)
+        mustLesson(id)
+        if (!Array.isArray(rawBlockIds) || rawBlockIds.length > MAX_BLOCKS) {
+          throw new v.ValidationError('The new order must list each part of the lesson once')
+        }
+        const ids = rawBlockIds.map((x) => v.id(x, 'Block'))
+        const current = (
+          db.prepare('SELECT id FROM lesson_blocks WHERE lesson_id = ?').all(id) as { id: number }[]
+        ).map((r) => r.id)
+        if (
+          new Set(ids).size !== ids.length ||
+          ids.length !== current.length ||
+          !current.every((b) => ids.includes(b))
+        ) {
+          throw new v.ValidationError('The new order must list each part of the lesson once')
+        }
+        db.transaction(() => {
+          const set = db.prepare('UPDATE lesson_blocks SET position = ? WHERE id = ?')
+          ids.forEach((blockId, i) => set.run(i, blockId))
+        })()
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
+      /** A task of the teacher's own, not tied to a block. */
+      addTask(rawId: number, input: TaskInput): Lesson {
+        const id = v.id(rawId)
+        mustLesson(id)
+        const text = v.reqStr(input?.text, 'Task', 300)
+        if (countOf('lesson_tasks', id) >= MAX_TASKS) {
+          throw new v.ValidationError('That lesson has too many tasks')
+        }
+        appendTask(id, null, text, input.done === true)
+        emit('planner.changed')
+        return mustLesson(id)
+      },
+
+      updateTask(rawTaskId: number, patch: Partial<TaskInput>): Lesson {
+        const cur = taskRow(v.id(rawTaskId))
+        if (patch?.done !== undefined && typeof patch.done !== 'boolean') {
+          throw new v.ValidationError('Done must be true or false')
+        }
+        db.prepare('UPDATE lesson_tasks SET text = ?, done = ? WHERE id = ?').run(
+          patch?.text !== undefined ? v.reqStr(patch.text, 'Task', 300) : cur.text,
+          patch?.done !== undefined ? (patch.done ? 1 : 0) : cur.done,
+          cur.id
+        )
+        emit('planner.changed')
+        return mustLesson(cur.lesson_id)
+      },
+
+      deleteTask(rawTaskId: number): Lesson {
+        const cur = taskRow(v.id(rawTaskId))
+        db.transaction(() => {
+          db.prepare('DELETE FROM lesson_tasks WHERE id = ?').run(cur.id)
+          renumberTasks(cur.lesson_id)
+        })()
+        emit('planner.changed')
+        return mustLesson(cur.lesson_id)
       }
     }
   }

@@ -60,4 +60,9 @@ describe('sanitizeLayout', () => {
     const out = sanitizeLayout({ windows: [win({ snapped: 'top' })] }, known)!
     expect(out.windows[0].snapped).toBeNull()
   })
+  it('keeps a saved camera, clamping its zoom, and drops a broken one', () => {
+    const out = sanitizeLayout({ windows: [], camera: { x: 10, y: -20, zoom: 99 } }, known)!
+    expect(out.camera).toEqual({ x: 10, y: -20, zoom: 2 })
+    expect(sanitizeLayout({ windows: [], camera: { x: 'a' } }, known)!.camera).toBeUndefined()
+  })
 })

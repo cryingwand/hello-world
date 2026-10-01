@@ -232,6 +232,8 @@ export interface Unit {
   course: string
   /** Big ideas and goals for the unit. */
   summary: string
+  /** The semester (term) it is taught in, for the semester roadmap. */
+  termId: number | null
 }
 
 /** A quiz or exam a lesson uses. Only what is needed to name it; the questions stay in the Quizzes app. */
@@ -280,6 +282,48 @@ export interface Lesson {
   classes: LinkedClass[]
   /** Gradebook assignments for it. Each is in one of `classes`. */
   assignments: LinkedAssignment[]
+  /** How long the class meets, to measure the blocks against. */
+  classMinutes: number | null
+  /** What happens in class, in order. */
+  blocks: LessonBlock[]
+  /** Prep for it: added with each block, or by hand. */
+  tasks: LessonTask[]
+}
+
+/** One part of a lesson: a lecture, a discussion, a reading. */
+export interface LessonBlock {
+  id: number
+  lessonId: number
+  position: number
+  /** One of `BLOCK_KINDS`; anything else is shown as "other". */
+  kind: string
+  title: string
+  minutes: number | null
+  /** The teacher's notes for it. */
+  details: string
+}
+
+/** One thing to do before a lesson. */
+export interface LessonTask {
+  id: number
+  lessonId: number
+  /** The block it was added for, or null for one added by hand. */
+  blockId: number | null
+  position: number
+  text: string
+  done: boolean
+}
+
+/** A prep task in the to-do list, with what it is for. */
+export interface TodoItem extends LessonTask {
+  lessonTitle: string
+  /** The day it is due by. */
+  lessonDate: string | null
+  unitId: number
+  unitTitle: string
+  course: string
+  blockKind: string | null
+  blockTitle: string | null
 }
 
 export interface UnitDetail extends Unit {

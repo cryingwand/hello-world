@@ -3,12 +3,14 @@ import type { Lesson } from '@shared/models'
 import { useApiQuery } from '@renderer/data/hooks'
 import AttachedFiles from './AttachedFiles'
 import ClassLinks from './ClassLinks'
+import LessonBuilder from './LessonBuilder'
+import LessonTasks from './LessonTasks'
 import QuizLinks from './QuizLinks'
 import { useAutosave } from './useAutosave'
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
-/** One lesson: its fields save as you type, then its quizzes and files. */
+/** One lesson: its fields save as you type, its blocks and prep, then its quizzes and files. */
 export default function LessonEditor({
   lesson,
   unitId,
@@ -37,13 +39,17 @@ export default function LessonEditor({
       objectives: lesson.objectives,
       plan: lesson.plan,
       homework: lesson.homework,
-      notes: lesson.notes
+      notes: lesson.notes,
+      classMinutes: lesson.classMinutes === null ? '' : String(lesson.classMinutes)
     },
     (patch) => {
-      const { date, ...rest } = patch
+      const { date, classMinutes, ...rest } = patch
       return window.api.lessons.update(lesson.id, {
         ...rest,
-        ...(date !== undefined ? { date: date || null } : {})
+        ...(date !== undefined ? { date: date || null } : {}),
+        ...(classMinutes !== undefined
+          ? { classMinutes: classMinutes === '' ? null : Number(classMinutes) }
+          : {})
       })
     },
     (e) => onError(msg(e))
@@ -139,7 +145,22 @@ export default function LessonEditor({
             Date
             <input type="date" {...bind('date')} />
           </label>
+          <label>
+            Class length (min)
+            <input
+              type="number"
+              min={1}
+              max={600}
+              step={5}
+              placeholder="75"
+              {...bind('classMinutes')}
+            />
+          </label>
         </div>
+      </div>
+      <LessonBuilder lesson={lesson} onError={onError} />
+      <LessonTasks lesson={lesson} onError={onError} />
+      <div className="form">
         <label>
           Objectives (one per line)
           <textarea rows={3} {...bind('objectives')} />

@@ -311,3 +311,27 @@ Requested after the review. Decided with the teacher:
 | Names | Sent to main only for a Stage that is already showing, held in memory, dropped when it ends. Only the drawn name goes up from the picker, never the list |
 
 Not built: the seating chart on the Stage, and a timer sound on the projector's side (the laptop beeps).
+
+## Canvas desktop and lesson builder
+
+Requested: "I'd like it to look and feel more like a desktop experience. Think about an OS designed
+around/inspired by 'freeform' or one of those infinite canvases. I think I'd also like a lesson planning
+tool in the app that lets me build a lesson by adding different things from a panel, 'lecture' 'writing'
+'discussion' 'read' etc., so that I can build a roadmap for each session, unit, semester. This would
+generate a todo list for me as well."
+
+Decided while building it (to revisit with the teacher):
+
+| Topic | Decision |
+|---|---|
+| Canvas | Each window's desktop (launcher and Vault) is an endless, dotted canvas. Drag empty space or two-finger scroll to pan, pinch or ⌘-scroll to zoom (20% to 200%), a map and zoom buttons in the corner, Fit (or double-click) frames every window. Windows are cards on it; new ones open beside the others and the view pans to them. Maximize and snap stay, pinned to the screen. The view is saved with the layout |
+| Sticky notes, text or drawing on the canvas | Not built: anything typed on the launcher's canvas would be a new place for student data outside the Vault |
+| Where the builder lives | In the existing Lesson Planner (Vault), not a second planner: a lesson is built from blocks, a unit is its lessons, a semester is a term's units |
+| Blocks | Lecture, discussion, writing, reading, group work, activity, video, quiz or check, presentations, review, break, other. Each has a usual length and its prep; title, length and notes can be changed |
+| Session roadmap | The blocks in order with start times, measured against the class length |
+| Semester | A unit can be put in a term; the Semester tab shows each unit as a lane of lesson cards with their blocks, and the time by kind across the term |
+| To-do list | Made from the blocks' prep (plus tasks added by hand), due on the lesson's day, in a To-do tab: overdue, today, next 7 days, later, no date. Copies start with every task to do |
+| PowerPoint | An Agenda slide per lesson from its blocks (names and lengths only) |
+
+Not built: templates of whole sessions, a week or calendar view, reminders or notifications for tasks,
+tasks with their own due dates, and a to-do list outside the Vault.

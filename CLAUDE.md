@@ -17,7 +17,7 @@ src/main/        Electron main process: DB, IPC, vault, stage, file guard, macOS
 src/preload/     contextBridge that exposes `window.api`, built from the caller's role
 src/shared/      Types and pure logic used by both sides (IPC contract, access map, grade math, stage)
 src/renderer/src/
-  shell/         Top bar, dock, window manager (launcher and vault windows)
+  shell/         Top bar, dock, canvas desktop and window manager (launcher and vault windows)
   vault/         Lock screen, first-run passcode, vault settings
   stage/         The projector window
   apps/<id>/     One folder per app module (manifest.ts + component)
@@ -59,6 +59,19 @@ call if it cannot. `access.test.ts` fails if a `delete*`/`commit*` method is not
 Main broadcasts change events through `CHANGE_AUDIENCE` (`src/shared/events.ts`): vault data events go to
 vault windows only. Give every new event an audience.
 
+## The canvas desktop
+
+Each window's desktop is an endless canvas (`src/renderer/src/shell/`). A free window's `x`/`y` are canvas
+coordinates and the camera (`WmState.camera`: the canvas point at the desktop's top-left, and a zoom
+between `MIN_ZOOM` and `MAX_ZOOM`) decides where it is drawn; `placement()` turns one into the other, and a
+zoomed window is the same layout box scaled with a CSS transform, so apps never see the zoom. Maximized
+and snapped windows are pinned to the screen and ignore the camera. All of it is pure reducer logic in
+`windowManager.ts` (tested in `tests/renderer/windowManager.test.ts`); pointer code divides screen
+distances by the zoom. New windows open beside the others and the camera pans to them (`reveal`).
+`.desktop` uses `overflow: clip` so a focused field or `scrollIntoView` inside a window can never scroll the
+canvas. Anything an app shows with `position: fixed` must be portaled to `<body>` (as `Modal` is), since a
+scaled window would otherwise contain it.
+
 ## App module contract
 
 Every app lives in `src/renderer/src/apps/<id>/` and exports a manifest from `manifest.ts`:
@@ -77,7 +90,8 @@ in-process React modules, not iframes, and talk to data only through `window.api
   below). `vault.sqlite` (in `vault/`) holds terms,
   classes, students, enrollments, categories, assignments, scores, file links and the advising tables
   (`advising_meetings`, `goals`, `action_items`, `external_progress`) and the quiz tables (`questions`,
-  `quizzes`, `quiz_items`) and the planner tables (`units`, `lessons`, `lesson_quizzes`). **A new table goes in
+  `quizzes`, `quiz_items`) and the planner tables (`units`, `lessons`, `lesson_quizzes`, `lesson_blocks`,
+  `lesson_tasks`). **A new table goes in
   the vault** unless there is a deliberate decision that it is safe to show anywhere.
 - **The public roster copy** is a deliberate exception to "student data stays in the vault": `roster_classes`
   and `roster_members` (public migration 2) hold each class's label and its students' names, so the
@@ -123,7 +137,7 @@ that app**, and update it in the same commit:
 
 - Advising: [`docs/features/advising.md`](docs/features/advising.md)
 - Quizzes & Exams: [`docs/features/quizzes.md`](docs/features/quizzes.md)
-- Lesson & Unit Planner: [`docs/features/planner.md`](docs/features/planner.md)
+- Lesson & Unit Planner (with the lesson builder and to-do list): [`docs/features/planner.md`](docs/features/planner.md)
 - In-class Tools: [`docs/features/in-class-tools.md`](docs/features/in-class-tools.md)
 
 Write a new note in `docs/features/` for a new app, and link it here.

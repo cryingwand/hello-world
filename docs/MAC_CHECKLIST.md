@@ -7,6 +7,14 @@ expected, what happened, and what you did just before, and give that to Claude C
 
 Use your real setup (the installed app, your own folders) but it is fine to use a fake class.
 
+## The canvas desktop
+
+- [ ] Two-finger scroll on empty canvas moves around it; inside a window it scrolls the window.
+- [ ] Pinch on the trackpad zooms the canvas around the pointer, and the page itself does not zoom.
+- [ ] Dragging empty canvas moves it; dragging a title bar moves the window, at any zoom.
+- [ ] Zoomed out to about 50%, text in a window is still readable and clicks land where you point.
+- [ ] Open a PDF in Files while zoomed out. It shows, and scrolls, inside the window.
+
 ## Files and search
 
 - [ ] Search for a file name you know. Results in your teaching folders come first.
@@ -54,6 +62,11 @@ Use your real setup (the installed app, your own folders) but it is fine to use 
 - [ ] In the Vault, delete a test student, then restore the backup from just before (Settings, Restore
       the Vault). The Vault closes; reopen it and the student is back.
 - [ ] Quit and reopen the app. Your windows, data and settings are as you left them.
+
+## Lesson builder
+
+- [ ] Drag a block from the panel into the middle of a lesson, and drag a block to a new place.
+- [ ] Each block's prep shows in the To-do tab; ticking it there ticks it in the lesson.
 
 ## In-class Tools
 

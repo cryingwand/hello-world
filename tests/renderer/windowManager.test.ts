@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  clampRect,
+  MAX_ZOOM,
+  MIN_ZOOM,
   effectiveRect,
   focusedId,
   initialState,
+  placement,
+  viewport,
   wmReducer,
   type WmAction,
   type WmState
@@ -31,11 +34,17 @@ describe('window manager', () => {
     expect(focusedId(s)).toBe(id)
   })
 
-  it('cascades new windows so they do not stack exactly', () => {
+  it('puts a new window beside the others, not on top of them, and pans to it', () => {
     let s = open(initialState(desktop), 'a')
     s = open(s, 'b')
-    expect(s.windows[1].x).not.toBe(s.windows[0].x)
-    expect(s.windows[1].y).not.toBe(s.windows[0].y)
+    s = open(s, 'c')
+    const [a, b, c] = s.windows
+    expect(b.x).toBeGreaterThanOrEqual(a.x + a.w)
+    expect(c.x).toBeGreaterThanOrEqual(b.x + b.w)
+    expect(b.y).toBe(a.y)
+    const view = viewport(s)
+    expect(c.x).toBeGreaterThanOrEqual(view.x)
+    expect(c.x + c.w).toBeLessThanOrEqual(view.x + view.w)
   })
 
   it('focus raises a window above the others', () => {
@@ -61,17 +70,13 @@ describe('window manager', () => {
     expect(s.windows).toHaveLength(0)
   })
 
-  it('moves within bounds and keeps the title bar reachable', () => {
+  it('moves freely on the canvas, even off screen', () => {
     let s = open(initialState(desktop), 'a')
     const id = s.windows[0].id
     s = wmReducer(s, { type: 'move', id, x: 100, y: 120 })
     expect(s.windows[0]).toMatchObject({ x: 100, y: 120 })
     s = wmReducer(s, { type: 'move', id, x: 5000, y: -400 })
-    expect(s.windows[0].x).toBeLessThanOrEqual(desktop.w - 120)
-    expect(s.windows[0].y).toBe(0)
-    s = wmReducer(s, { type: 'move', id, x: -5000, y: 9000 })
-    expect(s.windows[0].x).toBe(0)
-    expect(s.windows[0].y).toBeLessThanOrEqual(desktop.h - 32)
+    expect(s.windows[0]).toMatchObject({ x: 5000, y: -400 })
   })
 
   it('resizes but never below the minimum size', () => {
@@ -137,37 +142,36 @@ describe('window manager', () => {
     expect(s.windows[0].x).toBe(x)
   })
 
-  it('fits windows entirely inside the desktop when it shrinks', () => {
+  it('leaves windows where they are on the canvas when the desktop changes size', () => {
     let s = open(initialState(desktop), 'a')
     s = wmReducer(s, { type: 'move', id: s.windows[0].id, x: 500, y: 250 })
     s = wmReducer(s, { type: 'setDesktop', desktop: { w: 500, h: 300 } })
-    const w = s.windows[0]
-    expect(w.w).toBeLessThanOrEqual(500)
-    expect(w.h).toBeLessThanOrEqual(300)
-    expect(w.x).toBeGreaterThanOrEqual(0)
-    expect(w.y).toBeGreaterThanOrEqual(0)
-    expect(w.x + w.w).toBeLessThanOrEqual(500)
-    expect(w.y + w.h).toBeLessThanOrEqual(300)
+    expect(s.windows[0]).toMatchObject({ x: 500, y: 250, w: 600, h: 400 })
+    expect(s.desktop).toEqual({ w: 500, h: 300 })
   })
 
-  it('a window that already fits is left where it is when the desktop changes', () => {
-    let s = open(initialState(desktop), 'a')
-    s = wmReducer(s, { type: 'move', id: s.windows[0].id, x: 100, y: 80 })
-    s = wmReducer(s, { type: 'setDesktop', desktop: { w: 1600, h: 900 } })
-    expect(s.windows[0]).toMatchObject({ x: 100, y: 80, w: 600, h: 400 })
-  })
-
-  it('restored layouts are fitted to the current desktop', () => {
+  it('restores a saved layout where it was, with its camera', () => {
     let s = open(initialState(desktop), 'a')
     const saved = { ...s.windows[0], x: 1100, y: 600, w: 1000, h: 650 }
     s = wmReducer(initialState({ w: 800, h: 500 }), {
       type: 'hydrate',
       windows: [saved],
       nextZ: 5,
-      nextId: 5
+      nextId: 5,
+      camera: { x: 900, y: 400, zoom: 0.5 }
     })
-    expect(s.windows[0].x + s.windows[0].w).toBeLessThanOrEqual(800)
-    expect(s.windows[0].y + s.windows[0].h).toBeLessThanOrEqual(500)
+    expect(s.windows[0]).toMatchObject({ x: 1100, y: 600 })
+    expect(s.camera).toEqual({ x: 900, y: 400, zoom: 0.5 })
+  })
+
+  it('starts a layout saved before the canvas at the old screen origin', () => {
+    const s = wmReducer(initialState(desktop), {
+      type: 'hydrate',
+      windows: [],
+      nextZ: 1,
+      nextId: 1
+    })
+    expect(s.camera).toEqual({ x: 0, y: 0, zoom: 1 })
   })
 
   it('routes an intent into the window and bumps the nonce even for an identical intent', () => {
@@ -177,10 +181,101 @@ describe('window manager', () => {
     s = open(s, 'a', { intent })
     expect(s.windows[0].intentNonce).toBe(2)
   })
+})
 
-  it('clampRect never returns a window larger than the desktop', () => {
-    const r = clampRect({ x: 0, y: 0, w: 5000, h: 5000 }, desktop)
-    expect(r.w).toBe(desktop.w)
-    expect(r.h).toBe(desktop.h)
+describe('the canvas camera', () => {
+  it('opens a new window in the middle of what is on screen', () => {
+    let s = initialState(desktop)
+    s = wmReducer(s, { type: 'pan', dx: -3000, dy: -2000 })
+    s = open(s, 'a')
+    const win = s.windows[0]
+    const view = viewport(s)
+    expect(win.x).toBe(view.x + (view.w - win.w) / 2)
+    expect(win.y).toBe(view.y + (view.h - win.h) / 2)
+  })
+
+  it('pans by a screen distance, which is more canvas when zoomed out', () => {
+    let s = wmReducer(initialState(desktop), { type: 'pan', dx: -100, dy: 50 })
+    expect(s.camera).toMatchObject({ x: 100, y: -50 })
+    s = wmReducer(s, { type: 'zoom', zoom: 0.5, anchor: { x: 0, y: 0 } })
+    s = wmReducer(s, { type: 'pan', dx: -100, dy: 0 })
+    expect(s.camera.x).toBe(300)
+  })
+
+  it('zooms around the anchor, keeping the point under it still', () => {
+    let s = open(initialState(desktop), 'a')
+    const anchor = { x: 300, y: 200 }
+    const before = { x: s.camera.x + anchor.x / s.camera.zoom, y: s.camera.y + anchor.y }
+    s = wmReducer(s, { type: 'zoom', zoom: 1.5, anchor })
+    expect(s.camera.x + anchor.x / s.camera.zoom).toBeCloseTo(before.x)
+    expect(s.camera.y + anchor.y / s.camera.zoom).toBeCloseTo(before.y)
+  })
+
+  it('keeps the zoom within its limits', () => {
+    let s = wmReducer(initialState(desktop), { type: 'zoom', zoom: 50 })
+    expect(s.camera.zoom).toBe(MAX_ZOOM)
+    s = wmReducer(s, { type: 'zoom', zoom: 0.001 })
+    expect(s.camera.zoom).toBe(MIN_ZOOM)
+    s = wmReducer(s, { type: 'zoom', zoom: Number.NaN })
+    expect(s.camera.zoom).toBe(1)
+  })
+
+  it('draws a free window through the camera and a pinned one on the screen', () => {
+    let s = open(initialState(desktop), 'a')
+    const id = s.windows[0].id
+    s = wmReducer(s, { type: 'move', id, x: 200, y: 100 })
+    s = wmReducer(s, { type: 'setCamera', camera: { x: 100, y: 50, zoom: 0.5 } })
+    expect(placement(s.windows[0], s)).toEqual({ x: 50, y: 25, w: 600, h: 400, scale: 0.5 })
+    s = wmReducer(s, { type: 'toggleMaximize', id })
+    expect(placement(s.windows[0], s)).toEqual({ x: 0, y: 0, ...desktop, scale: 1 })
+  })
+
+  it('frames every window, never zooming in past 100%', () => {
+    let s = open(open(initialState(desktop), 'a'), 'b')
+    const [a, b] = s.windows.map((w) => w.id)
+    s = wmReducer(s, { type: 'move', id: a, x: -2000, y: 0 })
+    s = wmReducer(s, { type: 'move', id: b, x: 2000, y: 1500 })
+    s = wmReducer(s, { type: 'fitAll' })
+    const view = viewport(s)
+    for (const w of s.windows) {
+      expect(w.x).toBeGreaterThanOrEqual(view.x)
+      expect(w.y).toBeGreaterThanOrEqual(view.y)
+      expect(w.x + w.w).toBeLessThanOrEqual(view.x + view.w)
+      expect(w.y + w.h).toBeLessThanOrEqual(view.y + view.h)
+    }
+    expect(s.camera.zoom).toBeLessThan(1)
+
+    let one = open(initialState(desktop), 'a')
+    one = wmReducer(one, { type: 'fitAll' })
+    expect(one.camera.zoom).toBe(1)
+  })
+
+  it('brings an off-screen window into view when its app is opened again', () => {
+    let s = open(initialState(desktop), 'a')
+    const id = s.windows[0].id
+    s = wmReducer(s, { type: 'move', id, x: 8000, y: 6000 })
+    s = open(s, 'a')
+    const view = viewport(s)
+    const w = s.windows[0]
+    expect(w.x).toBeGreaterThanOrEqual(view.x)
+    expect(w.x + w.w).toBeLessThanOrEqual(view.x + view.w)
+    expect(w.y).toBeGreaterThanOrEqual(view.y)
+  })
+
+  it('does not move the camera for a window already in view', () => {
+    let s = open(initialState(desktop), 'a')
+    const camera = s.camera
+    s = open(s, 'a')
+    expect(s.camera).toBe(camera)
+  })
+
+  it('un-snaps under the pointer while zoomed out', () => {
+    let s = open(initialState(desktop), 'a')
+    const id = s.windows[0].id
+    s = wmReducer(s, { type: 'setCamera', camera: { x: 1000, y: 0, zoom: 0.5 } })
+    s = wmReducer(s, { type: 'snap', id, side: 'left' })
+    s = wmReducer(s, { type: 'unsnap', id, pointer: { x: 100, y: 16 } })
+    // 100px on screen at 50% is 200 canvas units past the camera.
+    expect(s.windows[0].x + s.windows[0].w / 2).toBe(1200)
   })
 })

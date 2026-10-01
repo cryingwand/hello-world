@@ -1,6 +1,6 @@
 // Launches the built app and drives it the way a person would, to catch what unit tests cannot: the
-// main process wiring, the windows, the preload bridge, every app's first render, the Vault and its
-// backups, and the Stage with the In-class Tools on it.
+// main process wiring, the windows, the preload bridge, every app's first render, the canvas desktop,
+// the Vault and its backups, the lesson builder, and the Stage with the In-class Tools on it.
 //
 //   npx electron-vite build && node scripts/smoke.mjs
 //
@@ -100,6 +100,22 @@ try {
   for (const name of LAUNCHER_APPS) await openApp(launcher, name)
   await launcher.screenshot({ path: join(shots, '01-launcher.png') })
 
+  log('the desktop canvas zooms out, frames every window and back to 100%')
+  const zoomLabel = launcher.getByRole('button', { name: 'Actual size' })
+  await launcher.getByRole('button', { name: 'Zoom out' }).click()
+  check((await zoomLabel.innerText()) === '80%', `zoomed to ${await zoomLabel.innerText()}`)
+  await launcher.getByRole('button', { name: 'Show all windows' }).click()
+  const framed = await launcher.evaluate(() => {
+    const desk = document.querySelector('.desktop').getBoundingClientRect()
+    return [...document.querySelectorAll('.window')].every((w) => {
+      const r = w.getBoundingClientRect()
+      return r.left >= desk.left - 1 && r.right <= desk.right + 1 && r.top >= desk.top - 1
+    })
+  })
+  check(framed, 'Fit left a window off screen')
+  await zoomLabel.click()
+  check((await zoomLabel.innerText()) === '100%', 'did not go back to 100%')
+
   log('the Vault opens and a passcode is chosen')
   const openVault = async () => {
     const [win] = await Promise.all([
@@ -119,6 +135,32 @@ try {
   log('each Vault app opens')
   for (const name of VAULT_APPS) await openApp(vault, name)
   await vault.screenshot({ path: join(shots, '02-vault.png') })
+
+  log('a lesson built from blocks fills the to-do list')
+  await vault.evaluate(async () => {
+    const unit = await window.api.units.create({ title: 'Smoke unit', course: 'SMOKE 101' })
+    await window.api.lessons.create({ unitId: unit.id, title: 'Smoke lesson', classMinutes: 50 })
+  })
+  // Already open: the dock brings it to the front and into view.
+  await vault
+    .getByRole('navigation', { name: 'Apps' })
+    .getByRole('button', { name: 'Lesson Planner', exact: true })
+    .click()
+  const planner = vault.locator('.window[data-app=planner]')
+  await planner.locator('.titlebar').dblclick() // maximized, so nothing is off the edge of the canvas
+  await planner.locator('.side-item', { hasText: 'Smoke unit' }).click()
+  await planner.locator('.pl-open', { hasText: 'Smoke lesson' }).click()
+  await planner.getByRole('button', { name: /^Lecture/ }).click()
+  await planner.getByRole('button', { name: /^Reading/ }).click()
+  await planner.locator('.block-card').nth(1).waitFor()
+  await planner.getByRole('tab', { name: 'To-do' }).click()
+  await planner.getByText('Choose the reading').waitFor()
+  check(
+    (await planner.locator('.todo .task-row').count()) === 3,
+    'the to-do list does not hold the prep for a lecture and a reading'
+  )
+  await vault.screenshot({ path: join(shots, '02-planner-todo.png') })
+  await planner.getByRole('tab', { name: 'Units' }).click()
 
   log('a class made in the Vault reaches the everyday roster copy, names only')
   const classId = await vault.evaluate(async () => {

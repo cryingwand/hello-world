@@ -100,6 +100,8 @@ export const API_ACCESS = {
     duplicate: VAULT,
     reorder: VAULT,
     upcoming: VAULT,
+    roadmap: VAULT,
+    todo: VAULT,
     exportPowerPoint: VAULT
   },
   lessons: {
@@ -113,7 +115,14 @@ export const API_ACCESS = {
     linkClass: VAULT,
     unlinkClass: VAULT,
     linkAssignment: VAULT,
-    unlinkAssignment: VAULT
+    unlinkAssignment: VAULT,
+    addBlock: VAULT,
+    updateBlock: VAULT,
+    deleteBlock: VAULT_DESTRUCTIVE,
+    reorderBlocks: VAULT,
+    addTask: VAULT,
+    updateTask: VAULT,
+    deleteTask: VAULT_DESTRUCTIVE
   },
   grading: {
     categories: VAULT,

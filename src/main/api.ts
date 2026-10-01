@@ -134,6 +134,8 @@ export function createApi(deps: ApiDeps): ApiContract {
       duplicate: (id, options) => repos().units.duplicate(id, options),
       reorder: (id, lessonIds) => repos().units.reorder(id, lessonIds),
       upcoming: () => repos().units.upcoming(),
+      roadmap: (termId) => repos().units.roadmap(termId),
+      todo: (includeDone) => repos().units.todo(includeDone),
       exportPowerPoint: (id, lessonId) => lessons().exportPowerPoint(id, lessonId)
     },
     lessons: {
@@ -147,7 +149,14 @@ export function createApi(deps: ApiDeps): ApiContract {
       linkClass: (id, classId) => repos().lessons.linkClass(id, classId),
       unlinkClass: (id, classId) => repos().lessons.unlinkClass(id, classId),
       linkAssignment: (id, assignmentId) => repos().lessons.linkAssignment(id, assignmentId),
-      unlinkAssignment: (id, assignmentId) => repos().lessons.unlinkAssignment(id, assignmentId)
+      unlinkAssignment: (id, assignmentId) => repos().lessons.unlinkAssignment(id, assignmentId),
+      addBlock: (id, input) => repos().lessons.addBlock(id, input),
+      updateBlock: (blockId, patch) => repos().lessons.updateBlock(blockId, patch),
+      deleteBlock: (blockId) => repos().lessons.deleteBlock(blockId),
+      reorderBlocks: (id, blockIds) => repos().lessons.reorderBlocks(id, blockIds),
+      addTask: (id, input) => repos().lessons.addTask(id, input),
+      updateTask: (taskId, patch) => repos().lessons.updateTask(taskId, patch),
+      deleteTask: (taskId) => repos().lessons.deleteTask(taskId)
     },
     grading: {
       categories: (classId) => repos().grading.categories(classId),

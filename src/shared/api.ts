@@ -51,6 +51,7 @@ import type {
   Student,
   Term,
   Lesson,
+  TodoItem,
   UnitDetail,
   UnitSummary,
   UpcomingLesson
@@ -192,6 +193,8 @@ export interface UnitInput {
   title: string
   course?: string
   summary?: string
+  /** The semester it is taught in. */
+  termId?: number | null
 }
 
 export interface LessonInput {
@@ -206,6 +209,25 @@ export interface LessonInput {
   homework?: string
   /** Teacher only: speaker notes in the PowerPoint. */
   notes?: string
+  /** How long the class meets. */
+  classMinutes?: number | null
+}
+
+export interface BlockInput {
+  /** One of `BLOCK_KINDS`. */
+  kind: string
+  /** Defaults to the kind's name. */
+  title?: string
+  /** Defaults to the kind's usual length. */
+  minutes?: number | null
+  details?: string
+  /** 0-based place among the lesson's blocks; the end if not given. */
+  position?: number
+}
+
+export interface TaskInput {
+  text: string
+  done?: boolean
 }
 
 export interface UnitCopyInput {
@@ -346,6 +368,10 @@ export interface ApiContract {
     reorder(id: number, lessonIds: number[]): UnitDetail
     /** Lessons dated today or later, soonest first. */
     upcoming(): UpcomingLesson[]
+    /** Every unit in a semester (or with none, for null), in the order they are taught, with their lessons. */
+    roadmap(termId: number | null): UnitDetail[]
+    /** Prep tasks still to do, soonest lesson first, and the done ones too if asked. */
+    todo(includeDone?: boolean): TodoItem[]
     /**
      * Asks where to save, then writes a PowerPoint for the unit, or for one of its lessons. Only quiz
      * titles go in it, never questions. Null if cancelled.
@@ -371,6 +397,16 @@ export interface ApiContract {
     /** The assignment's class must already be linked to the lesson. */
     linkAssignment(id: number, assignmentId: number): Lesson
     unlinkAssignment(id: number, assignmentId: number): Lesson
+    /** Adds a block, and the prep it needs to the to-do list. */
+    addBlock(id: number, input: BlockInput): Lesson
+    updateBlock(blockId: number, patch: Patch<Omit<BlockInput, 'kind' | 'position'>>): Lesson
+    /** Its prep tasks go with it. */
+    deleteBlock(blockId: number): Lesson
+    /** Every block in the lesson, in the new order. */
+    reorderBlocks(id: number, blockIds: number[]): Lesson
+    addTask(id: number, input: TaskInput): Lesson
+    updateTask(taskId: number, patch: Patch<TaskInput>): Lesson
+    deleteTask(taskId: number): Lesson
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -573,6 +609,8 @@ export const API_METHODS = {
     'duplicate',
     'reorder',
     'upcoming',
+    'roadmap',
+    'todo',
     'exportPowerPoint'
   ],
   lessons: [
@@ -586,7 +624,14 @@ export const API_METHODS = {
     'linkClass',
     'unlinkClass',
     'linkAssignment',
-    'unlinkAssignment'
+    'unlinkAssignment',
+    'addBlock',
+    'updateBlock',
+    'deleteBlock',
+    'reorderBlocks',
+    'addTask',
+    'updateTask',
+    'deleteTask'
   ],
   grading: [
     'categories',

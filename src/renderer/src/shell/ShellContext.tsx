@@ -137,11 +137,20 @@ export function ShellProvider({
   // Persist the layout; debounced so dragging doesn't write on every pointer move.
   useEffect(() => {
     const t = setTimeout(
-      () => saveLayout({ windows: state.windows, nextZ: state.nextZ, nextId: state.nextId }, space),
+      () =>
+        saveLayout(
+          {
+            windows: state.windows,
+            nextZ: state.nextZ,
+            nextId: state.nextId,
+            camera: state.camera
+          },
+          space
+        ),
       250
     )
     return () => clearTimeout(t)
-  }, [state.windows, state.nextZ, state.nextId, space])
+  }, [state.windows, state.nextZ, state.nextId, state.camera, space])
 
   const openApp = useCallback(
     (appId: string) => {
