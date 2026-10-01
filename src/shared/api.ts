@@ -9,6 +9,7 @@ import type {
   TableView,
   TextFile
 } from './files'
+import type { QuizVersion } from './quiz'
 import type { StageState, StageView } from './stage'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
@@ -268,6 +269,8 @@ export interface ApiContract {
     assignments(id: number): Assignment[]
     /** Creates the assignment in a class, worth the quiz's total points. One per class. */
     createAssignment(input: QuizAssignmentInput): Assignment
+    /** Asks where to save, then writes a Word copy: for students, or the answer key. Null if cancelled. */
+    exportWord(id: number, version: QuizVersion): Awaitable<{ path: string } | null>
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -435,7 +438,8 @@ export const API_METHODS = {
     'reorder',
     'setPoints',
     'assignments',
-    'createAssignment'
+    'createAssignment',
+    'exportWord'
   ],
   grading: [
     'categories',

@@ -37,12 +37,14 @@ import { createFileGuard, createProtectedPaths } from './protected'
 import { createProtectionService } from './protectionService'
 import { createRoleRegistry } from './roles'
 import { countExternalDisplays, createStageService } from './stage'
+import { createQuizService } from './quizService'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
 import {
   appVersion,
   chooseFolderDialog,
   pickAnyFile,
+  pickSaveDocxFile,
   pickSaveTableFile,
   pickTableFile
 } from './system'
@@ -130,6 +132,7 @@ interface VaultSession {
   repos: ReturnType<typeof createVaultRepositories>
   roster: ReturnType<typeof createRosterService>
   scores: ReturnType<typeof createScoreService>
+  quizzes: ReturnType<typeof createQuizService>
 }
 
 void app.whenReady().then(() => {
@@ -169,7 +172,8 @@ void app.whenReady().then(() => {
         pickSaveFile: pickSaveTableFile
       })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: pickSaveTableFile })
-      return { repos, roster, scores }
+      const quizzes = createQuizService(repos, { pickSaveFile: pickSaveDocxFile })
+      return { repos, roster, scores, quizzes }
     },
     // A database from before the vault existed is moved in the first time the vault opens.
     afterOpen: (vdb) => void importLegacyData(db, vdb, { backupDir }),
@@ -371,7 +375,8 @@ void app.whenReady().then(() => {
       vault: {
         repos: () => manager.session().repos,
         roster: () => manager.session().roster,
-        scores: () => manager.session().scores
+        scores: () => manager.session().scores,
+        quizzes: () => manager.session().quizzes
       },
       publicRepos,
       protection,

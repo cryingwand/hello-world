@@ -76,7 +76,8 @@ export const API_ACCESS = {
     reorder: VAULT,
     setPoints: VAULT,
     assignments: VAULT,
-    createAssignment: VAULT
+    createAssignment: VAULT,
+    exportWord: VAULT
   },
   grading: {
     categories: VAULT,

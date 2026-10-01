@@ -98,3 +98,7 @@ export function partsOf<T extends { kind: QuestionKind }>(
   }
   return parts
 }
+
+/** The Word copy a quiz is exported as: what students get, or the same exam with the answers marked. */
+export const QUIZ_VERSIONS = ['student', 'key'] as const
+export type QuizVersion = (typeof QUIZ_VERSIONS)[number]
