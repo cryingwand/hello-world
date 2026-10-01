@@ -171,6 +171,15 @@ export function gradingRepo(db: Db, emit: Emit) {
         .all(v.id(rawClassId, 'classId')) as AssignmentRow[]
       return rows.map(toAssignment)
     },
+    /** Assignments another app created, for example the ones a quiz was sent to the Gradebook as. */
+    assignmentsFromSource(sourceApp: string, sourceId: string): Assignment[] {
+      const rows = db
+        .prepare(
+          'SELECT * FROM assignments WHERE source_app = ? AND source_id = ? ORDER BY class_id, id'
+        )
+        .all(sourceApp, sourceId) as AssignmentRow[]
+      return rows.map(toAssignment)
+    },
     createAssignment(input: AssignmentInput): Assignment {
       const classId = v.id(input?.classId, 'classId')
       classExists(classId)

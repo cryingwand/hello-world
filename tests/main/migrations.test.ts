@@ -31,7 +31,8 @@ const V1_TABLES = [
   'terms'
 ]
 const ADVISING_TABLES = ['action_items', 'advising_meetings', 'external_progress', 'goals']
-const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES].sort()
+const QUIZ_TABLES = ['questions', 'quiz_items', 'quizzes']
+const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES].sort()
 
 describe('migrations', () => {
   it('build a public database that holds settings and nothing about students', () => {
@@ -108,6 +109,21 @@ describe('migrations', () => {
     migrate(db, VAULT_MIGRATIONS)
     expect(tables(db)).toEqual(VAULT_TABLES)
     expect(db.prepare('SELECT first_name FROM students').get()).toEqual({ first_name: 'Ada' })
+  })
+
+  it('add the quiz tables to a version 2 vault without touching its data', () => {
+    const db = new Database(':memory:')
+    migrate(db, VAULT_MIGRATIONS.slice(0, 2))
+    db.prepare("INSERT INTO students (first_name) VALUES ('Ada')").run()
+    expect(tables(db)).toEqual([...V1_TABLES, ...ADVISING_TABLES].sort())
+    migrate(db, VAULT_MIGRATIONS)
+    expect(tables(db)).toEqual(VAULT_TABLES)
+    expect(db.prepare('SELECT first_name FROM students').get()).toEqual({ first_name: 'Ada' })
+  })
+
+  it('keep the question bank and quizzes out of the public database', () => {
+    const pub = openPublicDatabase(':memory:')
+    for (const table of QUIZ_TABLES) expect(tables(pub)).not.toContain(table)
   })
 
   it('enable foreign keys on connections opened by the app', () => {

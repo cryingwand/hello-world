@@ -64,6 +64,21 @@ export const API_ACCESS = {
     updateProgress: VAULT,
     deleteProgress: VAULT
   },
+  questions: { list: VAULT, get: VAULT, create: VAULT, update: VAULT, delete: VAULT },
+  quizzes: {
+    list: VAULT,
+    get: VAULT,
+    create: VAULT,
+    update: VAULT,
+    delete: VAULT,
+    addQuestions: VAULT,
+    removeQuestion: VAULT,
+    reorder: VAULT,
+    setPoints: VAULT,
+    assignments: VAULT,
+    createAssignment: VAULT,
+    exportWord: VAULT
+  },
   grading: {
     categories: VAULT,
     createCategory: VAULT,

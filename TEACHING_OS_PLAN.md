@@ -183,3 +183,16 @@ follow-ups, goals and outside grades beside this meeting's autosaved notes), a c
 Not built: Excel/CSV import of outside grades (still in the Phase 1 decisions table), Word export of a
 meeting summary, and the other later phases (Quiz & Exam Builder, Lesson Planner, In-class Tools, legacy
 rebuilds).
+
+## Phase 3: Quiz & Exam Builder
+
+Phase 3 is the next item on the "later phases" list: the **Quiz & Exam Builder**. Built as a vault app, since
+exams are what the Vault protects. Included: a question bank (multiple choice, true/false, short answer,
+essay; tags, search, a model answer), quizzes and exams assembled from it in order with per-quiz points, Word
+export in the house style (a student copy and an answer key), and **Add to Gradebook**, which creates an
+assignment in a class worth the quiz's total points. Tables `questions`, `quizzes` and `quiz_items` are vault
+migration 3; the Gradebook link is the assignment's `source_app`/`source_id`. No new intent.
+
+Not built: shuffled versions (A/B order), importing questions from a Word file, a link from a Gradebook
+assignment back to its quiz, recording per-question results, and the other later phases (Lesson Planner,
+In-class Tools, legacy rebuilds).

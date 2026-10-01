@@ -24,7 +24,15 @@ export function buildRegistry(manifests: AppManifest[]): Registry {
 }
 
 /** Dock order; anything not listed follows alphabetically by name. */
-const DOCK_ORDER = ['classes', 'gradebook', 'advising', 'vault-files', 'protected', 'library']
+const DOCK_ORDER = [
+  'classes',
+  'gradebook',
+  'advising',
+  'quizzes',
+  'vault-files',
+  'protected',
+  'library'
+]
 
 export function sortForDock(manifests: AppManifest[]): AppManifest[] {
   const rank = (id: string): number => {

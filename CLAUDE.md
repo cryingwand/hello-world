@@ -32,11 +32,11 @@ Path aliases: `@shared/*`, `@renderer/*`, `@apps/*`.
 Sensitive data is kept out of reach instead of hidden. Every window has one role, recorded by the main
 process from the window's own `webContents` id (nothing the renderer says about itself is trusted):
 
-| Role       | Shows                                                    | Can reach                                           |
-| ---------- | -------------------------------------------------------- | --------------------------------------------------- |
-| `launcher` | Files (library) and the Presenter                        | Public data: settings, non-protected files, backups |
-| `vault`    | Classes & Rosters, Gradebook, Advising, Files, Protected | Everything, only while the vault is unlocked        |
-| `stage`    | What is being presented                                  | One method: `stage.view()`                          |
+| Role       | Shows                                                             | Can reach                                           |
+| ---------- | ----------------------------------------------------------------- | --------------------------------------------------- |
+| `launcher` | Files (library) and the Presenter                                 | Public data: settings, non-protected files, backups |
+| `vault`    | Classes & Rosters, Gradebook, Advising, Quizzes, Files, Protected | Everything, only while the vault is unlocked        |
+| `stage`    | What is being presented                                           | One method: `stage.view()`                          |
 
 Each role has its own storage partition (`persist:teachingos-<role>`), its own `window.api` (the preload
 exposes only the methods the role may call) and its own `tos-file://` handler. Main refuses a call from
@@ -70,7 +70,8 @@ in-process React modules, not iframes, and talk to data only through `window.api
 
 - `data.sqlite` holds settings and the protected folder list. `vault.sqlite` (in `vault/`) holds terms,
   classes, students, enrollments, categories, assignments, scores, file links and the advising tables
-  (`advising_meetings`, `goals`, `action_items`, `external_progress`). **A new table goes in
+  (`advising_meetings`, `goals`, `action_items`, `external_progress`) and the quiz tables (`questions`,
+  `quizzes`, `quiz_items`). **A new table goes in
   the vault** unless there is a deliberate decision that it is safe to show anywhere.
 - Migrations are versioned and append-only, separately for each database (`PUBLIC_MIGRATIONS`,
   `VAULT_MIGRATIONS`). Never edit a shipped migration; add a new one.
@@ -96,6 +97,25 @@ of the same student. Dates are `YYYY-MM-DD` text; "today" is `localToday()` in `
 (also holds the overdue rule and the copy-ready meeting summary). The app (`apps/advising/`) handles the
 `open-advisee` intent and offers "Open in Gradebook" (`open-student`); meeting mode autosaves with a
 debounce and flushes on leaving. Grades earned elsewhere are manual entry only; there is no import yet.
+
+## Quizzes & Exams
+
+`src/main/repos/questions.ts`, `quizzes.ts` and the `questions.*` / `quizzes.*` API, all `VAULT`: exams are
+what the vault exists to protect. A question has a kind (`multiple-choice`, `true-false`, `short-answer`,
+`essay`); the repository normalises its shape (true/false always has the choices True, False; the open
+kinds have none) so the stored row never disagrees with its kind. `quiz_items.question_id` is `RESTRICT`,
+so a question in a quiz cannot be deleted (the repository checks first for a readable message). Points
+come from the question unless the quiz item overrides them (`QuizEntry.points` is the effective value;
+total with `sumPoints`, never a raw float sum). The Gradebook link is the assignment's own
+`source_app = 'quiz-builder'` and `source_id = String(quizId)` (`QUIZ_SOURCE_APP`), so there is no column
+and no sync job: one assignment per class, listed by `grading.assignmentsFromSource`. Deleting a quiz
+clears that link and keeps the assignment and its scores. Word export is `src/main/quizDoc.ts` (house
+style in the comment at the top; pure, returns a buffer) behind `quizService.exportWord`, which asks for
+the path through an injected `pickSaveFile`. Ruled answer lines are tab leaders: adjacent paragraphs with
+identical borders merge into one line in Word. The exported file is an ordinary file: nothing stops it
+being saved outside a protected folder, and the app says so. Shared pure helpers (header text, dates,
+parts, points) are in `src/shared/quiz.ts`. The question and quiz fields are not tagged `sensitive`
+(they are not student PII).
 
 ## Protected folders
 

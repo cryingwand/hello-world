@@ -9,6 +9,7 @@ import type {
   TableView,
   TextFile
 } from './files'
+import type { QuizVersion } from './quiz'
 import type { StageState, StageView } from './stage'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
@@ -30,6 +31,11 @@ import type {
   GradeCategory,
   GradingMode,
   LinkRecordType,
+  Question,
+  QuestionKind,
+  QuizDetail,
+  QuizKind,
+  QuizSummary,
   Score,
   ScoreStatus,
   Student,
@@ -134,6 +140,40 @@ export interface ProgressInput {
   recordedOn?: string | null
 }
 
+export interface QuestionInput {
+  kind: QuestionKind
+  prompt: string
+  /** Multiple choice only; true/false is always True then False. */
+  choices?: string[]
+  correctChoice?: number | null
+  answer?: string
+  points?: number
+  tags?: string[]
+}
+
+export interface QuestionQuery {
+  /** Matches the question text and its choices. */
+  search?: string
+  kind?: QuestionKind
+  tag?: string
+}
+
+export interface QuizInput {
+  kind?: QuizKind
+  title: string
+  course?: string
+  date?: string | null
+  instructions?: string
+}
+
+export interface QuizAssignmentInput {
+  quizId: number
+  classId: number
+  categoryId?: number | null
+  /** Defaults to the quiz's date. */
+  dueDate?: string | null
+}
+
 export interface SystemInfo {
   dataDir: string
   dbPath: string
@@ -201,6 +241,36 @@ export interface ApiContract {
     createProgress(input: ProgressInput): ExternalProgress
     updateProgress(id: number, patch: Patch<Omit<ProgressInput, 'studentId'>>): ExternalProgress
     deleteProgress(id: number): void
+  }
+  questions: {
+    /** Newest first. */
+    list(query?: QuestionQuery): Question[]
+    get(id: number): Question | null
+    create(input: QuestionInput): Question
+    update(id: number, patch: Patch<QuestionInput>): Question
+    /** Refused while any quiz uses the question. */
+    delete(id: number): void
+  }
+  quizzes: {
+    list(): QuizSummary[]
+    get(id: number): QuizDetail | null
+    create(input: QuizInput): QuizDetail
+    update(id: number, patch: Patch<QuizInput>): QuizDetail
+    /** Gradebook assignments made from it are kept, but no longer point back at it. */
+    delete(id: number): void
+    /** Appends to the end, in the order given. Questions already in the quiz are skipped. */
+    addQuestions(id: number, questionIds: number[]): QuizDetail
+    removeQuestion(id: number, questionId: number): QuizDetail
+    /** Every question in the quiz, in the new order. */
+    reorder(id: number, questionIds: number[]): QuizDetail
+    /** Points for this quiz only; null goes back to the question's own. */
+    setPoints(id: number, questionId: number, points: number | null): QuizDetail
+    /** The Gradebook assignments created from this quiz, one per class. */
+    assignments(id: number): Assignment[]
+    /** Creates the assignment in a class, worth the quiz's total points. One per class. */
+    createAssignment(input: QuizAssignmentInput): Assignment
+    /** Asks where to save, then writes a Word copy: for students, or the answer key. Null if cancelled. */
+    exportWord(id: number, version: QuizVersion): Awaitable<{ path: string } | null>
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -355,6 +425,21 @@ export const API_METHODS = {
     'createProgress',
     'updateProgress',
     'deleteProgress'
+  ],
+  questions: ['list', 'get', 'create', 'update', 'delete'],
+  quizzes: [
+    'list',
+    'get',
+    'create',
+    'update',
+    'delete',
+    'addQuestions',
+    'removeQuestion',
+    'reorder',
+    'setPoints',
+    'assignments',
+    'createAssignment',
+    'exportWord'
   ],
   grading: [
     'categories',

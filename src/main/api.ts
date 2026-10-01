@@ -1,6 +1,7 @@
 import type { ApiContract, SystemInfo } from '@shared/api'
 import type { BackupService } from './backupService'
 import type { ProtectionService } from './protectionService'
+import type { QuizService } from './quizService'
 import type { PublicRepositories, Repositories } from './repos'
 import type { RosterService } from './rosterService'
 import type { ScoreService } from './scoreService'
@@ -21,7 +22,12 @@ export interface ApiEnv {
 
 export interface ApiDeps {
   /** Resolve the open vault's objects; each throws while the vault is locked. */
-  vault: { repos: () => Repositories; roster: () => RosterService; scores: () => ScoreService }
+  vault: {
+    repos: () => Repositories
+    roster: () => RosterService
+    scores: () => ScoreService
+    quizzes: () => QuizService
+  }
   publicRepos: PublicRepositories
   protection: ProtectionService
   backups: BackupService
@@ -37,6 +43,7 @@ export function createApi(deps: ApiDeps): ApiContract {
   const repos = (): Repositories => deps.vault.repos()
   const roster = (): RosterService => deps.vault.roster()
   const scores = (): ScoreService => deps.vault.scores()
+  const quizzes = (): QuizService => deps.vault.quizzes()
   return {
     terms: {
       list: () => repos().terms.list(),
@@ -81,6 +88,27 @@ export function createApi(deps: ApiDeps): ApiContract {
       createProgress: (input) => repos().advising.createProgress(input),
       updateProgress: (id, patch) => repos().advising.updateProgress(id, patch),
       deleteProgress: (id) => repos().advising.deleteProgress(id)
+    },
+    questions: {
+      list: (query) => repos().questions.list(query),
+      get: (id) => repos().questions.get(id),
+      create: (input) => repos().questions.create(input),
+      update: (id, patch) => repos().questions.update(id, patch),
+      delete: (id) => repos().questions.delete(id)
+    },
+    quizzes: {
+      list: () => repos().quizzes.list(),
+      get: (id) => repos().quizzes.get(id),
+      create: (input) => repos().quizzes.create(input),
+      update: (id, patch) => repos().quizzes.update(id, patch),
+      delete: (id) => repos().quizzes.delete(id),
+      addQuestions: (id, questionIds) => repos().quizzes.addQuestions(id, questionIds),
+      removeQuestion: (id, questionId) => repos().quizzes.removeQuestion(id, questionId),
+      reorder: (id, questionIds) => repos().quizzes.reorder(id, questionIds),
+      setPoints: (id, questionId, points) => repos().quizzes.setPoints(id, questionId, points),
+      assignments: (id) => repos().quizzes.assignments(id),
+      createAssignment: (input) => repos().quizzes.createAssignment(input),
+      exportWord: (id, version) => quizzes().exportWord(id, version)
     },
     grading: {
       categories: (classId) => repos().grading.categories(classId),
