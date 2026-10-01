@@ -58,6 +58,7 @@ import type { Db } from './repos'
 import { createVaultGate } from './vault/gate'
 import { importLegacyData } from './vault/legacy'
 import { createVaultManager } from './vault/manager'
+import { createVaultRestore } from './vault/restore'
 import { ValidationError } from './validate'
 import { createRoleWindow, type WindowEnv } from './windows'
 
@@ -292,6 +293,12 @@ void app.whenReady().then(() => {
     extraDir: () => publicRepos.settings.get().backupFolder
   })
 
+  const restore = createVaultRestore({
+    backups,
+    stagingPath: `${manager.paths.db}.restoring`,
+    replace: (staged) => manager.replaceDatabase(staged)
+  })
+
   // No window needs the camera, microphone, location or notifications from the page itself
   // (system notifications come from main), so every request is refused.
   for (const role of ['launcher', 'vault', 'stage'] as const) {
@@ -402,6 +409,7 @@ void app.whenReady().then(() => {
       publicRepos,
       protection,
       backups,
+      restore,
       gate,
       stage,
       files: filesApiFor(role),
@@ -411,12 +419,22 @@ void app.whenReady().then(() => {
     ipc: ipcMain,
     roleOf: (sender) => registry.roleOf(sender),
     apis: { launcher: apiFor('launcher'), vault: apiFor('vault'), stage: apiFor('stage') },
-    // Anything that needs the vault is refused while it is locked.
-    beforeCall: (_role, _ns, _method, access) => {
+    // Anything that needs the vault is refused while it is locked. A delete or an import that
+    // overwrites is backed up first, and refused if the backup cannot be taken.
+    beforeCall: async (_role, _ns, _method, access) => {
       if (!access.needsVault) return
       if (stage.isActive())
         throw new ValidationError('End the presentation before using the Vault.')
       manager.assertUnlocked()
+      if (!access.backupFirst) return
+      try {
+        await backups.snapshotVault()
+      } catch (err) {
+        console.error('[backup] safety backup failed:', err)
+        throw new ValidationError(
+          'A backup could not be taken first, so nothing was changed. Check the backup folder in Settings.'
+        )
+      }
     }
   })
   startBackups(backups, notifier)

@@ -56,8 +56,11 @@ Scope and phasing live in [`TEACHING_OS_PLAN.md`](./TEACHING_OS_PLAN.md).
   the Presenter. Start and end it with Present in the top bar, View, Presentation Mode, or Cmd+Shift+P.
 - **Protected folders**: mark the folders that hold exams, quizzes and answer keys; their files appear only
   inside the Vault.
-- **Backups**: a SQLite backup of both databases at launch and daily, the last 14 days kept, optionally
-  copied to a second folder. The Vault is backed up even while it is locked.
+- **Backups**: a SQLite backup of both databases at launch and daily, optionally copied to a second
+  folder. Every backup from the last 14 days is kept, then one a week for 16 weeks and one a month for a
+  year. The Vault is backed up even while it is locked, and again just before anything in it is deleted
+  or imported over. **Restore** the Vault to any of its backups from Settings inside the Vault (the Vault
+  as it is now is backed up first, so a restore can be undone).
 
 ## The Vault and the Stage
 
@@ -163,12 +166,12 @@ Then drag it to `/Applications` and, on the first launch, right-click it and cho
 
 ## Where things live
 
-| Path                                                          | What                                                     |
-| ------------------------------------------------------------- | -------------------------------------------------------- |
-| `~/Library/Application Support/TeachingOS/data.sqlite`        | Settings and the protected folder list                   |
-| `~/Library/Application Support/TeachingOS/vault/vault.sqlite` | Students, classes, grades, attachments                   |
-| `~/Library/Application Support/TeachingOS/vault/vault.json`   | Passcode hash, Touch ID, idle time, failed attempts      |
-| `~/Library/Application Support/TeachingOS/backups/`           | `data-` and `vault-` backups (launch and daily, 14 days) |
+| Path                                                          | What                                                |
+| ------------------------------------------------------------- | --------------------------------------------------- |
+| `~/Library/Application Support/TeachingOS/data.sqlite`        | Settings and the protected folder list              |
+| `~/Library/Application Support/TeachingOS/vault/vault.sqlite` | Students, classes, grades, attachments              |
+| `~/Library/Application Support/TeachingOS/vault/vault.json`   | Passcode hash, Touch ID, idle time, failed attempts |
+| `~/Library/Application Support/TeachingOS/backups/`           | `data-` and `vault-` backups (see Backups above)    |
 
 ## Permissions
 

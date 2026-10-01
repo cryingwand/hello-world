@@ -10,6 +10,7 @@ import type { RosterService } from './rosterService'
 import type { ScoreService } from './scoreService'
 import type { StageService } from './stage'
 import type { VaultGate } from './vault/gate'
+import type { VaultRestore } from './vault/restore'
 
 export interface ApiEnv {
   dataDir: string
@@ -37,6 +38,8 @@ export interface ApiDeps {
   publicRepos: PublicRepositories
   protection: ProtectionService
   backups: BackupService
+  /** Restoring the Vault from one of its backups. */
+  restore: VaultRestore
   gate: VaultGate<unknown>
   stage: StageService
   files: ApiContract['files']
@@ -178,7 +181,9 @@ export function createApi(deps: ApiDeps): ApiContract {
       touch: () => gate.touch(),
       changePasscode: (current, next) => gate.changePasscode(current, next),
       settings: () => gate.settings(),
-      updateSettings: (patch) => gate.updateSettings(patch)
+      updateSettings: (patch) => gate.updateSettings(patch),
+      backups: () => deps.restore.list(),
+      restore: (name) => deps.restore.restore(name)
     },
     stage: {
       state: () => stage.state(),

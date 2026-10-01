@@ -47,7 +47,10 @@ anywhere but a window's top frame, so an iframe can never use the API.
 `src/shared/access.ts` holds `API_ACCESS`, which classifies every method of `ApiContract` (TypeScript
 fails to compile until a new method is classified). `registerIpc` enforces it on every call, deny by
 default. `needsVault` methods are also refused while the vault is locked or a presentation is running.
-Default a new method to `VAULT`; make it `EVERYDAY` only if it is safe to call from the launcher.
+Default a new method to `VAULT`; make it `EVERYDAY` only if it is safe to call from the launcher. A Vault
+method that deletes or overwrites data (`delete*`, `commit*` imports, `unenroll`) is `VAULT_DESTRUCTIVE`:
+`registerIpc`'s `beforeCall` takes a Vault backup first (at most one a minute, `snapshotVault`) and refuses the
+call if it cannot. `access.test.ts` fails if a `delete*`/`commit*` method is not marked.
 
 ### Change events
 
@@ -99,7 +102,13 @@ in-process React modules, not iframes, and talk to data only through `window.api
   it does not encrypt `vault.sqlite`. FileVault protects the disk.
 - Unlock goes through `createVaultGate`: refused while presenting (checked again after the passcode is
   verified), and confirmed with a native dialog when another display is connected.
-- Vault backups are taken even while it is locked, from main.
+- Vault backups are taken even while it is locked, from main. Every backup is checked (`quick_check`)
+  before it is renamed into place. Retention (`backupsToKeep` in `src/main/backup.ts`): everything from the
+  last 14 days, then the newest of each week for 16 weeks and of each month for a year.
+- Restore (`src/main/vault/restore.ts`, `vault.backups` / `vault.restore`, Vault Settings): a backup is chosen
+  by name, never by path, copied aside and checked, the Vault as it is now is backed up, and then
+  `manager.replaceDatabase` locks the Vault and swaps the file (removing any stale `-wal`). The next unlock
+  runs newer migrations on it.
 - Fields holding student PII are tagged `sensitive` in `src/shared/sensitive.ts`. Nothing sends them
   anywhere; the tag is the seam for a future `src/main/ai/` service.
 

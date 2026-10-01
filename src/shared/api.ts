@@ -414,6 +414,13 @@ export interface ApiContract {
       autoLockMinutes?: number
       touchIdEnabled?: boolean
     }): Awaitable<VaultSettings>
+    /** The Vault's backups, newest first. */
+    backups(): Awaitable<BackupInfo[]>
+    /**
+     * Puts the Vault back to the named backup, after backing up how it is now. The Vault then locks,
+     * so the window asking goes away; it opens on the restored data.
+     */
+    restore(name: string): Awaitable<{ safetyBackup: string | null }>
   }
   stage: {
     /** Presenter: the queue, and whether the Stage is showing. No paths are returned. */
@@ -588,7 +595,7 @@ export const API_METHODS = {
   ],
   roster: ['chooseFile', 'readSheet', 'preview', 'commit', 'exportClass'],
   vaultGate: ['openWindow', 'status', 'setup', 'unlock', 'unlockWithTouchId', 'lock'],
-  vault: ['touch', 'changePasscode', 'settings', 'updateSettings'],
+  vault: ['touch', 'changePasscode', 'settings', 'updateSettings', 'backups', 'restore'],
   stage: [
     'state',
     'add',

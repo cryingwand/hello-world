@@ -67,7 +67,7 @@ export default function StudentForm({
   const remove = async (): Promise<void> => {
     if (!student) return
     const ok = window.confirm(
-      'Delete this student everywhere? Their scores in every class are deleted too. To only take them out of one class, use Remove on the roster instead.'
+      'Delete this student everywhere? Their scores in every class are deleted too. To only take them out of one class, use Remove on the roster instead. A backup is taken first, so this can be undone from Settings in the Vault.'
     )
     if (!ok) return
     try {

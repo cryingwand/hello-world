@@ -186,6 +186,26 @@ describe('registerIpc', () => {
     expect(calls).toEqual(['vault:students.list:vault', 'vault:files.search:open'])
   })
 
+  it('waits for an async state check, and never runs the method if it rejects', async () => {
+    let finish: () => void = () => undefined
+    const { call } = setup({
+      beforeCall: (_role, _ns, method) =>
+        method === 'delete'
+          ? Promise.reject(new ValidationError('No backup, no delete.'))
+          : new Promise<void>((resolve) => (finish = resolve))
+    })
+    await expect(call(2, 'students.delete', [1])).rejects.toThrow('No backup, no delete.')
+    let done = false
+    const pending = call(2, 'students.list').then((r) => {
+      done = true
+      return r
+    })
+    await new Promise((r) => setTimeout(r, 5))
+    expect(done).toBe(false)
+    finish()
+    expect(await pending).toBe('vault:students.list')
+  })
+
   it('does not run the state check for a caller the policy already refused', async () => {
     const before = vi.fn()
     const { call } = setup({ beforeCall: before })
