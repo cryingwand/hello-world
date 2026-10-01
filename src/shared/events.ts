@@ -11,6 +11,7 @@ export const CHANGE_NAMES = [
   'advising.changed',
   'questions.changed',
   'quizzes.changed',
+  'planner.changed',
   'settings.changed',
   'protection.changed'
 ] as const
@@ -48,6 +49,7 @@ export const CHANGE_AUDIENCE: Record<ChangeName, readonly ('launcher' | 'vault' 
   'advising.changed': ['vault'],
   'questions.changed': ['vault'],
   'quizzes.changed': ['vault'],
+  'planner.changed': ['vault'],
   'settings.changed': ['launcher', 'vault'],
   // Which folders are protected is itself not shown outside the vault.
   'protection.changed': ['vault']

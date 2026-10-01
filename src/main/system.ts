@@ -33,6 +33,14 @@ export async function pickSaveDocxFile(defaultName: string): Promise<string | nu
   return res.canceled || !res.filePath ? null : res.filePath
 }
 
+export async function pickSavePptxFile(defaultName: string): Promise<string | null> {
+  const res = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [{ name: 'PowerPoint presentation', extensions: ['pptx'] }]
+  })
+  return res.canceled || !res.filePath ? null : res.filePath
+}
+
 export async function pickAnyFile(): Promise<string | null> {
   const res = await dialog.showOpenDialog({ properties: ['openFile'] })
   return res.canceled || res.filePaths.length === 0 ? null : res.filePaths[0]

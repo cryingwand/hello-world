@@ -29,6 +29,7 @@ const DOCK_ORDER = [
   'gradebook',
   'advising',
   'quizzes',
+  'planner',
   'vault-files',
   'protected',
   'library'

@@ -32,11 +32,11 @@ Path aliases: `@shared/*`, `@renderer/*`, `@apps/*`.
 Sensitive data is kept out of reach instead of hidden. Every window has one role, recorded by the main
 process from the window's own `webContents` id (nothing the renderer says about itself is trusted):
 
-| Role       | Shows                                                             | Can reach                                           |
-| ---------- | ----------------------------------------------------------------- | --------------------------------------------------- |
-| `launcher` | Files (library) and the Presenter                                 | Public data: settings, non-protected files, backups |
-| `vault`    | Classes & Rosters, Gradebook, Advising, Quizzes, Files, Protected | Everything, only while the vault is unlocked        |
-| `stage`    | What is being presented                                           | One method: `stage.view()`                          |
+| Role       | Shows                                                            | Can reach                                           |
+| ---------- | ---------------------------------------------------------------- | --------------------------------------------------- |
+| `launcher` | Files (library) and the Presenter                                | Public data: settings, non-protected files, backups |
+| `vault`    | Classes, Gradebook, Advising, Quizzes, Planner, Files, Protected | Everything, only while the vault is unlocked        |
+| `stage`    | What is being presented                                          | One method: `stage.view()`                          |
 
 Each role has its own storage partition (`persist:teachingos-<role>`), its own `window.api` (the preload
 exposes only the methods the role may call) and its own `tos-file://` handler. Main refuses a call from
@@ -71,7 +71,7 @@ in-process React modules, not iframes, and talk to data only through `window.api
 - `data.sqlite` holds settings and the protected folder list. `vault.sqlite` (in `vault/`) holds terms,
   classes, students, enrollments, categories, assignments, scores, file links and the advising tables
   (`advising_meetings`, `goals`, `action_items`, `external_progress`) and the quiz tables (`questions`,
-  `quizzes`, `quiz_items`). **A new table goes in
+  `quizzes`, `quiz_items`) and the planner tables (`units`, `lessons`, `lesson_quizzes`). **A new table goes in
   the vault** unless there is a deliberate decision that it is safe to show anywhere.
 - Migrations are versioned and append-only, separately for each database (`PUBLIC_MIGRATIONS`,
   `VAULT_MIGRATIONS`). Never edit a shipped migration; add a new one.
@@ -116,6 +116,31 @@ identical borders merge into one line in Word. The exported file is an ordinary 
 being saved outside a protected folder, and the app says so. Shared pure helpers (header text, dates,
 parts, points) are in `src/shared/quiz.ts`. The question and quiz fields are not tagged `sensitive`
 (they are not student PII).
+
+## Lesson & Unit Planner
+
+`src/main/repos/planner.ts` (one repository, two API namespaces: `units.*` and `lessons.*`), all `VAULT`:
+lessons link to exams and attach protected files, so the planner is vault data like the quizzes it points
+at. A unit has a title, a free-text course (like a quiz's) and an overview; it has no dates of its own, so
+its span is the earliest and latest lesson date (`UnitSummary.firstDate`/`lastDate`). A lesson belongs to
+one unit and is ordered by `position` (`units.reorder` takes every lesson id once, `lessons.delete`
+renumbers). Its text fields (`objectives`, `plan`, `homework`, `notes`) are one point per line; `notes` are
+the teacher's and only ever become speaker notes. `lesson_quizzes` is many to many: deleting a quiz drops
+the link and the quizzes repository then emits `planner.changed`; deleting a unit or lesson never touches a
+quiz. Attached files use `file_links` with record types `unit` and `lesson` (migration 4 rebuilt the table,
+since SQLite cannot change a CHECK); links are not foreign keys, so the planner clears them with the
+record and emits `fileLinks.changed`. Add a record type to `TABLE` in `fileLinks.ts` and the migration's
+CHECK together. `units.upcoming()` is dated lessons from `localToday()` on, capped at `UPCOMING_LIMIT`.
+PowerPoint export is `src/main/lessonDeck.ts` (house style in the comment at the top; pure, returns a
+buffer) behind `lessonService.exportPowerPoint`, which asks for the path through an injected
+`pickSaveFile`, for a whole unit or one lesson. Only quiz titles are written, never questions or answers,
+and a test enforces that. Long lists are split by `chunkBullets` (`src/shared/lesson.ts`) rather than
+relying on shrink-to-fit, which PowerPoint only applies when a slide is edited. The saved file is an
+ordinary file: nothing stops it being saved outside a protected folder, and the app says so. The app
+(`apps/planner/`) saves lesson and unit fields as you type through `useAutosave` (debounced, on blur and
+when the editor goes away; a refused save puts the saved text back) and opens a linked quiz with the
+`open-quiz` intent, which Quizzes & Exams handles. The planner fields are not tagged `sensitive` (they are
+not student PII).
 
 ## Protected folders
 

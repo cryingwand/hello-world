@@ -1,6 +1,6 @@
 export type GradingMode = 'weighted' | 'points'
 export type ScoreStatus = 'missing' | 'excused' | 'late'
-export type LinkRecordType = 'student' | 'class' | 'term'
+export type LinkRecordType = 'student' | 'class' | 'term' | 'unit' | 'lesson'
 
 export interface Term {
   id: number
@@ -222,4 +222,59 @@ export interface QuizSummary extends Quiz {
   totalPoints: number
   /** Gradebook assignments created from it. */
   assignmentCount: number
+}
+
+/** A run of lessons on one topic. */
+export interface Unit {
+  id: number
+  title: string
+  /** For example "PHIL 101". Free text, like a quiz's course. */
+  course: string
+  /** Big ideas and goals for the unit. */
+  summary: string
+}
+
+/** A quiz or exam a lesson uses. Only what is needed to name it; the questions stay in the Quizzes app. */
+export interface LinkedQuiz {
+  id: number
+  kind: QuizKind
+  title: string
+  date: string | null
+}
+
+export interface Lesson {
+  id: number
+  unitId: number
+  /** 0-based place in the unit. */
+  position: number
+  title: string
+  /** YYYY-MM-DD. */
+  date: string | null
+  /** One per line. */
+  objectives: string
+  /** What happens in class, one step per line. */
+  plan: string
+  homework: string
+  /** For the teacher only: become speaker notes in the PowerPoint. */
+  notes: string
+  quizzes: LinkedQuiz[]
+}
+
+export interface UnitDetail extends Unit {
+  lessons: Lesson[]
+}
+
+/** One row of the unit list. */
+export interface UnitSummary extends Unit {
+  lessonCount: number
+  /** Earliest and latest lesson dates, if any lesson has one. */
+  firstDate: string | null
+  lastDate: string | null
+}
+
+/** A dated lesson that has not happened yet, with where it belongs. */
+export interface UpcomingLesson {
+  lesson: Lesson
+  unitTitle: string
+  course: string
 }

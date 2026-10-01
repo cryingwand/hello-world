@@ -12,6 +12,7 @@ import { createNotifier } from '../../src/main/notifier'
 import { createFileGuard, createProtectedPaths } from '../../src/main/protected'
 import { createProtectionService } from '../../src/main/protectionService'
 import { createVaultRepositories } from '../../src/main/repos'
+import { createLessonService } from '../../src/main/lessonService'
 import { createQuizService } from '../../src/main/quizService'
 import { createRosterService } from '../../src/main/rosterService'
 import { createScoreService } from '../../src/main/scoreService'
@@ -30,6 +31,7 @@ interface Session {
   roster: ReturnType<typeof createRosterService>
   scores: ReturnType<typeof createScoreService>
   quizzes: ReturnType<typeof createQuizService>
+  lessons: ReturnType<typeof createLessonService>
 }
 
 /** The whole API over a real vault manager in a temp folder, with cheap scrypt. */
@@ -51,7 +53,8 @@ function env(opts: { unlocked?: boolean } = {}) {
       })
       const scores = createScoreService(repos, roster.tokens, { pickSaveFile: async () => null })
       const quizzes = createQuizService(repos, { pickSaveFile: async () => null })
-      return { repos, roster, scores, quizzes }
+      const lessons = createLessonService(repos, { pickSaveFile: async () => null })
+      return { repos, roster, scores, quizzes, lessons }
     },
     scrypt: { N: 1 << 4, r: 8, p: 1, keylen: 32 }
   })
@@ -83,7 +86,8 @@ function env(opts: { unlocked?: boolean } = {}) {
       repos: () => manager.session().repos,
       roster: () => manager.session().roster,
       scores: () => manager.session().scores,
-      quizzes: () => manager.session().quizzes
+      quizzes: () => manager.session().quizzes,
+      lessons: () => manager.session().lessons
     },
     publicRepos: pub.repos,
     protection: createProtectionService({
@@ -175,6 +179,18 @@ describe('api wiring', () => {
     )
   })
 
+  it('serves the planner through the same vault session', async () => {
+    const { api, ready } = env()
+    await ready
+    const quiz = await api.quizzes.create({ title: 'Quiz 1' })
+    const unit = await api.units.create({ title: 'Ethics', course: 'PHIL 101' })
+    const lesson = await api.lessons.create({ unitId: unit.id, title: 'Day 1', date: '2999-01-02' })
+    await api.lessons.linkQuiz(lesson.id, quiz.id)
+    expect((await api.units.get(unit.id))?.lessons[0].quizzes.map((q) => q.id)).toEqual([quiz.id])
+    expect((await api.units.list())[0]).toMatchObject({ lessonCount: 1 })
+    expect((await api.units.upcoming())[0].lesson.id).toBe(lesson.id)
+  })
+
   it('refuses every vault method while the vault is locked', async () => {
     const { api, manager } = env({ unlocked: false })
     expect(manager.isUnlocked()).toBe(false)
@@ -183,6 +199,7 @@ describe('api wiring', () => {
     await expect(Promise.resolve().then(() => api.advising.advisees())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.questions.list())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.quizzes.list())).rejects.toThrow(/locked/)
+    await expect(Promise.resolve().then(() => api.units.list())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.fileLinks.list('class', 1))).rejects.toThrow(
       /locked/
     )

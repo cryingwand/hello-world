@@ -32,7 +32,8 @@ const V1_TABLES = [
 ]
 const ADVISING_TABLES = ['action_items', 'advising_meetings', 'external_progress', 'goals']
 const QUIZ_TABLES = ['questions', 'quiz_items', 'quizzes']
-const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES].sort()
+const PLANNER_TABLES = ['lesson_quizzes', 'lessons', 'units']
+const VAULT_TABLES = [...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES, ...PLANNER_TABLES].sort()
 
 describe('migrations', () => {
   it('build a public database that holds settings and nothing about students', () => {
@@ -121,9 +122,35 @@ describe('migrations', () => {
     expect(db.prepare('SELECT first_name FROM students').get()).toEqual({ first_name: 'Ada' })
   })
 
-  it('keep the question bank and quizzes out of the public database', () => {
+  it('add the planner tables to a version 3 vault, keeping the file links it already has', () => {
+    const db = new Database(':memory:')
+    migrate(db, VAULT_MIGRATIONS.slice(0, 3))
+    db.prepare("INSERT INTO terms (name) VALUES ('Fall')").run()
+    db.prepare(
+      "INSERT INTO file_links (path, record_type, record_id) VALUES ('/a/syllabus.pdf', 'term', 1)"
+    ).run()
+    expect(tables(db)).toEqual([...V1_TABLES, ...ADVISING_TABLES, ...QUIZ_TABLES].sort())
+    migrate(db, VAULT_MIGRATIONS)
+    expect(tables(db)).toEqual(VAULT_TABLES)
+    expect(db.prepare('SELECT path, record_type, record_id FROM file_links').all()).toEqual([
+      { path: '/a/syllabus.pdf', record_type: 'term', record_id: 1 }
+    ])
+    // The rebuilt table accepts the new record types, still refuses others, and is still unique.
+    const add = db.prepare('INSERT INTO file_links (path, record_type, record_id) VALUES (?, ?, 1)')
+    add.run('/a/plan.docx', 'lesson')
+    add.run('/a/plan.docx', 'unit')
+    expect(() => add.run('/a/plan.docx', 'quiz')).toThrow()
+    expect(() => add.run('/a/plan.docx', 'unit')).toThrow()
+    expect(
+      (db.pragma('index_list(file_links)') as { name: string }[]).map((i) => i.name)
+    ).toContain('idx_file_links_record')
+  })
+
+  it('keep the question bank, quizzes and planner out of the public database', () => {
     const pub = openPublicDatabase(':memory:')
-    for (const table of QUIZ_TABLES) expect(tables(pub)).not.toContain(table)
+    for (const table of [...QUIZ_TABLES, ...PLANNER_TABLES]) {
+      expect(tables(pub)).not.toContain(table)
+    }
   })
 
   it('enable foreign keys on connections opened by the app', () => {
