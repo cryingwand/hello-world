@@ -22,20 +22,23 @@ const toLink = (r: Row): FileLink => ({
 const TABLE: Record<LinkRecordType, string> = {
   student: 'students',
   class: 'classes',
-  term: 'terms'
+  term: 'terms',
+  unit: 'units',
+  lesson: 'lessons'
 }
+const RECORD_TYPES = Object.keys(TABLE) as LinkRecordType[]
 
 export function fileLinksRepo(db: Db, emit: Emit) {
   return {
     list(recordType: LinkRecordType, rawId: number): FileLink[] {
-      const type = v.oneOf(recordType, ['student', 'class', 'term'] as const, 'Record type')
+      const type = v.oneOf(recordType, RECORD_TYPES, 'Record type')
       const rows = db
         .prepare('SELECT * FROM file_links WHERE record_type = ? AND record_id = ? ORDER BY id')
         .all(type, v.id(rawId, 'recordId')) as Row[]
       return rows.map(toLink)
     },
     add(input: FileLinkInput): FileLink {
-      const type = v.oneOf(input?.recordType, ['student', 'class', 'term'] as const, 'Record type')
+      const type = v.oneOf(input?.recordType, RECORD_TYPES, 'Record type')
       const recordId = v.id(input.recordId, 'recordId')
       const path = v.reqStr(input.path, 'Path', 1024)
       if (!isAbsolute(path)) throw new v.ValidationError('Path must be absolute')

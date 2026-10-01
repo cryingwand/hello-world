@@ -39,7 +39,11 @@ import type {
   Score,
   ScoreStatus,
   Student,
-  Term
+  Term,
+  Lesson,
+  UnitDetail,
+  UnitSummary,
+  UpcomingLesson
 } from './models'
 
 export interface TermInput {
@@ -174,6 +178,26 @@ export interface QuizAssignmentInput {
   dueDate?: string | null
 }
 
+export interface UnitInput {
+  title: string
+  course?: string
+  summary?: string
+}
+
+export interface LessonInput {
+  unitId: number
+  title: string
+  /** YYYY-MM-DD */
+  date?: string | null
+  /** One per line. */
+  objectives?: string
+  /** One step per line. */
+  plan?: string
+  homework?: string
+  /** Teacher only: speaker notes in the PowerPoint. */
+  notes?: string
+}
+
 export interface SystemInfo {
   dataDir: string
   dbPath: string
@@ -271,6 +295,28 @@ export interface ApiContract {
     createAssignment(input: QuizAssignmentInput): Assignment
     /** Asks where to save, then writes a Word copy: for students, or the answer key. Null if cancelled. */
     exportWord(id: number, version: QuizVersion): Awaitable<{ path: string } | null>
+  }
+  units: {
+    /** By course, then by when the unit starts. */
+    list(): UnitSummary[]
+    get(id: number): UnitDetail | null
+    create(input: UnitInput): UnitDetail
+    update(id: number, patch: Patch<UnitInput>): UnitDetail
+    /** Takes its lessons, and their attached-file links, with it. Quizzes are untouched. */
+    delete(id: number): void
+    /** Every lesson in the unit, in the new order. */
+    reorder(id: number, lessonIds: number[]): UnitDetail
+    /** Lessons dated today or later, soonest first. */
+    upcoming(): UpcomingLesson[]
+  }
+  lessons: {
+    /** Added at the end of its unit. */
+    create(input: LessonInput): Lesson
+    update(id: number, patch: Patch<Omit<LessonInput, 'unitId'>>): Lesson
+    delete(id: number): void
+    /** Records that the lesson uses a quiz or exam. Linking twice is harmless. */
+    linkQuiz(id: number, quizId: number): Lesson
+    unlinkQuiz(id: number, quizId: number): Lesson
   }
   grading: {
     categories(classId: number): GradeCategory[]
@@ -441,6 +487,8 @@ export const API_METHODS = {
     'createAssignment',
     'exportWord'
   ],
+  units: ['list', 'get', 'create', 'update', 'delete', 'reorder', 'upcoming'],
+  lessons: ['create', 'update', 'delete', 'linkQuiz', 'unlinkQuiz'],
   grading: [
     'categories',
     'createCategory',

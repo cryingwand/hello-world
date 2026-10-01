@@ -110,6 +110,22 @@ export function createApi(deps: ApiDeps): ApiContract {
       createAssignment: (input) => repos().quizzes.createAssignment(input),
       exportWord: (id, version) => quizzes().exportWord(id, version)
     },
+    units: {
+      list: () => repos().units.list(),
+      get: (id) => repos().units.get(id),
+      create: (input) => repos().units.create(input),
+      update: (id, patch) => repos().units.update(id, patch),
+      delete: (id) => repos().units.delete(id),
+      reorder: (id, lessonIds) => repos().units.reorder(id, lessonIds),
+      upcoming: () => repos().units.upcoming()
+    },
+    lessons: {
+      create: (input) => repos().lessons.create(input),
+      update: (id, patch) => repos().lessons.update(id, patch),
+      delete: (id) => repos().lessons.delete(id),
+      linkQuiz: (id, quizId) => repos().lessons.linkQuiz(id, quizId),
+      unlinkQuiz: (id, quizId) => repos().lessons.unlinkQuiz(id, quizId)
+    },
     grading: {
       categories: (classId) => repos().grading.categories(classId),
       createCategory: (input) => repos().grading.createCategory(input),

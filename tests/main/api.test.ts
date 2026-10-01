@@ -175,6 +175,18 @@ describe('api wiring', () => {
     )
   })
 
+  it('serves the planner through the same vault session', async () => {
+    const { api, ready } = env()
+    await ready
+    const quiz = await api.quizzes.create({ title: 'Quiz 1' })
+    const unit = await api.units.create({ title: 'Ethics', course: 'PHIL 101' })
+    const lesson = await api.lessons.create({ unitId: unit.id, title: 'Day 1', date: '2999-01-02' })
+    await api.lessons.linkQuiz(lesson.id, quiz.id)
+    expect((await api.units.get(unit.id))?.lessons[0].quizzes.map((q) => q.id)).toEqual([quiz.id])
+    expect((await api.units.list())[0]).toMatchObject({ lessonCount: 1 })
+    expect((await api.units.upcoming())[0].lesson.id).toBe(lesson.id)
+  })
+
   it('refuses every vault method while the vault is locked', async () => {
     const { api, manager } = env({ unlocked: false })
     expect(manager.isUnlocked()).toBe(false)
@@ -183,6 +195,7 @@ describe('api wiring', () => {
     await expect(Promise.resolve().then(() => api.advising.advisees())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.questions.list())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.quizzes.list())).rejects.toThrow(/locked/)
+    await expect(Promise.resolve().then(() => api.units.list())).rejects.toThrow(/locked/)
     await expect(Promise.resolve().then(() => api.fileLinks.list('class', 1))).rejects.toThrow(
       /locked/
     )

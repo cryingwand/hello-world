@@ -149,17 +149,24 @@ export function quizzesRepo(db: Db, emit: Emit, grading: ReturnType<typeof gradi
       const id = v.id(rawId)
       mustQuiz(id)
       const linked = grading.assignmentsFromSource(QUIZ_SOURCE_APP, String(id))
+      const lessonCount = (
+        db.prepare('SELECT COUNT(*) AS n FROM lesson_quizzes WHERE quiz_id = ?').get(id) as {
+          n: number
+        }
+      ).n
       db.transaction(() => {
         // The Gradebook keeps the assignment and its scores; it just stops pointing at a quiz that is gone.
         db.prepare(
           'UPDATE assignments SET source_app = NULL, source_id = NULL WHERE source_app = ? AND source_id = ?'
         ).run(QUIZ_SOURCE_APP, String(id))
+        // The lessons that used it lose the link with the quiz (it cascades).
         db.prepare('DELETE FROM quizzes WHERE id = ?').run(id)
       })()
       for (const classId of new Set(linked.map((a) => a.classId))) {
         emit('assignments.changed', { classId })
       }
       itemsChanged()
+      if (lessonCount > 0) emit('planner.changed')
     },
 
     addQuestions(rawId: number, rawQuestionIds: number[]): QuizDetail {

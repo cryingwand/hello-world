@@ -79,6 +79,16 @@ export const API_ACCESS = {
     createAssignment: VAULT,
     exportWord: VAULT
   },
+  units: {
+    list: VAULT,
+    get: VAULT,
+    create: VAULT,
+    update: VAULT,
+    delete: VAULT,
+    reorder: VAULT,
+    upcoming: VAULT
+  },
+  lessons: { create: VAULT, update: VAULT, delete: VAULT, linkQuiz: VAULT, unlinkQuiz: VAULT },
   grading: {
     categories: VAULT,
     createCategory: VAULT,

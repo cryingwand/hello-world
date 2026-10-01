@@ -200,12 +200,66 @@ const VAULT_V3_SQL = `
       CREATE INDEX idx_quiz_items_question ON quiz_items(question_id);
     `
 
+/**
+ * Lesson & Unit Planner: units, the lessons in them (in order) and the quizzes a lesson uses. Lessons
+ * point at exams and attach protected files, so the planner is vault data like the quizzes it links to.
+ * A deleted unit takes its lessons with it; a deleted quiz only loses its links. file_links must now
+ * accept units and lessons, and SQLite cannot change a CHECK in place, so the table is rebuilt.
+ */
+const VAULT_V4_SQL = `
+      CREATE TABLE units (
+        id         INTEGER PRIMARY KEY,
+        title      TEXT NOT NULL,
+        course     TEXT NOT NULL DEFAULT '',
+        summary    TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE lessons (
+        id          INTEGER PRIMARY KEY,
+        unit_id     INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+        position    INTEGER NOT NULL,
+        title       TEXT NOT NULL,
+        lesson_date TEXT,
+        objectives  TEXT NOT NULL DEFAULT '',
+        plan        TEXT NOT NULL DEFAULT '',
+        homework    TEXT NOT NULL DEFAULT '',
+        notes       TEXT NOT NULL DEFAULT '',
+        created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX idx_lessons_unit ON lessons(unit_id, position);
+      CREATE INDEX idx_lessons_date ON lessons(lesson_date);
+
+      CREATE TABLE lesson_quizzes (
+        lesson_id INTEGER NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+        quiz_id   INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+        PRIMARY KEY (lesson_id, quiz_id)
+      );
+      CREATE INDEX idx_lesson_quizzes_quiz ON lesson_quizzes(quiz_id);
+
+      CREATE TABLE file_links_v4 (
+        id          INTEGER PRIMARY KEY,
+        path        TEXT NOT NULL,
+        record_type TEXT NOT NULL
+                    CHECK (record_type IN ('student', 'class', 'term', 'unit', 'lesson')),
+        record_id   INTEGER NOT NULL,
+        created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (path, record_type, record_id)
+      );
+      INSERT INTO file_links_v4 (id, path, record_type, record_id, created_at)
+        SELECT id, path, record_type, record_id, created_at FROM file_links;
+      DROP TABLE file_links;
+      ALTER TABLE file_links_v4 RENAME TO file_links;
+      CREATE INDEX idx_file_links_record ON file_links(record_type, record_id);
+    `
+
 export const PUBLIC_MIGRATIONS: Migration[] = [{ version: 1, name: 'settings', sql: SETTINGS_SQL }]
 
 export const VAULT_MIGRATIONS: Migration[] = [
   { version: 1, name: 'rosters, gradebook and file links', sql: VAULT_V1_SQL },
   { version: 2, name: 'advising', sql: VAULT_V2_SQL },
-  { version: 3, name: 'questions and quizzes', sql: VAULT_V3_SQL }
+  { version: 3, name: 'questions and quizzes', sql: VAULT_V3_SQL },
+  { version: 4, name: 'units and lessons', sql: VAULT_V4_SQL }
 ]
 
 /**
