@@ -9,7 +9,8 @@ const manifest: AppManifest = {
   component: ClassesApp,
   defaultSize: { w: 1040, h: 660 },
   minSize: { w: 640, h: 420 },
-  handles: ['open-class']
+  handles: ['open-class'],
+  studentData: true
 }
 
 export default manifest

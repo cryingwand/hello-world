@@ -9,7 +9,8 @@ const manifest: AppManifest = {
   component: VaultFilesApp,
   defaultSize: { w: 1120, h: 700 },
   minSize: { w: 720, h: 460 },
-  handles: ['attach-file', 'search-files']
+  handles: ['attach-file', 'search-files'],
+  studentData: true
 }
 
 export default manifest

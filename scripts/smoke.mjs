@@ -9,7 +9,7 @@
 // Screenshots go to SMOKE_SHOTS (default: a temp folder) and are kept when a step fails.
 // SMOKE_APP_BINARY runs a packaged app instead (for example release/mac-arm64/Teaching OS.app/
 // Contents/MacOS/Teaching OS), which also proves the native SQLite module was packaged correctly.
-/* global window, document -- the functions passed to evaluate() run inside the app's windows */
+/* global window, document, getComputedStyle -- the functions passed to evaluate() run inside the app's windows */
 import { _electron as electron } from 'playwright-core'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -195,8 +195,31 @@ try {
   await vault.locator('button[type=submit]').click()
   await vault.getByRole('button', { name: 'Lock' }).waitFor()
 
+  log('the open Vault is recognisable without colour: frame, tag, footer, no canvas dots')
+  const identity = await vault.evaluate(() => ({
+    space: document.documentElement.dataset.space,
+    frame: !!document.querySelector('.vault-frame > .vault-frame-inner'),
+    tag: document.querySelector('.topbar .vault-tag')?.textContent,
+    footer: document.querySelector('.vault-footer')?.textContent,
+    footerHeight: document.querySelector('.vault-footer')?.getBoundingClientRect().height,
+    dots: getComputedStyle(document.querySelector('.desktop')).backgroundImage
+  }))
+  check(identity.space === 'vault', 'the Vault window is not data-space=vault')
+  check(identity.frame, 'the Vault has no double frame')
+  check(identity.tag === 'VAULT', `the title bar tag reads ${identity.tag}`)
+  check(
+    identity.footer === 'Vault is open',
+    `the footer reads ${identity.footer} with nothing open`
+  )
+  check(identity.footerHeight === 28, `the footer is ${identity.footerHeight}px tall`)
+  check(identity.dots === 'none', 'the Vault canvas still has dots')
+
   log('each Vault app opens')
   for (const name of VAULT_APPS) await openApp(vault, name)
+  check(
+    (await vault.locator('.vault-footer').textContent()) === 'Student data on screen',
+    'the footer does not warn that student data is on screen'
+  )
   await vault.screenshot({ path: join(shots, '02-vault.png') })
 
   log('a lesson built from blocks fills the to-do list')
@@ -265,6 +288,29 @@ try {
 
   log('the Vault opens again on the restored data')
   vault = await openVault()
+  await vault.getByLabel('Passcode').fill('not the passcode')
+  await vault.locator('button[type=submit]').click()
+  await vault.locator('.vault-notice-danger').waitFor()
+  const gate = await vault.evaluate(() => ({
+    title: document.querySelector('.vault-titlebar')?.textContent,
+    heading: document.querySelector('h1')?.textContent,
+    reason: document.querySelector('.vault-reason')?.textContent,
+    footer: document.querySelector('.vault-footer')?.textContent,
+    buttons: document.querySelectorAll('.vault-gate button').length,
+    shell: document.querySelectorAll('.shell, .window, .desktop').length,
+    text: document.body.innerText
+  }))
+  check(gate.title === 'VAULTLocked', `the locked title bar reads ${gate.title}`)
+  check(gate.heading === 'The Vault is locked', `the lock screen heading reads ${gate.heading}`)
+  check(
+    /^Locked at .+ to restore a backup\.$/.test(gate.reason ?? ''),
+    `the reason line reads ${gate.reason}`
+  )
+  check(gate.footer === 'Vault is locked', `the locked footer reads ${gate.footer}`)
+  check(gate.buttons === 1, `the lock screen has ${gate.buttons} buttons`)
+  check(gate.shell === 0, 'the lock screen still has the shell in the page')
+  check(!gate.text.includes('SMOKE 101'), 'a class name is in the page while locked')
+  await vault.screenshot({ path: join(shots, '03-vault-locked.png') })
   await vault.getByLabel('Passcode').fill(PASSCODE)
   await vault.locator('button[type=submit]').click()
   await vault.getByRole('button', { name: 'Lock' }).waitFor()

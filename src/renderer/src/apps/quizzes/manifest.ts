@@ -9,7 +9,8 @@ const manifest: AppManifest = {
   component: QuizzesApp,
   defaultSize: { w: 1120, h: 700 },
   minSize: { w: 720, h: 440 },
-  handles: ['open-quiz']
+  handles: ['open-quiz'],
+  studentData: false
 }
 
 export default manifest

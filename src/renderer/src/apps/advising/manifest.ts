@@ -9,7 +9,8 @@ const manifest: AppManifest = {
   component: AdvisingApp,
   defaultSize: { w: 1120, h: 700 },
   minSize: { w: 720, h: 440 },
-  handles: ['open-advisee']
+  handles: ['open-advisee'],
+  studentData: true
 }
 
 export default manifest

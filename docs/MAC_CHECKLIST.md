@@ -101,3 +101,14 @@ Use your real setup (the installed app, your own folders) but it is fine to use 
       projector, large.
 - [ ] Make groups for a real-sized class and **Show on the Stage**: every name is readable from the back
       of the room and nothing is cut off. Esc goes back to the file; Esc again ends the Stage.
+
+## The Vault's look (Carrel)
+
+- [ ] Open the Vault. It has a double frame, a VAULT tag in the title bar and a strip at the bottom that
+      says "Vault is open" with nothing open, and "Student data on screen" once the Gradebook is open.
+- [ ] Turn on a greyscale filter (System Settings, Accessibility, Display, Colour Filters). The Vault is
+      still obviously the Vault next to the everyday window.
+- [ ] Lock the Vault from the top bar, then open it again. The lock screen says "The Vault is locked",
+      when and why it locked, and the title bar says "Locked". A wrong passcode is the only red.
+- [ ] Let it lock on its own (idle, or put the Mac to sleep) and reopen it. The reason line names that.
+- [ ] Turn on Reduce Motion (Accessibility, Display). Unlocking no longer fades.

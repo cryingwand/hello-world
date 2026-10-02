@@ -7,6 +7,16 @@ export const VAULT_STATUS_CHANNEL = 'teachingos:vault-status'
 export type LockReason =
   'manual' | 'idle' | 'presenting' | 'display' | 'screen-lock' | 'sleep' | 'quit' | 'restore'
 
+/** The message for a wrong passcode. The lock screen shows only this one in red. */
+export const WRONG_PASSCODE_MESSAGE = 'That passcode is not right.'
+
+/** Why and when the Vault last locked while the app was running. Kept in memory, never written. */
+export interface LastLock {
+  reason: LockReason
+  /** Milliseconds since the epoch. */
+  at: number
+}
+
 export interface VaultStatus {
   /** A passcode has been chosen. False on first run (and after the passcode file is removed). */
   initialized: boolean
@@ -15,6 +25,8 @@ export interface VaultStatus {
   /** Milliseconds until another passcode attempt is allowed; 0 when not blocked. */
   blockedForMs: number
   autoLockMinutes: number
+  /** Null until the Vault has been locked once since the app started. */
+  lastLock: LastLock | null
 }
 
 export interface VaultSettings {

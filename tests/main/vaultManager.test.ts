@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { VAULT_LOCKED_MESSAGE, type LockReason } from '@shared/vault'
+import { VAULT_LOCKED_MESSAGE, WRONG_PASSCODE_MESSAGE, type LockReason } from '@shared/vault'
 import { openVaultDatabase } from '../../src/main/db/connection'
 import { hashPasscode, passcodeProblem, verifyPasscode } from '../../src/main/vault/passcode'
 import {
@@ -128,7 +128,7 @@ describe('vault lifecycle', () => {
     await mgr.setup('first passcode')
     mgr.session().db.prepare("INSERT INTO terms (name) VALUES ('Kept')").run()
     mgr.lock('manual')
-    await expect(mgr.unlock('nope nope')).rejects.toThrow('That passcode is not right.')
+    await expect(mgr.unlock('nope nope')).rejects.toThrow(WRONG_PASSCODE_MESSAGE)
     expect(mgr.status().locked).toBe(true)
     await mgr.unlock('first passcode')
     expect(mgr.session().db.prepare('SELECT name FROM terms').get()).toEqual({ name: 'Kept' })
@@ -140,6 +140,21 @@ describe('vault lifecycle', () => {
     mgr.lock('manual')
     mgr.lock('idle')
     expect(locks).toEqual(['manual'])
+  })
+
+  it('remembers why and when it last locked, in memory only', async () => {
+    const { mgr, dir } = make()
+    expect(mgr.status().lastLock).toBeNull() // never locked since the app started
+    await mgr.setup('first passcode')
+    expect(mgr.status().lastLock).toBeNull() // opening is not a lock
+    const before = Date.now()
+    mgr.lock('idle')
+    const last = mgr.status().lastLock
+    expect(last?.reason).toBe('idle')
+    expect(last?.at).toBeGreaterThanOrEqual(before)
+    mgr.lock('manual') // already locked: the first reason stands
+    expect(mgr.status().lastLock).toEqual(last)
+    expect(readFileSync(join(dir, 'vault.json'), 'utf8')).not.toContain('lastLock')
   })
 
   it('refuses setup twice and unlock before setup', async () => {

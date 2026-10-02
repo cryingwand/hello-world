@@ -12,6 +12,8 @@ import {
   AUTO_LOCK_CHOICES,
   DEFAULT_AUTO_LOCK_MINUTES,
   VAULT_LOCKED_MESSAGE,
+  WRONG_PASSCODE_MESSAGE,
+  type LastLock,
   type LockReason,
   type VaultSettings,
   type VaultStatus
@@ -104,6 +106,7 @@ export function createVaultManager<S>(deps: VaultManagerDeps<S>) {
   let open: { db: Db; value: S } | null = null
   let idleTimer: ReturnType<typeof setTimeout> | null = null
   let opening: Promise<void> | null = null
+  let lastLock: LastLock | null = null
 
   const readMeta = (): Meta | null => {
     if (!metaLoaded) {
@@ -145,7 +148,8 @@ export function createVaultManager<S>(deps: VaultManagerDeps<S>) {
       locked: open === null,
       touchId: { available: touchId().available(), enabled: !!m?.touchId },
       blockedForMs: m ? Math.max(0, m.blockedUntil - now()) : 0,
-      autoLockMinutes: m?.autoLockMinutes ?? DEFAULT_AUTO_LOCK_MINUTES
+      autoLockMinutes: m?.autoLockMinutes ?? DEFAULT_AUTO_LOCK_MINUTES,
+      lastLock
     }
   }
   const announce = (): void => deps.onStatusChange?.(status())
@@ -167,6 +171,7 @@ export function createVaultManager<S>(deps: VaultManagerDeps<S>) {
     if (!open) return
     const closing = open
     open = null // refuse new calls before anything else happens
+    lastLock = { reason, at: now() }
     try {
       closing.db.close()
     } catch (err) {
@@ -222,7 +227,7 @@ export function createVaultManager<S>(deps: VaultManagerDeps<S>) {
     if (!ok) {
       recordFailure(m)
       announce()
-      throw new ValidationError('That passcode is not right.')
+      throw new ValidationError(WRONG_PASSCODE_MESSAGE)
     }
     if (m.failures !== 0 || m.blockedUntil !== 0) writeMeta({ ...m, failures: 0, blockedUntil: 0 })
   }

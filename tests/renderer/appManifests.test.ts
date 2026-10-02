@@ -48,6 +48,16 @@ describe('app manifests', () => {
     expect(vault.handlerFor('open-class')?.id).toBe('classes')
   })
 
+  it('states for every vault app whether it can show student data (the footer relies on it)', () => {
+    for (const app of registryFor('vault').apps) {
+      expect(typeof app.studentData, app.id).toBe('boolean')
+    }
+    const byId = registryFor('vault').byId
+    for (const id of ['classes', 'gradebook', 'advising']) {
+      expect(byId.get(id)?.studentData, id).toBe(true)
+    }
+  })
+
   it('never route an intent about students or classes in the launcher', () => {
     const launcher = registryFor('launcher')
     for (const type of INTENTS) {

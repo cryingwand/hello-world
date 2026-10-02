@@ -4,16 +4,22 @@ import PresentationOffer from './shell/PresentationOffer'
 import { ShellProvider, useShell } from './shell/ShellContext'
 import TopBar from './shell/TopBar'
 import StageApp from './stage/StageApp'
+import { VaultFooter } from './vault/VaultChrome'
+import { FOOTER_OPEN, FOOTER_STUDENT_DATA, studentDataOnScreen } from './vault/studentData'
 import VaultRoot from './vault/VaultRoot'
 
 function Shell(): React.JSX.Element {
-  const { presenting, space } = useShell()
+  const { presenting, space, state, registry } = useShell()
+  const students = space === 'vault' && studentDataOnScreen(state.windows, registry.byId)
   return (
     <div className={`shell shell-${space}${presenting ? ' presenting' : ''}`}>
       <TopBar />
       <PresentationOffer />
       <Desktop />
       <Dock />
+      {space === 'vault' && (
+        <VaultFooter>{students ? FOOTER_STUDENT_DATA : FOOTER_OPEN}</VaultFooter>
+      )}
     </div>
   )
 }

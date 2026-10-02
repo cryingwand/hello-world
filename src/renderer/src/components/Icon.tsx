@@ -19,6 +19,7 @@ const PATHS = {
   close:
     'M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4Z',
   minimize: 'M5 17h14v2H5Z',
+  alert: 'M12 3 1.5 21h21Zm0 4.6L18.9 19H5.1Zm-1 3.4v4.5h2V11Zm0 5.8v2h2v-2Z',
   maximize: 'M5 5h14v14H5Zm2 2v10h10V7Z',
   'snap-left': 'M4 5h16v14H4Zm2 2v10h5V7Z',
   'snap-right': 'M4 5h16v14H4Zm10 2v10h4V7Z'

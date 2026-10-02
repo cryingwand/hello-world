@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import VaultGate from './VaultGate'
+import { VaultFrame } from './VaultChrome'
 import { useVaultStatus } from './useVaultStatus'
 
 /** Real activity in the window; throttled so the idle timer is not hammered. */
@@ -29,7 +30,17 @@ export default function VaultRoot({ children }: { children: ReactNode }): React.
     }
   }, [unlocked])
 
-  if (!status) return <main className="vault-gate" aria-busy="true" />
-  if (status.locked) return <VaultGate status={status} />
-  return <>{children}</>
+  // The frame is the same element in every state, so only the content swaps. Locking is instant (main
+  // closes the window); opening fades the shell in.
+  return (
+    <VaultFrame>
+      {!status ? (
+        <main className="vault-gate" aria-busy="true" />
+      ) : status.locked ? (
+        <VaultGate status={status} />
+      ) : (
+        <div className="vault-reveal">{children}</div>
+      )}
+    </VaultFrame>
+  )
 }

@@ -4,6 +4,7 @@ import { APP_NAME } from '@shared/app-info'
 import Icon from '@renderer/components/Icon'
 import { useApiQuery } from '@renderer/data/hooks'
 import { classLabel } from '@renderer/lib/labels'
+import { VaultTag } from '@renderer/vault/VaultChrome'
 import SettingsDialog from './SettingsDialog'
 import { useShell } from './ShellContext'
 
@@ -72,6 +73,7 @@ export default function TopBar(): React.JSX.Element {
   return (
     <header className="topbar">
       <div className="topbar-left">
+        {space === 'vault' && <VaultTag />}
         <button className="brand" onClick={() => setSettingsOpen(true)} title="Settings">
           {APP_NAME}
         </button>

@@ -91,7 +91,7 @@ must go through `createFolders` or follow the same rules.
 Every app lives in `src/renderer/src/apps/<id>/` and exports a manifest from `manifest.ts`:
 
 ```ts
-{ id, name, space: 'launcher' | 'vault', icon, component, defaultSize, handles: Intent[] }
+{ id, name, space: 'launcher' | 'vault', icon, component, defaultSize, handles: Intent[], studentData? }
 ```
 
 `space` decides which window hosts the app. Anything that touches students, classes, grades or protected
@@ -133,6 +133,13 @@ in-process React modules, not iframes, and talk to data only through `window.api
 - `vault.json` holds the scrypt passcode hash, the Touch ID flag, the idle setting and the failed-attempt
   counter (persisted, so restarting does not reset the wait). The passcode gates access through the app;
   it does not encrypt `vault.sqlite`. FileVault protects the disk.
+- The Vault window is recognisable without colour (Carrel): a double frame, a VAULT tag in the title bar,
+  a 28px footer, no canvas dots (`src/renderer/src/vault/VaultChrome.tsx`, `.vault-*` in `styles.css`).
+  The footer says "Student data on screen" while a visible window belongs to an app whose manifest sets
+  `studentData: true`, else "Vault is open"; **every vault app must set `studentData`** (a test checks),
+  and when unsure it is `true`. The lock screen replaces the shell, so no student data is in the page
+  while locked; it shows why and when the Vault last locked (`VaultStatus.lastLock`, kept in memory in the
+  manager, never written to disk) and uses red only for a wrong passcode (`WRONG_PASSCODE_MESSAGE`).
 - Unlock goes through `createVaultGate`: refused while presenting (checked again after the passcode is
   verified), and confirmed with a native dialog when another display is connected.
 - Vault backups are taken even while it is locked, from main. Every backup is checked (`quick_check`)

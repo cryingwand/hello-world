@@ -9,7 +9,8 @@ const manifest: AppManifest = {
   component: PlannerApp,
   defaultSize: { w: 1160, h: 720 },
   minSize: { w: 760, h: 460 },
-  handles: []
+  handles: [],
+  studentData: false
 }
 
 export default manifest

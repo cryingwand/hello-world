@@ -26,4 +26,10 @@ export interface AppManifest {
   minSize?: { w: number; h: number }
   /** Intent types this app can open. */
   handles: IntentType[]
+  /**
+   * Whether the app can put students' names, grades or advising on screen. The Vault's footer says
+   * "Student data on screen" while any open window of such an app is showing. Every vault app
+   * states it (a test checks); when unsure, say true.
+   */
+  studentData?: boolean
 }
