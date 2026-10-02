@@ -195,7 +195,9 @@ their own app from Files; the Stage does not show them. The In-class Tools can a
 and a picked name or groups in place of the file (`stage.setTimer` / `stage.showTool`, only while it is
 showing, cleared when it ends); see [`docs/features/in-class-tools.md`](docs/features/in-class-tools.md).
 Playwright's own key presses skip `before-input-event`, so the smoke test presses Stage keys with
-`webContents.sendInputEvent`.
+`webContents.sendInputEvent`. Its look is Carrel's Stage rules: black only, Palatino only, no accent hue, no
+cursor, text sized from the `--stage-*` tokens (viewport units, never px, never below `--stage-caption`),
+and a cut or a fade for any change. `tests/renderer/stageStyles.test.ts` checks the rules.
 
 ## Adding to the data API
 

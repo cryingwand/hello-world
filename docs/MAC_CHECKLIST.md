@@ -112,3 +112,15 @@ Use your real setup (the installed app, your own folders) but it is fine to use 
       when and why it locked, and the title bar says "Locked". A wrong passcode is the only red.
 - [ ] Let it lock on its own (idle, or put the Mac to sleep) and reopen it. The reason line names that.
 - [ ] Turn on Reduce Motion (Accessibility, Display). Unlocking no longer fades.
+
+## The Stage's look (Carrel)
+
+- [ ] On the projector the Stage is pure black with Palatino text, no cursor, and no blue or red anywhere.
+- [ ] A timer in the corner is easy to read from the back of the room. When it finishes the plate turns
+      light and says "Time"; it does not flash.
+- [ ] Pick someone with "Show each pick on the Stage": the name fades in (no zoom or bounce). With Reduce
+      Motion on it simply appears.
+- [ ] Show groups for a large class (for example 8 groups of 10). Note whether the last names are clipped
+      at the bottom; that is the trade-off for never shrinking text below the smallest Stage size.
+- [ ] Show a Word file and a text file. The text file is large, serif and white on black. The Word file is
+      still a white page.

@@ -1624,21 +1624,29 @@ td .badge:first-child {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/*
+ * The Stage window: black, Palatino, no accent hue, no cursor, no chrome (docs/design/carrel-handoff.md).
+ * Text is sized with the --stage-* tokens (viewport units), never px, and never below --stage-caption.
+ */
+[data-space='stage'],
+[data-space='stage'] * {
+  cursor: none;
+}
 .stage {
   position: fixed;
   inset: 0;
-  background: #000;
-  color: #fff;
+  background: var(--desk);
+  color: var(--ink);
+  font-family: var(--font-serif);
   display: grid;
   place-items: center;
   overflow: hidden;
-  cursor: none;
 }
 .stage-frame {
   width: 100%;
   height: 100%;
   border: 0;
-  background: #fff;
+  background: var(--desk);
 }
 .stage-image {
   max-width: 100%;
@@ -1651,54 +1659,50 @@ td .badge:first-child {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font:
-    4vh/1.4 -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  font: var(--stage-body) / var(--leading-snug) var(--font-serif);
   white-space: pre-wrap;
 }
 .stage-message {
   margin: 0;
-  color: #8a8f9c;
-  font-size: 3vh;
+  color: var(--ink-muted);
+  font-size: var(--stage-body);
 }
 
+/* The timer docks in the corner on a solid black plate, so it is legible over any document. */
 .stage-timer {
   position: fixed;
   top: 2.5vh;
   right: 2.5vw;
   padding: 0.6vh 1.6vw;
   border-radius: 1.2vh;
-  background: rgba(0, 0, 0, 0.78);
-  color: #fff;
-  font-size: 9vh;
-  font-weight: 600;
+  background: var(--surface-1);
+  color: var(--ink);
+  font-size: var(--stage-name);
+  font-weight: var(--weight-semibold);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0.4vh 2vh rgba(0, 0, 0, 0.35);
 }
 .stage-timer-paused {
-  color: #b9bfcc;
+  color: var(--ink-muted);
+}
+/* Finished: the plate inverts and says "Time". No red, no flashing. */
+.stage-timer-done {
+  background: var(--ink);
+  color: var(--desk);
 }
 .stage-pick {
   margin: 0;
   padding: 0 6vw;
-  font-size: 16vh;
-  font-weight: 600;
+  font-size: var(--stage-name);
+  font-weight: var(--weight-semibold);
   text-align: center;
   line-height: 1.1;
-  animation: stage-pop 0.35s ease-out;
+  animation: stage-fade var(--dur-base) var(--ease-out);
 }
-@keyframes stage-pop {
+/* A cut or a cross-fade, never a bounce. Reduce Motion zeroes --dur-base. */
+@keyframes stage-fade {
   from {
     opacity: 0;
-    transform: scale(0.85);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .stage-pick {
-    animation: none;
   }
 }
 .stage-groups {
@@ -1707,13 +1711,13 @@ td .badge:first-child {
   display: grid;
   align-content: center;
   gap: 2.5vh 2vw;
-  /* The top clears the timer in the corner. */
-  padding: 14vh 4vw 4vh;
+  /* The top clears the docked timer; GROUPS_ROOM_VH in StageApp.tsx is what is left. */
+  padding: 19vh 4vw 4vh;
 }
 .stage-group h2 {
   margin: 0 0 0.6em;
   font-size: 1.15em;
-  color: #9fc2ff;
+  font-weight: var(--weight-bold);
 }
 .stage-group ul {
   margin: 0;

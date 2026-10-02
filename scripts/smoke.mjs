@@ -339,6 +339,55 @@ try {
   await stage.locator('.stage-timer').waitFor()
   await launcher.getByRole('button', { name: 'Start', exact: true }).click()
 
+  log('the Stage is black and Palatino, with no accent hue, no cursor and no flashing')
+  const look = await stage.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.stage'))
+    const timer = document.querySelector('.stage-timer')
+    return {
+      space: document.documentElement.dataset.space,
+      theme: document.documentElement.dataset.theme ?? null,
+      background: cs.backgroundColor,
+      font: cs.fontFamily,
+      cursor: getComputedStyle(document.body).cursor,
+      timerPlate: getComputedStyle(timer).backgroundColor,
+      timerSize: getComputedStyle(timer).fontSize,
+      height: window.innerHeight
+    }
+  })
+  check(look.space === 'stage', 'the Stage window is not data-space=stage')
+  check(look.theme === null, 'the Stage has a theme (it ignores it)')
+  check(look.background === 'rgb(0, 0, 0)', `the Stage background is ${look.background}`)
+  check(/Palatino/.test(look.font), `the Stage font is ${look.font}`)
+  check(look.cursor === 'none', `the Stage cursor is ${look.cursor}`)
+  check(look.timerPlate === 'rgb(0, 0, 0)', `the timer plate is ${look.timerPlate}`)
+  const expected = Math.round(look.height * 0.13)
+  check(
+    Math.abs(parseFloat(look.timerSize) - expected) <= 1,
+    `the timer is ${look.timerSize}, expected --stage-name (${expected}px)`
+  )
+  // A finished timer says "Time" on an inverted plate, and does not animate.
+  await launcher.evaluate(() =>
+    window.api.stage.setTimer({ status: 'done', durationMs: 60000, remainingMs: 0, endsAt: null })
+  )
+  await stage.locator('.stage-timer-done').waitFor()
+  const done = await stage.evaluate(() => {
+    const t = document.querySelector('.stage-timer')
+    const cs = getComputedStyle(t)
+    return { text: t.textContent, plate: cs.backgroundColor, ink: cs.color, anim: cs.animationName }
+  })
+  check(done.text === 'Time', `the finished timer reads ${done.text}`)
+  check(done.plate !== 'rgb(0, 0, 0)' && done.ink === 'rgb(0, 0, 0)', 'the plate did not invert')
+  check(done.anim === 'none', 'the finished timer animates')
+  await stage.screenshot({ path: join(shots, '04-stage-timer-done.png') })
+  await launcher.evaluate(() =>
+    window.api.stage.setTimer({
+      status: 'idle',
+      durationMs: 60000,
+      remainingMs: 60000,
+      endsAt: null
+    })
+  )
+
   await launcher.getByRole('tab', { name: 'Groups' }).click()
   await launcher
     .getByRole('textbox', { name: /Names, one per line/ })

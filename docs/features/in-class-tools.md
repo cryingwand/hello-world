@@ -30,12 +30,17 @@ running timer ending within a day), holds it in memory and drops it when the Sta
 - **The timer** floats in the top-right corner over whatever is showing, file or tool, and stays while
   moving between files. The tool pushes its `TimerState` on every change (start, pause, a minute more or
   less, reset); the Stage counts down from `endsAt` itself, so the two never drift. The Stage remounts its
-  timer for each new state so the first reading of the clock is never stale.
+  timer for each new state so the first reading of the clock is never stale. It sits on a solid black
+  plate at `--stage-name` size; when it finishes the plate inverts and reads "Time" (no red, no flashing).
 - **The picker** sends only the drawn name, after the spin, and only while "Show each pick on the Stage"
   is ticked. Never the list or the spin.
 - **Groups** go up with "Show on the Stage"; shuffling again while they are up sends the new groups.
   The Stage picks the column count (one to eight) that gives the largest text, so the longest name fits
-  on one line and every group fits under the timer.
+  on one line and every group fits under the timer. Sizes are viewport units that never go below
+  `--stage-caption`, so a very large group can be clipped at the bottom rather than shown too small.
+
+The Stage's look (black, Palatino, no accent hue, no cursor, text from the `--stage-*` tokens) is held by
+`tests/renderer/stageStyles.test.ts`. A Word file is still shown as a white page, as a PDF is.
 
 A tool replaces the file full screen. Esc, Next, Previous, a click on a queue item, or "Back to the file"
 (in the tool or the Presenter) puts it away; a second Esc ends the Stage (the first, while blanked).
