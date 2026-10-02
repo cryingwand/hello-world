@@ -19,6 +19,11 @@ export interface Access {
    * first (at most one a minute). If it cannot be taken, the call is refused.
    */
   backupFirst?: boolean
+  /**
+   * Changes the Mac's own files or calendar. Refused in the Preview app, which runs a version still
+   * being worked on against a copy of the data: the Mac's files and calendar are not copies.
+   */
+  changesMac?: boolean
 }
 
 const VAULT: Access = { roles: ['vault'], needsVault: true }
@@ -26,6 +31,8 @@ const VAULT: Access = { roles: ['vault'], needsVault: true }
 const VAULT_DESTRUCTIVE: Access = { roles: ['vault'], needsVault: true, backupFirst: true }
 const EVERYDAY: Access = { roles: ['launcher', 'vault'] }
 const LAUNCHER: Access = { roles: ['launcher'] }
+/** An everyday method that changes the Mac's files or calendar. */
+const EVERYDAY_MAC_WRITE: Access = { roles: ['launcher', 'vault'], changesMac: true }
 /** The lock screen's own calls: the vault window must be able to make them while locked. */
 const GATE: Access = { roles: ['vault'] }
 /** The projector window: it can ask what to show and nothing else. */
@@ -151,7 +158,7 @@ export const API_ACCESS = {
     search: EVERYDAY,
     info: EVERYDAY,
     readText: EVERYDAY,
-    writeText: EVERYDAY,
+    writeText: EVERYDAY_MAC_WRITE,
     docxHtml: EVERYDAY,
     table: EVERYDAY,
     thumbnail: EVERYDAY,
@@ -164,10 +171,10 @@ export const API_ACCESS = {
   folders: {
     places: EVERYDAY,
     list: EVERYDAY,
-    createFolder: EVERYDAY,
-    rename: EVERYDAY,
-    move: EVERYDAY,
-    trash: EVERYDAY
+    createFolder: EVERYDAY_MAC_WRITE,
+    rename: EVERYDAY_MAC_WRITE,
+    move: EVERYDAY_MAC_WRITE,
+    trash: EVERYDAY_MAC_WRITE
   },
   // The everyday desktop's arrangement lives in the everyday window only.
   desk: { items: LAUNCHER, pin: LAUNCHER, addArea: LAUNCHER, arrange: LAUNCHER, remove: LAUNCHER },
@@ -176,14 +183,23 @@ export const API_ACCESS = {
     status: EVERYDAY,
     calendars: EVERYDAY,
     events: EVERYDAY,
-    create: EVERYDAY,
-    delete: EVERYDAY
+    create: EVERYDAY_MAC_WRITE,
+    delete: EVERYDAY_MAC_WRITE
   },
   // The names-only roster copy: read-only, for the everyday window, and available while the Vault is locked.
   directory: { classes: LAUNCHER, students: LAUNCHER },
   settings: { get: EVERYDAY, update: EVERYDAY },
   backup: { runNow: EVERYDAY, list: EVERYDAY },
   system: { info: EVERYDAY, chooseFolder: EVERYDAY, openAccessibilitySettings: EVERYDAY },
+  // Updating the app: from the everyday window's Settings only. No student data is involved.
+  updates: {
+    status: LAUNCHER,
+    check: LAUNCHER,
+    install: LAUNCHER,
+    tryPreview: LAUNCHER,
+    refreshPreview: LAUNCHER,
+    removePreview: LAUNCHER
+  },
   vaultGate: {
     openWindow: LAUNCHER,
     status: EVERYDAY,

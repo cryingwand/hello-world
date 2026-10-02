@@ -1,0 +1,27 @@
+name: Previews
+
+# A branch's preview build (see the publish job in ci.yml) is removed when its pull request closes or
+# the branch is deleted, so the in-app list only shows work still in progress.
+on:
+  delete:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    name: Remove the preview build
+    if: github.event_name == 'pull_request' || github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Delete the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.event.ref }}
+        run: |
+          slug=$(printf '%s' "$BRANCH" | tr 'A-Z' 'a-z' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
+          gh release delete "preview-$slug" --yes --cleanup-tag || echo "No preview for $BRANCH"

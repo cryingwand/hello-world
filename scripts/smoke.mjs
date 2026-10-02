@@ -61,6 +61,9 @@ const check = (ok, what) => {
 }
 
 const packaged = process.env.SMOKE_APP_BINARY
+// A build stamped as a preview (TOS_CHANNEL=preview at build time) refuses to change the Mac's files
+// and calendar, so those steps check the refusal instead.
+const previewBuild = process.env.SMOKE_EXPECT_PREVIEW === '1'
 const app = await electron.launch({
   executablePath: packaged ?? electronBin,
   args: [...(process.platform === 'linux' ? ['--no-sandbox'] : []), ...(packaged ? [] : [APP])],
@@ -142,8 +145,14 @@ try {
   await files
     .locator('.result-main', { hasText: 'notes.md' })
     .dragTo(files.locator('.result-main', { hasText: 'Week 1' }))
-  await files.locator('.result-main', { hasText: 'notes.md' }).waitFor({ state: 'detached' })
-  check(existsSync(join(home, 'Documents/PHIL 101/Week 1/notes.md')), 'notes.md did not move')
+  if (previewBuild) {
+    // The Preview's data is a copy, but these are the Mac's real files: the move is refused.
+    await files.getByText(/Not in the Preview/).waitFor()
+    check(existsSync(join(home, 'Documents/PHIL 101/notes.md')), 'the Preview moved a real file')
+  } else {
+    await files.locator('.result-main', { hasText: 'notes.md' }).waitFor({ state: 'detached' })
+    check(existsSync(join(home, 'Documents/PHIL 101/Week 1/notes.md')), 'notes.md did not move')
+  }
 
   log('a file is pinned to the desktop, and an area is made on the canvas')
   await files.locator('.result-main', { hasText: 'syllabus.pdf' }).click({ button: 'right' })
@@ -177,7 +186,31 @@ try {
   await form.getByLabel('To', { exact: true }).fill('11:00')
   // A real click: a dialog's buttons must work inside a window on the canvas.
   await launcher.getByRole('button', { name: 'Add', exact: true }).click()
-  await cal.locator('.cal-event', { hasText: 'Smoke office hours' }).waitFor()
+  if (previewBuild) {
+    // The Preview works on a copy of the data, but the calendar is the real one: refused.
+    await form.getByText(/Not in the Preview/).waitFor()
+    await form.getByRole('button', { name: 'Cancel' }).click()
+  } else {
+    await cal.locator('.cal-event', { hasText: 'Smoke office hours' }).waitFor()
+  }
+
+  log('Settings shows this version and where updates come from')
+  await launcher.locator('.topbar .brand').click()
+  const settings = launcher.getByRole('dialog', { name: 'Settings' })
+  await settings.getByRole('heading', { name: 'Updates' }).waitFor()
+  await settings.getByRole('button', { name: 'Check now' }).waitFor()
+  check(
+    (await settings.getByRole('heading', { name: 'Try work in progress' }).count()) ===
+      (previewBuild ? 0 : 1),
+    'the Preview offers other previews, or the real app does not'
+  )
+  if (previewBuild) {
+    check(
+      (await launcher.locator('.preview-badge').textContent()).includes('Preview of'),
+      'the Preview does not say it is one'
+    )
+  }
+  await settings.getByRole('button', { name: 'Done' }).click()
 
   log('the Vault opens and a passcode is chosen')
   const openVault = async () => {

@@ -212,6 +212,28 @@ select {
   border-color: #b3261e;
   color: #fff;
 }
+/* A newer version is waiting in Settings. */
+.update-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: var(--space-1);
+  vertical-align: super;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+}
+/* The Preview app always says it is one (docs/features/updates.md). */
+.preview-badge {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: var(--space-0h) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--warning);
+  background: var(--warning-wash);
+  color: var(--text);
+}
 .clock {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -2975,4 +2997,22 @@ td .badge:first-child {
   top: 0;
   z-index: 3;
   background: var(--panel);
+}
+
+/* ---- updates (Settings) ---- */
+.update-offer,
+.update-previews > li {
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+.update-previews {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.update-notes {
+  margin: var(--space-1) 0 var(--space-2);
+  padding-left: var(--space-5);
 }
