@@ -4,3 +4,7 @@ dist
 release
 package-lock.json
 TEACHING_OS_PLAN.md
+
+# Carrel files are kept exactly as designed (aligned columns, comments)
+src/renderer/src/carrel.css
+docs/design/
