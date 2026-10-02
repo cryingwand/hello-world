@@ -1,0 +1,391 @@
+/* ==========================================================================
+   Carrel — design tokens for Teaching OS
+   v0.2 (foundations, spaces, components)
+
+   How scoping works
+   - Theme and space are two attributes on the same element. In the app that
+     element is <html> of each BrowserWindow:
+       <html data-theme="dark|light" data-space="everyday|vault|stage">
+   - Dark + everyday is the default, so an untouched document already works.
+   - Derived tokens (washes, focus ring, elevation) are re-declared on every
+     scoped element so they follow whatever theme and space are in force.
+   ========================================================================== */
+
+/* ---------- 1. Colour: Everyday, dark (default) ------------------------- */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --desk:          #13110f;  /* the endless canvas */
+  --desk-dot:      #393632;  /* canvas grid dots */
+  --surface-0:     #1b1916;  /* wells: grid bodies, editors, list backgrounds */
+  --surface-1:     #24211e;  /* panels: window body, cards, sidebars */
+  --surface-2:     #2e2b27;  /* raised: title bars, toolbars, inputs, hover */
+  --surface-3:     #393632;  /* pressed, neutral-selected, chips */
+  --rule:          #47433e;  /* hairlines and dividers (decorative) */
+  --rule-strong:   #7f7b75;  /* control borders, 3:1 on surfaces 0 to 2 */
+  --ink:           #ece9e2;  /* primary text */
+  --ink-muted:     #b8b3ac;  /* secondary text, AA on every surface */
+  --ink-faint:     #9c9890;  /* tertiary text, AA on surfaces 0 to 2 only */
+
+  --accent:        #7eb4f9;  /* focus, selection, primary action */
+  --accent-strong: #a8cefe;  /* hover on accent, focus ring */
+  --on-accent:     #0c121a;  /* text on an accent fill */
+
+  --danger:        #ff6c58;
+  --warning:       #f5b430;
+  --success:       #4acc68;
+  --on-status:     #16130f;  /* text on a status fill */
+
+  /* Pigments: the categorical set. Never used as text colour. */
+  --pigment-blue:   #609af4;  --on-pigment-blue:   #16130f;
+  --pigment-orange: #ed9a56;  --on-pigment-orange: #16130f;
+  --pigment-violet: #7e7bca;  --on-pigment-violet: #16130f;
+  --pigment-green:  #89c5a2;  --on-pigment-green:  #16130f;
+  --pigment-yellow: #f7ea81;  --on-pigment-yellow: #16130f;
+  --pigment-pink:   #db7db8;  --on-pigment-pink:   #16130f;
+  --pigment-teal:   #74e4ec;  --on-pigment-teal:   #16130f;
+  --pigment-red:    #d85362;  --on-pigment-red:    #16130f;
+  --pigment-tan:    #af997f;  --on-pigment-tan:    #16130f;
+  --pigment-lime:   #b5d788;  --on-pigment-lime:   #16130f;
+  --pigment-grey:   #828281;  --on-pigment-grey:   #16130f;
+  --pigment-slate:  #545f6a;  --on-pigment-slate:  #ffffff;
+  --pigment-wash-amount: 22%;
+
+  --shadow-color: 0 0 0;
+  --shadow-near:  0.40;
+  --shadow-far:   0.45;
+  --edge-light:   rgb(255 255 255 / 0.06);
+}
+
+/* ---------- 2. Colour: Everyday, light ---------------------------------- */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --desk:          #eeebe5;
+  --desk-dot:      #d2cfc8;
+  --surface-0:     #fcfaf6;
+  --surface-1:     #f5f3ef;
+  --surface-2:     #ece9e4;
+  --surface-3:     #e1ded7;
+  --rule:          #d2cfc8;
+  --rule-strong:   #807b74;
+  --ink:           #211c17;
+  --ink-muted:     #544f49;
+  --ink-faint:     #68625c;
+
+  --accent:        #1a57ad;
+  --accent-strong: #004090;
+  --on-accent:     #fdfcf8;
+
+  --danger:        #ba0d01;
+  --warning:       #805202;
+  --success:       #026a2e;
+  --on-status:     #ffffff;
+
+  --pigment-blue:   #4564d0;  --on-pigment-blue:   #ffffff;
+  --pigment-orange: #b95102;  --on-pigment-orange: #ffffff;
+  --pigment-violet: #55488e;  --on-pigment-violet: #ffffff;
+  --pigment-green:  #33826b;  --on-pigment-green:  #ffffff;
+  --pigment-yellow: #c5b748;  --on-pigment-yellow: #16130f;
+  --pigment-pink:   #d64e93;  --on-pigment-pink:   #16130f;
+  --pigment-teal:   #04626d;  --on-pigment-teal:   #ffffff;
+  --pigment-red:    #8b023c;  --on-pigment-red:    #ffffff;
+  --pigment-tan:    #ab9073;  --on-pigment-tan:    #16130f;
+  --pigment-lime:   #75a62c;  --on-pigment-lime:   #16130f;
+  --pigment-grey:   #b0b0b0;  --on-pigment-grey:   #16130f;
+  --pigment-slate:  #394551;  --on-pigment-slate:  #ffffff;
+  --pigment-wash-amount: 18%;
+
+  --shadow-color: 33 28 23;
+  --shadow-near:  0.10;
+  --shadow-far:   0.16;
+  --edge-light:   rgb(255 255 255 / 0.7);
+}
+
+/* ---------- 3. Colour: the Vault (student data) ------------------------- */
+[data-space="vault"] {
+  --desk:          #160f16;
+  --desk-dot:      #403340;
+  --surface-0:     #1f1720;
+  --surface-1:     #291f29;
+  --surface-2:     #332834;
+  --surface-3:     #403340;
+  --rule:          #4d404d;
+  --rule-strong:   #877787;
+  --ink:           #eee7ed;
+  --ink-muted:     #bdb2bd;
+  --ink-faint:     #a096a1;
+
+  --accent:        #d8a9ec;
+  --accent-strong: #e8c6f6;
+  --on-accent:     #1b0e20;
+}
+
+[data-theme="light"][data-space="vault"],
+[data-theme="light"] [data-space="vault"] {
+  --desk:          #ede4f0;
+  --desk-dot:      #d3cad5;
+  --surface-0:     #fcf8fc;
+  --surface-1:     #f6f0f7;
+  --surface-2:     #ede6ee;
+  --surface-3:     #e2d9e4;
+  --rule:          #d3cad5;
+  --rule-strong:   #847687;
+  --ink:           #211a23;
+  --ink-muted:     #564c58;
+  --ink-faint:     #6a5f6c;
+
+  --accent:        #76308f;
+  --accent-strong: #5f1477;
+  --on-accent:     #fdfbfe;
+}
+
+/* ---------- 4. Colour: the Stage (projector) ---------------------------- */
+/* One theme only. The Stage ignores data-theme. */
+[data-space="stage"] {
+  color-scheme: dark;
+  --desk:          #000000;
+  --surface-0:     #000000;
+  --surface-1:     #000000;  /* plates behind overlays are solid black */
+  --surface-2:     #1b1916;
+  --surface-3:     #2e2b27;
+  --rule:          #47433e;
+  --rule-strong:   #8a857e;
+  --ink:           #f5f2ea;  /* 18.8:1 on black */
+  --ink-muted:     #bdb8b0;  /* 10.6:1 on black */
+  --ink-faint:     #bdb8b0;  /* no faint tier on the Stage */
+  --accent:        #f5f2ea;  /* no accent hue on the Stage */
+  --accent-strong: #ffffff;
+  --on-accent:     #000000;
+  --warning:       #f5b430;  /* 11.5:1 on black */
+  --stage-scrim:   rgb(0 0 0 / 0.86);  /* minimum behind text over a document */
+}
+
+/* ---------- 5. Derived colour (follows the scope it sits in) ------------ */
+:root,
+[data-theme],
+[data-space] {
+  --accent-wash:   color-mix(in srgb, var(--accent) 18%, var(--surface-1));
+  --danger-wash:   color-mix(in srgb, var(--danger) 16%, var(--surface-1));
+  --warning-wash:  color-mix(in srgb, var(--warning) 16%, var(--surface-1));
+  --success-wash:  color-mix(in srgb, var(--success) 16%, var(--surface-1));
+
+  --state-hover:   color-mix(in srgb, var(--ink) 6%, transparent);
+  --state-pressed: color-mix(in srgb, var(--ink) 11%, transparent);
+  --state-selected: var(--accent-wash);
+  --state-drop:    var(--accent-wash);
+
+  --focus-ring:    0 0 0 2px var(--surface-1), 0 0 0 4px var(--accent-strong);
+
+  /* Component derivations (pass two) */
+  --accent-pressed: color-mix(in srgb, var(--accent) 84%, var(--on-accent));
+  --danger-hover:   color-mix(in srgb, var(--danger) 86%, var(--ink));
+  --danger-pressed: color-mix(in srgb, var(--danger) 84%, var(--on-status));
+  --frost:          color-mix(in srgb, var(--surface-1) 82%, transparent);  /* top bar, dock: pair with --frost-blur */
+  --drop-outline:   2px dashed var(--accent);
+  --missing-border: 1px dashed var(--rule-strong);
+  --missing-hatch:  repeating-linear-gradient(135deg, transparent 0 6px, var(--state-hover) 6px 8px);
+
+  --pigment-blue-wash:   color-mix(in srgb, var(--pigment-blue)   var(--pigment-wash-amount), var(--surface-1));
+  --pigment-orange-wash: color-mix(in srgb, var(--pigment-orange) var(--pigment-wash-amount), var(--surface-1));
+  --pigment-violet-wash: color-mix(in srgb, var(--pigment-violet) var(--pigment-wash-amount), var(--surface-1));
+  --pigment-green-wash:  color-mix(in srgb, var(--pigment-green)  var(--pigment-wash-amount), var(--surface-1));
+  --pigment-yellow-wash: color-mix(in srgb, var(--pigment-yellow) var(--pigment-wash-amount), var(--surface-1));
+  --pigment-pink-wash:   color-mix(in srgb, var(--pigment-pink)   var(--pigment-wash-amount), var(--surface-1));
+  --pigment-teal-wash:   color-mix(in srgb, var(--pigment-teal)   var(--pigment-wash-amount), var(--surface-1));
+  --pigment-red-wash:    color-mix(in srgb, var(--pigment-red)    var(--pigment-wash-amount), var(--surface-1));
+  --pigment-tan-wash:    color-mix(in srgb, var(--pigment-tan)    var(--pigment-wash-amount), var(--surface-1));
+  --pigment-lime-wash:   color-mix(in srgb, var(--pigment-lime)   var(--pigment-wash-amount), var(--surface-1));
+  --pigment-grey-wash:   color-mix(in srgb, var(--pigment-grey)   var(--pigment-wash-amount), var(--surface-1));
+  --pigment-slate-wash:  color-mix(in srgb, var(--pigment-slate)  var(--pigment-wash-amount), var(--surface-1));
+
+  /* Elevation. Each level is a shadow plus a lit top edge. */
+  --elev-0: none;
+  --elev-1: inset 0 1px 0 var(--edge-light),
+            0 1px 2px rgb(var(--shadow-color) / var(--shadow-near));
+  --elev-2: inset 0 1px 0 var(--edge-light),
+            0 2px 6px rgb(var(--shadow-color) / var(--shadow-near)),
+            0 8px 20px rgb(var(--shadow-color) / calc(var(--shadow-far) * 0.7));
+  --elev-3: inset 0 1px 0 var(--edge-light),
+            0 4px 10px rgb(var(--shadow-color) / var(--shadow-near)),
+            0 18px 44px rgb(var(--shadow-color) / var(--shadow-far));
+  --elev-4: inset 0 1px 0 var(--edge-light),
+            0 6px 14px rgb(var(--shadow-color) / var(--shadow-near)),
+            0 24px 60px rgb(var(--shadow-color) / calc(var(--shadow-far) * 1.1));
+  --elev-5: inset 0 1px 0 var(--edge-light),
+            0 10px 24px rgb(var(--shadow-color) / calc(var(--shadow-near) * 1.2)),
+            0 40px 90px rgb(var(--shadow-color) / calc(var(--shadow-far) * 1.3));
+}
+
+/* ---------- 6. Semantic colour: lesson blocks and areas ----------------- */
+:root,
+[data-theme],
+[data-space] {
+  --block-lecture:       var(--pigment-blue);
+  --block-discussion:    var(--pigment-orange);
+  --block-writing:       var(--pigment-violet);
+  --block-reading:       var(--pigment-green);
+  --block-group:         var(--pigment-yellow);
+  --block-activity:      var(--pigment-pink);
+  --block-video:         var(--pigment-teal);
+  --block-quiz:          var(--pigment-red);
+  --block-presentations: var(--pigment-tan);
+  --block-review:        var(--pigment-lime);
+  --block-break:         var(--pigment-grey);
+  --block-other:         var(--pigment-slate);
+
+  --area-blue:   var(--pigment-blue);
+  --area-green:  var(--pigment-green);
+  --area-orange: var(--pigment-orange);
+  --area-purple: var(--pigment-violet);
+  --area-pink:   var(--pigment-pink);
+  --area-grey:   var(--pigment-grey);
+  --area-fill-amount:   12%;  /* pigment mixed into the desk for the area body */
+  --area-border-amount: 55%;  /* pigment mixed into the desk for the area edge */
+}
+
+/* ---------- 7. Type ------------------------------------------------------ */
+:root {
+  --font-ui:    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-serif: "Palatino Linotype", Palatino, "Palatino LT STD", "Book Antiqua", Georgia, serif;
+  --font-mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-2xs: 11px;  /* uppercase badges only */
+  --text-xs:  12px;  /* captions, metadata */
+  --text-sm:  13px;  /* dense grids, sidebar rows */
+  --text-md:  14px;  /* base */
+  --text-lg:  16px;  /* section headings, dialog titles */
+  --text-xl:  20px;  /* serif: window and pane titles */
+  --text-2xl: 26px;  /* serif: view titles */
+  --text-3xl: 34px;  /* serif: empty states, lock screen */
+  --text-4xl: 46px;  /* serif: display */
+
+  --leading-tight:  1.2;
+  --leading-snug:   1.35;
+  --leading-normal: 1.5;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --tracking-caps: 0.06em;
+
+  /* Stage type is sized from the projector's height. Values at 1080p in comments. */
+  --stage-caption: 2.6vh;   /* 28px  smallest text allowed on the Stage */
+  --stage-body:    3.7vh;   /* 40px */
+  --stage-title:   6vh;     /* 65px */
+  --stage-name:    13vh;    /* 140px picked name */
+  --stage-timer:   22vh;    /* 238px timer digits */
+}
+
+/* ---------- 8. Space, size, radius -------------------------------------- */
+:root {
+  --space-0h: 2px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --control-sm: 24px;
+  --control-md: 30px;
+  --control-lg: 38px;
+  --row-dense:  28px;
+  --row:        34px;
+  --titlebar-h: 38px;
+  --topbar-h:   36px;
+  --dock-tile:  48px;
+
+  --radius-xs:   3px;    /* badges, checkboxes */
+  --radius-sm:   6px;    /* buttons, fields, chips, block cards */
+  --radius-md:   10px;   /* cards, menus, toasts */
+  --radius-lg:   14px;   /* windows, dialogs */
+  --radius-xl:   20px;   /* dock, areas */
+  --radius-full: 999px;
+}
+
+/* ---------- 9. Motion ---------------------------------------------------- */
+:root {
+  --dur-instant: 80ms;    /* press feedback */
+  --dur-fast:    140ms;   /* hover, toggles, focus ring */
+  --dur-base:    220ms;   /* menus, popovers, toasts, Stage cross-fade */
+  --dur-slow:    360ms;   /* window snap, maximise, dialog */
+  --dur-travel:  480ms;   /* canvas Fit and map jumps */
+
+  --ease-out:   cubic-bezier(0.2, 0.8, 0.2, 1);   /* things arriving */
+  --ease-in:    cubic-bezier(0.4, 0, 1, 1);       /* things leaving */
+  --ease-move:  cubic-bezier(0.4, 0, 0.2, 1);     /* things changing place or size */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0ms;
+    --dur-fast:    0ms;
+    --dur-base:    0ms;
+    --dur-slow:    0ms;
+    --dur-travel:  0ms;
+  }
+}
+
+/* ---------- 10. Layers --------------------------------------------------- */
+:root {
+  --z-desk:            0;
+  --z-area:            100;
+  --z-pinned:          200;
+  --z-window:          300;   /* windows stack upward from here */
+  --z-window-focused:  800;
+  --z-dragging:        900;
+  --z-canvas-controls: 1000;  /* map, zoom, Fit */
+  --z-dock:            1100;
+  --z-topbar:          1200;
+  --z-popover:         1300;
+  --z-menu:            1400;
+  --z-scrim:           1500;
+  --z-dialog:          1600;
+  --z-toast:           1700;
+  --z-lock:            1900;  /* Vault lock screen: above everything in its window */
+}
+
+/* ---------- 10b. Window chrome ------------------------------------------- */
+:root {
+  --window-close:    #ff5f57;  /* macOS traffic lights, kept as they are today */
+  --window-minimize: #febc2e;
+  --window-zoom:     #28c840;
+  --window-idle:     var(--rule-strong);  /* all three, in an unfocused window */
+
+  --vault-frame-gap: 3px;      /* gutter between the Vault's two keylines */
+
+  --frost-blur: blur(20px) saturate(1.2);   /* backdrop-filter for --frost surfaces */
+  --scrim:      rgb(0 0 0 / 0.5);           /* behind a dialog */
+}
+
+/* ---------- 11. Canvas zoom compensation --------------------------------- */
+/* The canvas sets --zoom (0.2 to 2). Chrome that must stay readable when the
+   canvas is zoomed out multiplies its font-size and icon size by --chrome-comp:
+   window titles, area labels, pinned-card names, block glyphs. Body content
+   is left to scale. At 50% zoom a 13px title lands near 9.5px on screen. */
+:root {
+  --zoom: 1;
+  --chrome-comp: clamp(1, calc(0.72 / var(--zoom)), 1.8);
+  --hairline:    calc(1px * clamp(1, calc(0.6 / var(--zoom)), 2));
+}
+
+/* ---------- 12. Today's names, kept working ------------------------------ */
+:root,
+[data-theme],
+[data-space] {
+  --bg:      var(--desk);
+  --panel:   var(--surface-1);
+  --panel-2: var(--surface-2);
+  --line:    var(--rule);
+  --text:    var(--ink);
+  --muted:   var(--ink-muted);
+  /* --accent keeps its name. */
+}

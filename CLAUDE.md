@@ -249,6 +249,15 @@ PDFs and images, and each role adds its own policy). The renderer's CSP blocks `
   `docs/MAC_CHECKLIST.md`. Add a line there when a change needs one.
 - Cloud sessions install dependencies at start (`scripts/session-start.sh`, `.claude/settings.json`).
 
+## Design language: Carrel
+
+Colour, type, spacing, motion and layers are tokens in `src/renderer/src/carrel.css`, loaded before
+`styles.css`. The rules that are not in the CSS (the seven states, the Vault's identity, the Stage, block
+glyphs) and the migration order are in [`docs/design/carrel-handoff.md`](docs/design/carrel-handoff.md);
+**read it before changing how anything looks**. `main.tsx` sets `data-space` (`everyday`, `vault`, `stage`)
+and `data-theme` on `<html>` from `window.api.role`. Do not define colours in `styles.css` or a component:
+use a token. Do not build what the handoff lists under "Ask first".
+
 ## Style
 
 Prettier (no semicolons, single quotes, 100 cols). Match surrounding code; keep comments for the
