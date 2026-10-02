@@ -3,6 +3,7 @@ import { useApiQuery } from '@renderer/data/hooks'
 import VaultBackups from '@renderer/vault/VaultBackups'
 import VaultSettings from '@renderer/vault/VaultSettings'
 import { useShell } from './ShellContext'
+import UpdatesSection from './UpdatesSection'
 
 function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -145,6 +146,8 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }): Re
             Offer the Stage when an external display connects
           </label>
         </section>
+
+        {space === 'launcher' && <UpdatesSection />}
 
         {space === 'vault' ? (
           <>

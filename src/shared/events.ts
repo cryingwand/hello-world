@@ -17,7 +17,8 @@ export const CHANGE_NAMES = [
   'directory.changed',
   'folders.changed',
   'desk.changed',
-  'calendar.changed'
+  'calendar.changed',
+  'updates.changed'
 ] as const
 
 export type ChangeName = (typeof CHANGE_NAMES)[number]
@@ -63,5 +64,7 @@ export const CHANGE_AUDIENCE: Record<ChangeName, readonly ('launcher' | 'vault' 
   'folders.changed': ['launcher', 'vault'],
   // The everyday desktop's pinned files and areas exist only in the everyday window.
   'desk.changed': ['launcher'],
-  'calendar.changed': ['launcher', 'vault']
+  'calendar.changed': ['launcher', 'vault'],
+  // An update was found, or one is downloading. Only the everyday window's Settings shows them.
+  'updates.changed': ['launcher']
 }

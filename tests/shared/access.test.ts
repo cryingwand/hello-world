@@ -134,19 +134,76 @@ describe('access policy', () => {
   })
 })
 
+describe('the Preview app', () => {
+  it("marks every call that changes the Mac's files or calendar, and nothing else", () => {
+    // The Preview runs on a copy of the data, but the Mac's files and calendar are the real ones:
+    // main refuses these there. A new method that writes to the Mac must be marked too.
+    const changesMac: string[] = []
+    for (const [ns, group] of Object.entries(API_ACCESS)) {
+      for (const [method, access] of Object.entries(group) as [string, Access][]) {
+        if (access.changesMac) changesMac.push(`${ns}.${method}`)
+      }
+    }
+    expect(changesMac.sort()).toEqual(
+      [
+        'calendar.create',
+        'calendar.delete',
+        'files.writeText',
+        'folders.createFolder',
+        'folders.move',
+        'folders.rename',
+        'folders.trash'
+      ].sort()
+    )
+    // Everything else in the namespaces that reach the Mac only reads, or only arranges windows.
+    const reads = {
+      calendar: ['status', 'calendars', 'events'],
+      folders: ['places', 'list'],
+      files: [
+        'search',
+        'info',
+        'readText',
+        'docxHtml',
+        'table',
+        'thumbnail',
+        'open',
+        'reveal',
+        'restoreLayout',
+        'pickFile'
+      ]
+    }
+    for (const [ns, methods] of Object.entries(reads)) {
+      const all = [...API_METHODS[ns as keyof typeof reads]] as string[]
+      const writes = all.filter((m) => !methods.includes(m)).map((m) => `${ns}.${m}`)
+      expect(
+        writes.every((w) => changesMac.includes(w)),
+        ns
+      ).toBe(true)
+    }
+  })
+
+  it('installs updates only from the everyday window', () => {
+    for (const access of Object.values(API_ACCESS.updates))
+      expect(access.roles).toEqual(['launcher'])
+    expect(methodsFor('vault').updates).toBeUndefined()
+    expect(methodsFor('stage').updates).toBeUndefined()
+  })
+})
+
 describe('change audiences', () => {
   it('names an audience for every change, and keeps vault data changes out of other windows', () => {
     for (const name of CHANGE_NAMES) expect(CHANGE_AUDIENCE[name], name).toBeDefined()
     // The ones that are not vault-only are each a deliberate decision: settings are public, the
     // names-only roster copy exists to be read by the everyday window, a folder change carries no
-    // path, the desktop arrangement is the everyday window's own, and the teacher chose to have the
-    // calendar there too.
+    // path, the desktop arrangement is the everyday window's own, the teacher chose to have the
+    // calendar there too, and updates are installed from the everyday window's Settings.
     const notVaultOnly = [
       'settings.changed',
       'directory.changed',
       'folders.changed',
       'desk.changed',
-      'calendar.changed'
+      'calendar.changed',
+      'updates.changed'
     ]
     for (const name of CHANGE_NAMES) {
       if (notVaultOnly.includes(name)) continue
@@ -156,6 +213,7 @@ describe('change audiences', () => {
     expect(CHANGE_AUDIENCE['settings.changed']).not.toContain('stage')
     expect(CHANGE_AUDIENCE['directory.changed']).toEqual(['launcher'])
     expect(CHANGE_AUDIENCE['desk.changed']).toEqual(['launcher'])
+    expect(CHANGE_AUDIENCE['updates.changed']).toEqual(['launcher'])
     for (const name of notVaultOnly)
       expect(CHANGE_AUDIENCE[name as 'desk.changed']).not.toContain('stage')
   })

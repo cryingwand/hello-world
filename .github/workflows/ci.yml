@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    # Branches only: the release tags the publish job makes must not start CI again.
+    branches: ['**']
   workflow_dispatch:
 
 concurrency:
@@ -41,10 +43,24 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the release notes list the commits since the last published build
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+      # Every push is published for the in-app updater (docs/features/updates.md): master as the next
+      # version, any other branch as a preview that opens on a copy of the data.
+      - name: Stamp the build
+        run: |
+          if [ "$GITHUB_REF_NAME" = master ]; then channel=stable; else channel=preview; fi
+          {
+            echo "TOS_BUILD_NUMBER=$GITHUB_RUN_NUMBER"
+            echo "TOS_COMMIT=$GITHUB_SHA"
+            echo "TOS_BRANCH=$GITHUB_REF_NAME"
+            echo "TOS_CHANNEL=$channel"
+          } >> "$GITHUB_ENV"
+          if [ "$channel" = preview ]; then echo "SMOKE_EXPECT_PREVIEW=1" >> "$GITHUB_ENV"; fi
       - run: npm ci
       # Electron fetches its binary on first use; the smoke test needs it up front.
       - run: node node_modules/electron/install.js
@@ -55,13 +71,35 @@ jobs:
         env:
           SMOKE_SHOTS: ${{ runner.temp }}/smoke-mac
       - name: Package the unsigned .app
-        run: npx electron-builder --mac --dir
+        run: |
+          if [ "$TOS_CHANNEL" = preview ]; then
+            # A separate app with its own name, so it installs beside the real one.
+            npx electron-builder --mac --dir -c.productName="Teaching OS Preview" -c.appId=local.teachingos.preview
+          else
+            npx electron-builder --mac --dir
+          fi
       - name: Smoke test the packaged app
         run: |
-          app=$(ls -d release/mac*/"Teaching OS.app" | head -1)
-          SMOKE_APP_BINARY="$app/Contents/MacOS/Teaching OS" node scripts/smoke.mjs
+          app=$(ls -d release/mac*/*.app | head -1)
+          SMOKE_APP_BINARY="$app/Contents/MacOS/$(basename "$app" .app)" node scripts/smoke.mjs
         env:
           SMOKE_SHOTS: ${{ runner.temp }}/smoke-mac-packaged
+      - name: Zip the app and write its release notes
+        if: github.event_name == 'push'
+        run: |
+          app=$(ls -d release/mac*/*.app | head -1)
+          codesign --force --deep --sign - "$app"
+          mkdir -p publish
+          zip="publish/Teaching-OS-$TOS_BUILD_NUMBER-$(node -p process.arch).zip"
+          ditto -c -k --keepParent "$app" "$zip"
+          node scripts/release-notes.mjs "$zip" > publish/notes.md
+          cat publish/notes.md
+      - uses: actions/upload-artifact@v5
+        if: github.event_name == 'push'
+        with:
+          name: build
+          path: publish
+          retention-days: 3
       - uses: actions/upload-artifact@v5
         if: failure()
         with:
@@ -70,3 +108,37 @@ jobs:
             ${{ runner.temp }}/smoke-mac
             ${{ runner.temp }}/smoke-mac-packaged
           if-no-files-found: ignore
+
+  publish:
+    name: Publish for the in-app updater
+    needs: [checks, mac]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: build
+          path: publish
+      # master: release build-<n>, the newest version. Any other branch: one prerelease per branch,
+      # replaced on every push (the tag is made the same way as previewTag in src/shared/build.ts).
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$GITHUB_REF_NAME" = master ]; then
+            tag="build-$GITHUB_RUN_NUMBER"
+            title="Teaching OS build $GITHUB_RUN_NUMBER"
+            flags="--latest"
+          else
+            slug=$(printf '%s' "$GITHUB_REF_NAME" | tr 'A-Z' 'a-z' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
+            tag="preview-$slug"
+            title="Preview: $GITHUB_REF_NAME"
+            flags="--prerelease --latest=false"
+          fi
+          gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$tag" publish/*.zip --target "$GITHUB_SHA" --title "$title" \
+            --notes-file publish/notes.md $flags

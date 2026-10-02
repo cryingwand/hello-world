@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { API_METHODS, type ApiContract } from '@shared/api'
 import { CHANGE_NAMES } from '@shared/events'
+import { LOCAL_BUILD } from '../../src/shared/build'
 import { createApi } from '../../src/main/api'
 import { createDeskService } from '../../src/main/deskService'
 import { createFolders } from '../../src/main/folders'
@@ -170,7 +171,21 @@ function env(opts: { unlocked?: boolean } = {}) {
       openAccessibilitySettings: async () => undefined,
       openVaultWindow: () => undefined,
       version: '0.0.0',
-      platform: 'test'
+      platform: 'test',
+      build: LOCAL_BUILD,
+      previewDataCopiedAt: () => null
+    },
+    updates: {
+      status: () => {
+        throw new Error('not in these tests')
+      },
+      check: async () => {
+        throw new Error('not in these tests')
+      },
+      install: async () => undefined,
+      tryPreview: async () => undefined,
+      refreshPreview: async () => undefined,
+      removePreview: async () => undefined
     }
   })
   const ready = opts.unlocked === false ? Promise.resolve() : manager.setup('a long passcode', {})

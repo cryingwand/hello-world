@@ -49,7 +49,9 @@ anywhere but a window's top frame, so an iframe can never use the API.
 `src/shared/access.ts` holds `API_ACCESS`, which classifies every method of `ApiContract` (TypeScript
 fails to compile until a new method is classified). `registerIpc` enforces it on every call, deny by
 default. `needsVault` methods are also refused while the vault is locked or a presentation is running.
-Default a new method to `VAULT`; make it `EVERYDAY` only if it is safe to call from the launcher. A Vault
+Default a new method to `VAULT`; make it `EVERYDAY` only if it is safe to call from the launcher. A method
+that changes the Mac's own files or calendar is marked `changesMac` (`EVERYDAY_MAC_WRITE`), which the
+Preview app refuses. A Vault
 method that deletes or overwrites data (`delete*`, `commit*` imports, `unenroll`) is `VAULT_DESTRUCTIVE`:
 `registerIpc`'s `beforeCall` takes a Vault backup first (at most one a minute, `snapshotVault`) and refuses the
 call if it cannot. `access.test.ts` fails if a `delete*`/`commit*` method is not marked.
@@ -156,6 +158,7 @@ that app**, and update it in the same commit:
 - In-class Tools: [`docs/features/in-class-tools.md`](docs/features/in-class-tools.md)
 - Files, folders and the everyday desktop: [`docs/features/files-and-desktop.md`](docs/features/files-and-desktop.md)
 - Calendar: [`docs/features/calendar.md`](docs/features/calendar.md)
+- Updates and the Preview app: [`docs/features/updates.md`](docs/features/updates.md)
 
 Write a new note in `docs/features/` for a new app, and link it here.
 
@@ -243,8 +246,11 @@ PDFs and images, and each role adds its own policy). The renderer's CSP blocks `
 - CI (`.github/workflows/ci.yml`) runs `check` and the smoke test on Linux, and the tests, the smoke test,
   the packaged `.app` and a smoke test of that package on macOS. The Mac job is the only place the Mac
   code paths and native packaging run for real; a failure there is never "only CI".
-- `npm run install:mac` builds and installs the app in `/Applications` (the teacher's install and update
-  path, `docs/START_HERE.md`).
+- Every push is published for the in-app updater: `master` as the next version (`build-<n>`), any other
+  branch as a preview the teacher can try in a separate **Teaching OS Preview** app on a copy of the data
+  ([`docs/features/updates.md`](docs/features/updates.md)). The teacher updates from Settings.
+- `npm run install:mac` builds and installs the app in `/Applications` (the first install,
+  `docs/START_HERE.md`).
 - What only a person can check (Spotlight, snapping, Touch ID, displays, sleep, Calendar) is in
   `docs/MAC_CHECKLIST.md`. Add a line there when a change needs one.
 - Cloud sessions install dependencies at start (`scripts/session-start.sh`, `.claude/settings.json`).

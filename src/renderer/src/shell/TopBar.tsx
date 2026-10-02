@@ -24,6 +24,35 @@ function Clock(): React.JSX.Element {
   return <time className="clock">{clockFormat.format(now)}</time>
 }
 
+/** A dot on the app name when a newer version is waiting in Settings (everyday window only). */
+function UpdateDot(): React.JSX.Element | null {
+  const status = useApiQuery(() => window.api.updates.status(), [], ['updates.changed'])
+  if (!status.data?.available) return null
+  return <span className="update-dot" role="img" aria-label="An update is available" />
+}
+
+/** The Preview app says so, always: it is a version being worked on, running on a copy of the data. */
+function PreviewBadge(): React.JSX.Element | null {
+  const info = useApiQuery(() => window.api.system.info(), [])
+  const d = info.data
+  if (!d || d.build.channel !== 'preview') return null
+  const copied = d.previewDataCopiedAt
+    ? new Date(d.previewDataCopiedAt).toLocaleString(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      })
+    : null
+  return (
+    <span
+      className="preview-badge"
+      title="A version still being worked on. It uses a copy of your data, and cannot change your files or calendar."
+    >
+      Preview of {d.build.branch}
+      {copied ? ` · copy of your data from ${copied}` : ''}
+    </span>
+  )
+}
+
 function ClassPicker(): React.JSX.Element {
   const { currentClassId, setCurrentClassId } = useShell()
   const classes = useApiQuery(
@@ -74,7 +103,9 @@ export default function TopBar(): React.JSX.Element {
       <div className="topbar-left">
         <button className="brand" onClick={() => setSettingsOpen(true)} title="Settings">
           {APP_NAME}
+          {space === 'launcher' && <UpdateDot />}
         </button>
+        <PreviewBadge />
         {focusedName && <span className="topbar-app">{focusedName}</span>}
       </div>
       <form

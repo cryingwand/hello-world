@@ -19,7 +19,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { pathToFileURL } from 'node:url'
 import type { Role } from '@shared/access'
-import { APP_ID, APP_NAME } from '@shared/app-info'
+import { APP_ID, APP_NAME, PREVIEW_DATA_ID } from '@shared/app-info'
 import { FILE_SCHEME } from '@shared/files'
 import { STAGE_VIEW_CHANNEL } from '@shared/stage'
 import { VAULT_STATUS_CHANNEL } from '@shared/vault'
@@ -32,6 +32,7 @@ import { resolveServedPath } from './files'
 import { defaultExec, isMac } from './mac/exec'
 import { createLauncherSnap } from './mac/launcherSnap'
 import { createBackupService, type BackupService } from './backupService'
+import { BUILD, IS_PREVIEW } from './buildInfo'
 import { openPublicDatabase, openVaultDatabase } from './db/connection'
 import { createBroadcaster } from './events'
 import { registerIpc } from './ipc'
@@ -49,6 +50,7 @@ import { createQuizService } from './quizService'
 import { createRosterService } from './rosterService'
 import { createScoreService } from './scoreService'
 import { createSafeSave } from './safeSave'
+import { bundleOf, createUpdater } from './update/updater'
 import {
   appVersion,
   chooseFolderDialog,
@@ -69,9 +71,18 @@ import { ValidationError } from './validate'
 import { createRoleWindow, type WindowEnv } from './windows'
 
 // One folder holds the database, backups and the renderer's own storage:
-// ~/Library/Application Support/TeachingOS on a Mac. TEACHING_OS_DATA_DIR overrides it for tests.
-const dataDir = process.env['TEACHING_OS_DATA_DIR'] ?? join(app.getPath('appData'), APP_ID)
+// ~/Library/Application Support/TeachingOS on a Mac. The Preview app has its own folder beside it,
+// holding a copy of the data. TEACHING_OS_DATA_DIR overrides it for tests.
+const dataDir =
+  process.env['TEACHING_OS_DATA_DIR'] ??
+  join(app.getPath('appData'), IS_PREVIEW ? PREVIEW_DATA_ID : APP_ID)
 app.setPath('userData', dataDir)
+// Where the real app puts the Preview's copy of the data (in the Preview, its own data folder).
+const previewDataDir = IS_PREVIEW
+  ? dataDir
+  : process.env['TEACHING_OS_DATA_DIR']
+    ? join(dataDir, 'preview')
+    : join(app.getPath('appData'), PREVIEW_DATA_ID)
 
 // Serves PDFs and images to the renderer through a validated custom scheme (see resolveServedPath).
 protocol.registerSchemesAsPrivileged([
@@ -305,7 +316,8 @@ void app.whenReady().then(() => {
       open: () => (manager.isUnlocked() ? manager.database() : null),
       dbPath: manager.paths.db
     },
-    extraDir: () => publicRepos.settings.get().backupFolder
+    // The Preview's copied settings name the real extra backup folder; its backups stay out of it.
+    extraDir: () => (IS_PREVIEW ? null : publicRepos.settings.get().backupFolder)
   })
 
   const restore = createVaultRestore({
@@ -419,6 +431,41 @@ void app.whenReady().then(() => {
     chooseFolder: chooseFolderDialog
   })
 
+  const updater = createUpdater({
+    build: BUILD,
+    arch: process.arch,
+    platform: process.platform,
+    bundlePath: bundleOf(process.execPath, app.isPackaged, process.platform),
+    appsDir: '/Applications',
+    downloadDir: join(dataDir, 'updates'),
+    fetch: (url) => net.fetch(url, { headers: { Accept: 'application/vnd.github+json' } }),
+    exec: defaultExec,
+    trash: (path) => shell.trashItem(path),
+    presenting: () => stage.isActive(),
+    backup: async () => {
+      const info = await backups.runAll()
+      if (info.vaultError) throw new Error(info.vaultError)
+      return { data: info.path, vault: info.vaultName ? join(backupDir, info.vaultName) : null }
+    },
+    vaultMetaPath: manager.paths.meta,
+    previewDataDir,
+    relaunch: () => {
+      app.relaunch()
+      app.quit()
+    },
+    changed: () => broadcast('updates.changed')
+  })
+  const updates = {
+    status: () => updater.status(),
+    check: () => updater.check(),
+    install: () => updater.install(),
+    tryPreview: (tag: string) => updater.tryPreview(tag),
+    refreshPreview: () => updater.refreshPreview(),
+    removePreview: () => updater.removePreview()
+  }
+  const previewDataCopiedAt = (): string | null =>
+    IS_PREVIEW ? updater.status().previewDataCopiedAt : null
+
   const env = {
     dataDir,
     dbPath,
@@ -432,7 +479,9 @@ void app.whenReady().then(() => {
     },
     openVaultWindow,
     version: appVersion(),
-    platform: process.platform
+    platform: process.platform,
+    build: BUILD,
+    previewDataCopiedAt
   }
   const apiFor = (role: Role) =>
     createApi({
@@ -455,6 +504,7 @@ void app.whenReady().then(() => {
       folders: folders[role],
       desk,
       calendar,
+      updates,
       env
     })
   registerIpc({
@@ -464,6 +514,10 @@ void app.whenReady().then(() => {
     // Anything that needs the vault is refused while it is locked. A delete or an import that
     // overwrites is backed up first, and refused if the backup cannot be taken.
     beforeCall: async (_role, _ns, _method, access) => {
+      if (access.changesMac && IS_PREVIEW)
+        throw new ValidationError(
+          'Not in the Preview: it works on a copy of your data, but your files and calendar are the real ones. Use Teaching OS for that.'
+        )
       if (!access.needsVault) return
       if (stage.isActive())
         throw new ValidationError('End the presentation before using the Vault.')
@@ -480,7 +534,10 @@ void app.whenReady().then(() => {
     }
   })
   startBackups(backups, notifier)
+  // An automated or trial run (its own data folder) never asks GitHub for updates by itself.
+  if (!process.env['TEACHING_OS_DATA_DIR']) updater.start()
   app.on('will-quit', () => {
+    updater.dispose()
     stage.dispose()
     manager.dispose()
     for (const f of Object.values(folders)) f.dispose()

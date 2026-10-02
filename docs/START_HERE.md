@@ -22,8 +22,16 @@ That builds the app, installs it as `/Applications/Teaching OS.app` and opens it
 macOS may ask whether to open an app from an unidentified developer: right-click the app in Applications,
 choose **Open**, then **Open** again.
 
-To **update** later: `cd teaching-os && git pull && npm run install:mac`. Your data is not inside the app,
-so an update never touches it.
+To **update** later: click **Teaching OS** in the top bar to open Settings. Under **Updates**, a new
+version shows what changed; **Update and restart** backs up your data, installs it and reopens the app (a
+dot on **Teaching OS** means one is waiting). Your data is not inside the app, so an update never touches
+it. If you installed an older copy before this button existed, update once the old way:
+`cd teaching-os && git pull && npm run install:mac`.
+
+**Trying changes before they are finished.** While something is being worked on, Settings lists it under
+**Try work in progress**. **Try this version** installs it as a separate app, **Teaching OS Preview**, with
+a copy of your data: try anything there, nothing changes your real data, and it cannot move files or
+change your calendar. Quit it when you are done; **Remove the Preview** clears it away.
 
 ## 2. Try it with fake data first (optional)
 

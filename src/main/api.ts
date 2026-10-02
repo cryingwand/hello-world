@@ -1,4 +1,5 @@
 import type { ApiContract, SystemInfo } from '@shared/api'
+import type { BuildInfo } from '@shared/build'
 import type { BackupService } from './backupService'
 import type { MeetingService } from './meetingService'
 import type { ProgressService } from './progressService'
@@ -22,6 +23,9 @@ export interface ApiEnv {
   openVaultWindow: () => void
   version: string
   platform: string
+  build: BuildInfo
+  /** In the Preview app: when its copy of the data was made. */
+  previewDataCopiedAt: () => string | null
 }
 
 export interface ApiDeps {
@@ -47,6 +51,7 @@ export interface ApiDeps {
   folders: ApiContract['folders']
   desk: ApiContract['desk']
   calendar: ApiContract['calendar']
+  updates: ApiContract['updates']
   env: ApiEnv
 }
 
@@ -272,10 +277,13 @@ export function createApi(deps: ApiDeps): ApiContract {
         vaultPath: env.vaultPath,
         backupDir: env.backupDir,
         platform: env.platform,
-        version: env.version
+        version: env.version,
+        build: env.build,
+        previewDataCopiedAt: env.previewDataCopiedAt()
       }),
       chooseFolder: () => env.chooseFolder(),
       openAccessibilitySettings: () => env.openAccessibilitySettings()
-    }
+    },
+    updates: deps.updates
   }
 }

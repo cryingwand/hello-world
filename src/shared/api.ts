@@ -1,3 +1,4 @@
+import type { BuildInfo } from './build'
 import type { CalendarEvent, CalendarEventInput, CalendarInfo, CalendarStatus } from './calendar'
 import type {
   DeskArea,
@@ -21,6 +22,7 @@ import type { QuizForm } from './quizForms'
 import type { CopyDates } from './lesson'
 import type { StageState, StageTool, StageView } from './stage'
 import type { TimerState } from './tools'
+import type { UpdateStatus } from './updates'
 import type { VaultSettings, VaultStatus } from './vault'
 import type { ScoreImportPlan, ScoreImportRequest, ScoreImportResult } from './scoreImport'
 import type { ImportPreview, ImportRequest, ImportResult, TableFile } from './roster'
@@ -255,6 +257,9 @@ export interface SystemInfo {
   backupDir: string
   platform: string
   version: string
+  build: BuildInfo
+  /** In the Preview app: when its copy of the data was made. Null everywhere else. */
+  previewDataCopiedAt: string | null
 }
 
 type Patch<T> = Partial<T>
@@ -587,6 +592,19 @@ export interface ApiContract {
     /** Opens System Settings at Privacy & Security, Accessibility. */
     openAccessibilitySettings(): Awaitable<void>
   }
+  updates: {
+    status(): UpdateStatus
+    /** Asks GitHub for newer versions and versions being worked on. */
+    check(): Awaitable<UpdateStatus>
+    /** Backs up, installs the newer version over this app and restarts it. */
+    install(): Awaitable<void>
+    /** Installs a version being worked on as the Preview app, on a fresh copy of the data. */
+    tryPreview(tag: string): Awaitable<void>
+    /** Gives the Preview a fresh copy of the data. */
+    refreshPreview(): Awaitable<void>
+    /** Moves the Preview app to the Trash and deletes its copy of the data. */
+    removePreview(): Awaitable<void>
+  }
 }
 
 /** Runtime list of every method, used to build the preload bridge and to catch drift. */
@@ -729,7 +747,8 @@ export const API_METHODS = {
   directory: ['classes', 'students'],
   settings: ['get', 'update'],
   backup: ['runNow', 'list'],
-  system: ['info', 'chooseFolder', 'openAccessibilitySettings']
+  system: ['info', 'chooseFolder', 'openAccessibilitySettings'],
+  updates: ['status', 'check', 'install', 'tryPreview', 'refreshPreview', 'removePreview']
 } as const satisfies { [N in keyof ApiContract]: readonly (keyof ApiContract[N])[] }
 
 export type Api = {

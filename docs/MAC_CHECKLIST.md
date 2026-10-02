@@ -101,3 +101,15 @@ Use your real setup (the installed app, your own folders) but it is fine to use 
       projector, large.
 - [ ] Make groups for a real-sized class and **Show on the Stage**: every name is readable from the back
       of the room and nothing is cut off. Esc goes back to the file; Esc again ends the Stage.
+
+## Updates and previews
+
+- [ ] Settings, **Updates**, **Check now** finds the newest version (or says this is the newest). **Update
+      and restart** reopens the app on the new build number, with your windows, data and Vault passcode as
+      they were.
+- [ ] **Try this version** on a version in progress opens **Teaching OS Preview** beside the real app, with
+      "Preview of …" in its top bar. Your classes and lessons are there; a change you make in it does not
+      appear in the real app.
+- [ ] In the Preview, dragging a file onto a folder and adding a calendar event are refused.
+- [ ] **Refresh its copy of my data** asks you to quit the Preview first if it is open. **Remove the
+      Preview** puts it in the Trash.
